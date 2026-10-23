@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lumina 改进建议 · 2026-10-22</title>
+<style>
+  :root{
+    --paper:#fbfaf7; --panel:#fff; --ink:#1c1b19; --ink2:#4a4842; --ink3:#7c7970;
+    --line:#e4e0d8; --line-strong:#cfc9bd;
+    --accent:#2f5d50; --accent-soft:#e9f1ed; --accent-ink:#24483e;
+    --amber:#946213; --amber-soft:#fbf3e2;
+    --blue:#3f5478; --blue-soft:#eef1f7;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    --serif:"Source Han Serif SC","Noto Serif SC",Georgia,"Songti SC",serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;font-size:15px;line-height:1.75}
+  .page{max-width:1000px;margin:0 auto;padding:56px 40px 96px}
+  code,.mono{font-family:var(--mono);font-size:.86em}
+  code{background:#f1eee7;padding:.12em .38em;border-radius:4px;color:#3c3a34}
+  h1,h2,h3,h4{font-family:var(--serif);font-weight:600;letter-spacing:.01em;color:var(--ink);margin:0}
+  h2{font-size:24px;margin:0 0 6px}
+  h3{font-size:17px}
+  h4{font-size:14px}
+  p{margin:0 0 12px}
+  a{color:var(--accent)}
+
+  .cover{border-bottom:1px solid var(--line-strong);padding-bottom:32px;margin-bottom:40px}
+  .kicker{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3);margin-bottom:22px}
+  h1{font-size:40px;line-height:1.2;margin:0 0 10px}
+  .subtitle{color:var(--ink2);font-size:16px;margin:0 0 24px}
+  .meta{display:flex;flex-wrap:wrap;gap:10px 28px;font-size:13px;color:var(--ink2)}
+  .meta b{font-weight:600;color:var(--ink)}
+  .thesis{margin-top:26px;background:var(--accent-soft);border:1px solid #cfe0d8;border-radius:12px;padding:18px 20px;font-size:14.5px;color:#264a3f}
+  .thesis b{color:#1d3a31}
+  .top5{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .top5 span{font-size:12px;padding:5px 11px;border-radius:999px;background:#fff;border:1px solid var(--line-strong);color:var(--ink2)}
+  .top5 span b{color:var(--accent);font-family:var(--mono);font-size:11px;margin-right:5px}
+
+  section{margin:0 0 46px}
+  .sec-head{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:22px}
+  .sec-no{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.1em;padding-top:4px}
+  .lead{font-size:16px;color:var(--ink2);margin-bottom:18px}
+  .lead strong{color:var(--ink)}
+
+  table{width:100%;border-collapse:collapse;font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th{text-align:left;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);font-weight:600;padding:11px 14px;background:#f6f4ef;border-bottom:1px solid var(--line)}
+  td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+  tr:last-child td{border-bottom:0}
+  td.b{color:var(--ink);font-weight:600}
+  td.num{font-family:var(--mono);white-space:nowrap}
+  .tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.06em;padding:2px 7px;border-radius:4px;white-space:nowrap}
+  .tag.a{background:var(--accent-soft);color:var(--accent-ink)}
+  .tag.b{background:var(--amber-soft);color:var(--amber)}
+  .tag.c{background:var(--blue-soft);color:var(--blue)}
+  .tag.gray{background:#efede7;color:var(--ink3)}
+
+  /* matrix */
+  .matrix-wrap{display:grid;grid-template-columns:28px 1fr;grid-template-rows:1fr 26px;gap:6px;margin:6px 0 8px}
+  .y-label{writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;color:var(--ink3);letter-spacing:.1em;text-align:center}
+  .x-label{grid-column:2;text-align:center;font-size:11px;color:var(--ink3);letter-spacing:.1em}
+  .matrix{position:relative;height:380px;border:1px solid var(--line-strong);border-radius:12px;background:
+    linear-gradient(to right,transparent 49.8%,var(--line) 49.8%,var(--line) 50.2%,transparent 50.2%),
+    linear-gradient(to bottom,transparent 49.8%,var(--line) 49.8%,var(--line) 50.2%,transparent 50.2%),
+    #fff}
+  .q{position:absolute;font-size:11px;color:#a9a49a;letter-spacing:.04em}
+  .q.tl{top:12px;left:14px}.q.tr{top:12px;right:14px}.q.bl{bottom:12px;left:14px}.q.br{bottom:12px;right:14px}
+  .dot{position:absolute;transform:translate(-50%,-50%);font-family:var(--mono);font-size:10.5px;font-weight:700;
+    background:var(--accent);color:#fff;border-radius:999px;padding:3px 7px;line-height:1.2;box-shadow:0 1px 3px rgba(0,0,0,.12);white-space:nowrap}
+  .dot.amber{background:var(--amber)}
+  .dot.blue{background:var(--blue)}
+  .dot.gray{background:#8d897f}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink3);margin-top:6px}
+  .legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+
+  /* cards */
+  .idea{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:14px;border-left:3px solid var(--accent)}
+  .idea.b2{border-left-color:var(--amber)}
+  .idea.c2{border-left-color:var(--blue)}
+  .idea-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:6px}
+  .idea-id{font-family:var(--mono);font-size:11.5px;color:var(--accent);font-weight:700}
+  .idea-title{font-family:var(--serif);font-size:17.5px;font-weight:600;color:var(--ink)}
+  .idea-meta{margin-left:auto;display:flex;gap:6px;align-items:center;font-size:11px;color:var(--ink3)}
+  .scene{font-size:13.5px;color:var(--ink2);background:#f7f5f0;border-left:2px solid var(--line-strong);padding:7px 12px;border-radius:0 6px 6px 0;margin:8px 0 12px}
+  .scene b{color:var(--ink)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px 26px}
+  .block h4{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin:0 0 5px;font-weight:700}
+  .block ul{margin:0;padding-left:17px;font-size:13.5px;color:var(--ink2)}
+  .block li{margin-bottom:4px}
+  .block p{font-size:13.5px;margin:0}
+  .code-line{font-family:var(--mono);font-size:11.5px;color:var(--ink3);line-height:1.7;word-break:break-all}
+  .check{font-size:13px;color:var(--ink2);background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin-top:12px}
+  .check b{color:var(--accent-ink)}
+
+  .no-list{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .no-item{background:#fff;border:1px solid var(--line);border-radius:10px;padding:13px 16px}
+  .no-item h4{font-size:13.5px;color:var(--ink);margin-bottom:3px}
+  .no-item p{font-size:12.5px;color:var(--ink3);margin:0}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+  ul.clean{margin:0;padding-left:20px;color:var(--ink2);font-size:14px}
+  ul.clean li{margin-bottom:7px}
+  ul.clean b{color:var(--ink)}
+  .callout{background:var(--amber-soft);border:1px solid #e8d6ac;border-radius:12px;padding:16px 20px;font-size:14px;color:#6c4a10}
+  .callout b{color:#54390a}
+
+  .appendix{font-size:13px;color:var(--ink2)}
+  .appendix pre{background:#f4f1eb;border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-family:var(--mono);font-size:12px;line-height:1.7;overflow-x:auto;margin:0 0 10px}
+  .foot{border-top:1px solid var(--line-strong);margin-top:52px;padding-top:16px;font-size:11.5px;color:var(--ink3);display:flex;justify-content:space-between;gap:16px}
+
+  @media (max-width:820px){
+    .page{padding:32px 20px 64px} h1{font-size:30px}
+    .grid2,.no-list,.two-col{grid-template-columns:1fr}
+    .matrix{height:320px}
+    .idea-meta{margin-left:0}
+    .cover{padding-bottom:24px;margin-bottom:28px}
+  }
+  @media print{ body{background:#fff;font-size:12pt} .page{max-width:none;padding:0} section,.idea{break-inside:avoid} }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="cover">
+    <div class="kicker"><span>改进建议 · Improvement Proposal</span><span>Lumina v0.1.0</span></div>
+    <h1>从「能用」到「会有人第二次打开」</h1>
+    <p class="subtitle">基于修复后基线（37/37 测试通过）的功能与体验改进建议</p>
+    <div class="meta">
+      <span><b>日期</b>　2026-10-22</span>
+      <span><b>基线</b>　P1/P2/P3 已修复，37 项测试通过</span>
+      <span><b>建议数量</b>　14 项（分 3 批）</span>
+      <span><b>核心主张</b>　不加功能，先补闭环</span>
+    </div>
+
+    <div class="thesis">
+      <b>一句话结论：</b>这个项目已经不缺“能力”，缺的是“理由”——用户下一次为什么会主动打开它。答案不是再加一个工具或换一套皮肤，而是把已有的证据链往前接两步：<b>从证据到诊断</b>，<b>从诊断到行动</b>。目前证据只被展示，没有被用来改变讲法；复习只有队列，没有真正的“复习会话”。
+    </div>
+
+    <div class="top5">
+      <span><b>A1</b>错因结构化 + 错题本</span>
+      <span><b>A2</b>结构化复习会话</span>
+      <span><b>A3</b>证据作废与重算</span>
+      <span><b>B1</b>材料引用可溯源</span>
+      <span><b>D3</b>提示词评测集</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">01</span><h2>基线复核</h2></div>
+    <p class="lead">先确认地基，再谈加层。修复后的实测结果与修复记录基本一致，只有一处小出入。</p>
+    <table>
+      <thead><tr><th style="width:22%">项目</th><th style="width:50%">实测</th><th>判断</th></tr></thead>
+      <tbody>
+        <tr><td class="b">单元 + 集成测试</td><td><code>npm test</code>：3 个文件、37 个用例</td><td>通过，新增 6 项覆盖修复点</td></tr>
+        <tr><td class="b">生产构建</td><td><code>next build</code> 退出码 0，14 静态页 + 22 API 路由</td><td>通过</td></tr>
+        <tr><td class="b">构建警告</td><td>仍有 1 条：<code>middleware</code> 约定在 Next 16 弃用</td><td>与修复记录“0 警告”不符，建议迁移 <code>proxy.ts</code></td></tr>
+        <tr><td class="b">数据一致性</td><td><code>recomputeConceptAggregates()</code> 已实现“按剩余证据重放 BKT”</td><td>修复方式正确，不是简单减一</td></tr>
+        <tr><td class="b">证据可信</td><td><code>solution_viewed_at / hint_used_at</code> 服务端留痕，提交以服务端为准</td><td>已堵住自报绕过</td></tr>
+        <tr><td class="b">安全</td><td>默认 <code>127.0.0.1</code>、CSP 等安全头、system 接口脱敏</td><td>已处理；局域网模式需显式开启</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:12.5px;color:var(--ink3);margin-top:10px">当前体量：10,566 行源码、69 个文件、9 个页面、23 张表、8 个教学工具、8 种题型。数据层 <code>repo.ts</code> 已增至 1,374 行。</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">02</span><h2>产品判断</h2></div>
+    <div class="two-col">
+      <div>
+        <h3 style="margin-bottom:8px">它已经是什么</h3>
+        <ul class="clean">
+          <li><b>一个诚实的单机导师。</b>没模型就说没模型，评不了就说评不了，答案不下发——这三点比大部分“AI 学习产品”都硬。</li>
+          <li><b>一个证据系统。</b>BKT、审计、快照、复习队列都在，删除会话还能正确重放。</li>
+          <li><b>一个内容生成器。</b>8 个白名单工具把模型输出约束成可交互组件，而不是一坨 Markdown。</li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="margin-bottom:8px">它现在还不是什么</h3>
+        <ul class="clean">
+          <li><b>不是一个“每天想打开”的工具。</b>首页能开始学习，但没有“今天该做什么”的确定答案。</li>
+          <li><b>不是一个能读懂教材的助教。</b>材料被塞进上下文，但回答没有引用，用户无法验证依据。</li>
+          <li><b>不是一个会因材施教的导师。</b>它知道你“没掌握”，但不太知道你“为什么没掌握”。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:18px">
+      <b>护城河判断：</b>通用聊天工具可以讲得一样好，甚至更好；它们缺的是“跨会话记住你错过什么、并按错因换一种方式再测你”。所以功能建议一律围绕这条线，凡是不能增强“证据 → 诊断 → 复测”的，优先级都往后放。
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">03</span><h2>建议总览</h2></div>
+    <p class="lead">横轴是改动成本，纵轴是用户价值。左上角先做，右下角不做。</p>
+
+    <div class="matrix-wrap">
+      <div class="y-label">用户价值</div>
+      <div class="matrix">
+        <span class="q tl">先做 · 高价值 / 低成本</span>
+        <span class="q tr">规划 · 高价值 / 高成本</span>
+        <span class="q bl">顺手 · 低价值 / 低成本</span>
+        <span class="q br">不做 · 低价值 / 高成本</span>
+
+        <span class="dot" style="left:27%;top:9%">A2</span>
+        <span class="dot" style="left:16%;top:29%">A3</span>
+        <span class="dot" style="left:54%;top:10%">A1</span>
+        <span class="dot" style="left:64%;top:18%">B1</span>
+        <span class="dot" style="left:44%;top:24%">D3</span>
+        <span class="dot amber" style="left:38%;top:30%">B2</span>
+        <span class="dot amber" style="left:27%;top:31%">C2</span>
+        <span class="dot amber" style="left:56%;top:34%">C1</span>
+        <span class="dot blue" style="left:27%;top:43%">D1</span>
+        <span class="dot blue" style="left:45%;top:47%">D2</span>
+        <span class="dot blue" style="left:55%;top:52%">C3</span>
+        <span class="dot blue" style="left:37%;top:52%">C5</span>
+        <span class="dot blue" style="left:8%;top:52%">C4</span>
+        <span class="dot blue" style="left:74%;top:62%">A4</span>
+      </div>
+      <div></div>
+      <div class="x-label">改动成本 →</div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>批次一 · 补完证据闭环</span>
+      <span><i style="background:var(--amber)"></i>批次二 · 材料与练习</span>
+      <span><i style="background:var(--blue)"></i>批次三 · 长期使用</span>
+    </div>
+
+    <table style="margin-top:20px">
+      <thead><tr><th style="width:7%">编号</th><th style="width:34%">建议</th><th style="width:33%">解决的问题</th><th style="width:8%">价值</th><th style="width:8%">成本</th><th>批次</th></tr></thead>
+      <tbody>
+        <tr><td class="num">A1</td><td class="b">错因结构化 + 错题本</td><td>知道你“没掌握”，不知道“为什么”</td><td>高</td><td>中</td><td>一</td></tr>
+        <tr><td class="num">A2</td><td class="b">结构化复习会话</td><td>复习只有队列，行动靠一句自然语言</td><td>高</td><td>低</td><td>一</td></tr>
+        <tr><td class="num">A3</td><td class="b">单条证据作废与重算</td><td>误判/坏题无法剔除，档案只能整条删</td><td>高</td><td>低</td><td>一</td></tr>
+        <tr><td class="num">A4</td><td class="b">掌握度校准视图</td><td>预测的 p 值与真实正确率是否一致，无从判断</td><td>中</td><td>高</td><td>三</td></tr>
+        <tr><td class="num">B1</td><td class="b">材料引用可溯源</td><td>回答里的“材料依据”无法验证</td><td>高</td><td>中</td><td>二</td></tr>
+        <tr><td class="num">B2</td><td class="b">从材料段落出题</td><td>材料只能“被引用”，不能“被练”</td><td>高</td><td>中</td><td>二</td></tr>
+        <tr><td class="num">C1</td><td class="b">今日计划（10 分钟）</td><td>打开首页不知道今天该干什么</td><td>高</td><td>中</td><td>二</td></tr>
+        <tr><td class="num">C2</td><td class="b">题目反馈与“换一题”</td><td>题太难/太简单/有错，用户无法反馈</td><td>高</td><td>低</td><td>二</td></tr>
+        <tr><td class="num">C3</td><td class="b">长会话大纲 + 换讲法</td><td>50 条消息后找不到那道题；讲法无法重来</td><td>中</td><td>中</td><td>三</td></tr>
+        <tr><td class="num">C4</td><td class="b">导出学习记录</td><td>学完就散，无法复盘或带走</td><td>中</td><td>低</td><td>三</td></tr>
+        <tr><td class="num">C5</td><td class="b">全局搜索（会话/知识点/题目）</td><td>只有会话标题搜索，找不到“上次那道题”</td><td>中</td><td>中</td><td>三</td></tr>
+        <tr><td class="num">D1</td><td class="b">用量与成本面板</td><td><code>usage_log</code> 有数据但从不展示</td><td>中</td><td>低</td><td>三</td></tr>
+        <tr><td class="num">D2</td><td class="b">主模型 / 快模型分级</td><td>提示、判题、标题都在用贵模型</td><td>中</td><td>中</td><td>三</td></tr>
+        <tr><td class="num">D3</td><td class="b">提示词评测集</td><td>改一句提示词，教学风格可能整体崩坏</td><td>高</td><td>中</td><td>一</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">04</span><h2>详细建议</h2></div>
+    <p class="lead">每项都给出场景、做法、代码落点与可验收标准。落点尽量复用已有结构，不新造轮子。</p>
+
+    <h3 style="margin:6px 0 12px;color:var(--accent-ink)">A · 把证据变成诊断</h3>
+
+    <div class="idea">
+      <div class="idea-top"><span class="idea-id">A1</span><span class="idea-title">错因结构化 + 错题本</span><span class="idea-meta"><span class="tag a">价值 高</span><span class="tag gray">成本 中</span><span class="tag b">批次一</span></span></div>
+      <div class="scene"><b>场景：</b>用户在「导数」上连错三次，档案显示“需要巩固”。但他到底是公式记错、还是审题漏条件、还是计算符号错？现在系统不知道，模型也不知道，只能泛泛地“换个讲法”。</div>
+      <div class="grid2">
+        <div class="block"><h4>做法</h4><ul>
+          <li><code>attempts</code> 增加 <code>error_type</code>：概念混淆 / 计算失误 / 审题遗漏 / 表述不全 / 知识缺口。</li>
+          <li>客观题由判题器直接推断（多选漏选 → 审题遗漏；数值量级错 → 单位/量级；填空近似 → 表述不全）；开放题由评阅模型在 JSON 里返回。</li>
+          <li>知识点详情聚合“Top 错因”，复习建议按错因生成不同文案。</li>
+          <li>上下文注入从“状态 + p 值”升级为“最近 3 次错因 + 当时选了什么”。</li>
+        </ul></div>
+        <div class="block"><h4>代码落点</h4><p class="code-line">src/lib/db/schema.ts（attempts 加列）<br>src/lib/learning/exercise.ts（判题侧推断）<br>src/app/api/attempts/route.ts（写入）<br>src/lib/ai/prompt.ts（注入错因）<br>src/app/library/page.tsx（错因展示）</p></div>
+      </div>
+      <div class="check"><b>验收：</b>同一知识点连续 3 次“概念混淆”后，复习理由与提示词里出现该错因；答对一次后错因不再主导；每类错因至少有 1 个单元用例。<b>注意：</b>错因只用于“怎么教”，不得反过来直接改掌握度——证据优先的原则不能破。</div>
+    </div>
+
+    <div class="idea">
+      <div class="idea-top"><span class="idea-id">A2</span><span class="idea-title">结构化复习会话</span><span class="idea-meta"><span class="tag a">价值 高</span><span class="tag gray">成本 低</span><span class="tag b">批次一</span></span></div>
+      <div class="scene"><b>场景：</b>复习页点“练一练”，现在只是拼一句话：“来做一个短复习：知识点「X」……先用一两道题测我”。模型可能先讲十分钟，也可能出三道超纲题，系统完全无法约束。</div>
+      <div class="grid2">
+        <div class="block"><h4>做法</h4><ul>
+          <li>创建会话时传结构化参数：<code>{ mode:"review", focusConceptId, reviewItemId }</code>，而不是只传一句自然语言。</li>
+          <li>上下文明确约束：本轮先 <code>present_exercise</code>（同型 1 道 + 变式 1 道），答完再决定讲不讲；拿不到证据就不算复习完成。</li>
+          <li>会话与复习条目绑定：产生有效作答后自动把条目置为 <code>done</code>，并刷新 <code>next_review_at</code>；无作答退出则保留条目。</li>
+          <li>会话结束时给一句“这次复习解决了什么 / 还差什么”，写回条目备注。</li>
+        </ul></div>
+        <div class="block"><h4>代码落点</h4><p class="code-line">src/app/review/page.tsx（改成传 id）<br>src/app/api/sessions/route.ts（接收 focus）<br>src/lib/db/schema.ts（sessions 加 focus_concept_id / review_item_id）<br>src/lib/ai/prompt.ts（复习模式约束）<br>src/app/api/attempts/route.ts（回写 review_items）</p></div>
+      </div>
+      <div class="check"><b>验收：</b>从复习进入后，首个教学组件必须是练习；作答后该条目从队列消失且 <code>next_review_at</code> 延后；直接退出会话则条目保留。<b>成本低的原因：</b>队列、会话、证据三张表都已存在，只差把“自然语言约定”换成“结构化字段”。</div>
+    </div>
+
+    <div class="idea">
+      <div class="idea-top"><span class="idea-id">A3</span><span class="idea-title">单条证据作废与重算</span><span class="idea-meta"><span class="tag a">价值 高</span><span class="tag gray">成本 低</span><span class="tag b">批次一</span></span></div>
+      <div class="scene"><b>场景：</b>模型出的一道题本身有歧义，用户答错被记了证据；或者开放题评阅明显误判。现在只能整条删除知识点，或者忍着。档案的“可追溯”变成了“只能信”。</div>
+      <div class="grid2">
+        <div class="block"><h4>做法</h4><ul>
+          <li><code>evidence</code> 增加 <code>voided</code> 与 <code>void_reason</code>，软作废而不是物理删除，审计记录保留。</li>
+          <li>知识点详情列出每条证据（时间、题目、对错、是否用提示），提供“这条不算”与原因。</li>
+          <li>复用现成的 <code>recomputeConceptAggregates()</code> 重放剩余证据；作废动作写 <code>concept_events</code>。</li>
+          <li>若作废后该知识点证据归零，状态回到“尚未接触”，而不是留着旧 p 值。</li>
+        </ul></div>
+        <div class="block"><h4>代码落点</h4><p class="code-line">src/lib/db/schema.ts（evidence 加列）<br>src/lib/db/repo.ts:129（重算函数已存在）<br>src/app/api/evidence/[id]/route.ts（新增 DELETE）<br>src/app/library/page.tsx（证据列表 + 作废）</p></div>
+      </div>
+      <div class="check"><b>验收：</b>作废一条证据后 p 值与状态按剩余证据重算、快照新增一条、审计写明“用户作废”；作废最后一条后回到 <code>untouched</code>。<b>注意：</b>软作废的数据仍参与导出与审计，不参与掌握度与复习调度。</div>
+    </div>
+
+    <div class="idea">
+      <div class="idea-top"><span class="idea-id">A4</span><span class="idea-title">掌握度校准视图</span><span class="idea-meta"><span class="tag a">价值 中</span><span class="tag gray">成本 高</span><span class="tag b">批次三</span></span></div>
+      <div class="scene"><b>场景：</b>系统说“p(掌握)=0.88”，用户下次做新题还是错。BKT 参数是否适合这个人？没有人知道。</div>
+      <div class="grid2">
+        <div class="block"><h4>做法</h4><ul>
+          <li>每次“新题首次作答”视为一次校准点：记录预测 p 与实际对错。</li>
+          <li>按知识点/主题统计 Brier 分数或分桶正确率（0.6-0.7、0.7-0.8…），显示“高估/低估”。</li>
+          <li>校准长期偏差时，允许个人化调整 <code>pG / pS</code>（先只展示，不自动改）。</li>
+        </ul></div>
+        <div class="block"><h4>代码落点</h4><p class="code-line">mastery_snapshots（已有时间序列）<br>attempts（首答标记）<br>新增 /api/calibration<br>library 或独立小页</p></div>
+      </div>
+      <div class="check"><b>验收：</b>至少 20 个首答样本后展示分桶图；数值与手工 SQL 一致。<b>为什么放后面：</b>样本不足时图表只会制造噪音，先把 A1/A2 的证据密度做起来。</div>
+    </div>
+
+    <h3 style="margin:26px 0 12px;color:var(--amber)">B · 让材料真正参与教学</h3>
+
+    <div class="idea b2">
+      <div class="idea-top"><span class="idea-id">B1</span><span class="idea-title">材料引用可溯源</span><span class="idea-meta"><span class="tag b">价值 高</span><span class="tag gray">成本 中</span><span class="tag b">批次二</span></span></div>
+      <div class="scene"><b>场景：</b>用户上传课件后问“第三章说的那个条件是什么”，回答看起来对，但没有任何来源标记。用户无法判断这是课件内容，还是模型的通用知识——这正是“不编造”承诺最该被看见的地方。</div>
+      <div class="grid2">
+        <div class="block"><h4>做法</h4><ul>
+          <li>注入材料片段时附带稳定 id，要求模型在正文用 <code>[[cite:chunkId]]</code> 标注依据。</li>
+          <li>服务端解析标记：只接受本轮真实注入过的 id，其余丢弃并记一条降级提示（防编造引用）。</li>
+          <li>消息渲染为可点击的来源卡片：材料名 + 段落标题 + 片段预览，点击跳到材料页对应位置。</li>
+          <li>没有材料依据时明确不标，不用“据资料”这类模糊措辞。</li>
+        </ul></div>
+        <div class="block"><h4>代码落点</h4><p class="code-line">src/lib/ai/prompt.ts（注入 id + 引用规则）<br>src/lib/types.ts（MessagePart 加 citations）<br>src/app/api/chat/route.ts（解析与白名单校验）<br>src/components/Markdown.tsx（渲染来源卡片）</p></div>
+      </div>
+      <div class="check"><b>验收：</b>问材料相关问题至少出现 1 个有效引用；伪造的 chunk id 被过滤且不留死链；未上传材料时不出现引用 UI。<b>注意：</b>引用校验必须在服务端做，不能信任模型输出。</div>
+    </div>
+
+    <div class="idea b2">
+      <div class="idea-top"><span class="idea-id">B2</span><span class="idea-title">从材料段落直接出题</span><span class="idea-meta"><span class="tag b">价值 高</span><span class="tag gray">成本 中</span><span class="tag b">批次二</span></span></div>
+      <div class="scene"><b>场景：</b>用户上传了 40 页讲义，想“就这一节练 3 道题”。现在只能回到聊天框描述，模型还得自己找段落，经常跑偏。</div>
+      <div class="grid2">
+        <div class="block"><h4>做法</h4><ul>
+          <li>材料页每个切片提供“就这段出题”，可选题型与数量（1-3 道）。</li>
+          <li>后台用该切片 + 现有 <code>exerciseInputSchema</code> 生成，走与聊天工具相同的校验与落库路径（答案仍只存服务端）。</li>
+          <li>出题结果进入一个轻量会话（或材料详情），可直接作答并计入知识点。</li>
+          <li>生成失败时明确提示“这段内容不足以出题”，不硬凑。</li>
+        </ul></div>
+        <div class="block"><h4>代码落点</h4><p class="code-line">src/app/api/materials/[id]/exercise/route.ts（新增）<br>src/lib/ai/tools.ts（复用 createExercise 路径）<br>src/app/materials/page.tsx（入口）</p></div>
+      </div>
+      <div class="check"><b>验收：</b>生成的题目提交前响应不含答案；作答能正常判题并写证据；不足 50 字的切片给出明确失败提示。</div>
+    </div>
+
+    <h3 style="margin:26px 0 12px;color:var(--blue)">C · 学习节奏与可控性</h3>
+
+    <div class="idea c2">
+      <div class="idea-top"><span class="idea-id">C1</span><span class="idea-title">今日计划：给一个 10 分钟的确定答案</span><span class="idea-meta"><span class="tag c">价值 高</span><span class="tag gray">成本 中</span><span class="tag b">批次二</span></span></div>
+      <div class="scene"><b>场景：</b>用户打开首页，看到四个示例问题、最近会话、薄弱点、复习建议——信息很多，但没有一句“现在开始做什么”。选择成本就是流失成本。</div>
+      <div class="grid2">
+        <div class="block"><h4>做法</h4><ul>
+          <li>首页顶部给一张“今天”卡片：到期复习 N 个 → 取 1 个；最薄弱 1 个；预计 10 分钟。</li>
+          <li>一键开始，走 A2 的结构化会话；完成后回填“今天已完成”，不搞积分与排行榜。</li>
+          <li>没有到期任务时，给“继续上次”或“试一个新主题”，不硬造任务。</li>
+        </ul></div>
+        <div class="block"><h4>代码落点</h4><p class="code-line">src/app/api/home/route.ts（返回 todayPlan）<br>src/app/page.tsx（卡片 + 一键开始）<br>复用 refreshReviewQueue / listWeakConcepts</p></div>
+      </div>
+      <div class="check"><b>验收：</b>有到期条目时优先推荐复习；完成后当天不再重复推荐同一条；无数据时显示空态而非假任务。</div>
+    </div>
+
+    <div class="idea c2">
+      <div class="idea-top"><span class="idea-id">C2</span><span class="idea-title">题目反馈与“换一题”</span><span class="idea-meta"><span class="tag c">价值 高</span><span class="tag gray">成本 低</span><span class="tag b">批次二</span></span></div>
+      <div class="scene"><b>场景：</b>模型出的题太难、太简单，或者答案本身有问题。用户唯一的选择是硬做或跳过，系统学不到任何东西。</div>
+      <div class="grid2">
+        <div class="block"><h4>做法</h4><ul>
+          <li>练习底部加三个轻量反馈：太简单 / 太难 / 这题有问题（可附一句说明）。</li>
+          <li>“这题有问题”将该题排除出掌握度与复习（复用 A3 的作废逻辑），并降低同类题的生成倾向。</li>
+          <li>“换一题”：同知识点、不同题型重新生成，优先交错练习（上次单选，这次填空/判断）。</li>
+          <li>反馈进入提示词，作为下一题难度的依据。</li>
+        </ul></div>
+        <div class="block"><h4>代码落点</h4><p class="code-line">新增 exercise_feedback 表<br>src/components/blocks/ExerciseBlock.tsx（入口）<br>src/lib/ai/prompt.ts（难度与题型偏好）<br>src/app/api/exercises/[id]/retry/route.ts（新增）</p></div>
+      </div>
+      <div class="check"><b>验收：</b>反馈可持久化；“有问题”的题不再计入证据；换题与原题题型不同且知识点一致；连续两次“太简单”后下一题难度上调。</div>
+    </div>
+
+    <div class="idea c2">
+      <div class="idea-top"><span class="idea-id">C3</span><span class="idea-title">长会话大纲 + “换一种讲法”</span><span class="idea-meta"><span class="tag c">价值 中</span><span class="tag gray">成本 中</span><span class="tag b">批次三</span></span></div>
+      <div class="scene"><b>场景：</b>一次会话 60 条消息，用户想回到“刚才那个模拟器”或“第三道题”，只能疯狂滚动。模型讲了一遍没听懂，用户只能重新打字“换个说法”。</div>
+      <div class="grid2">
+        <div class="block"><h4>做法</h4><ul>
+          <li>会话侧栏按 block 生成大纲：练习 / 图表 / 模拟器 / 小结，点击滚动定位并高亮。</li>
+          <li>助手消息提供“换一种讲法”：带上 <code>intent: "rephrase"</code>，提示模型换表征（例子/图示/对比），而不是复述。</li>
+          <li>移动端大纲收进抽屉，不占正文宽度。</li>
+        </ul></div>
+        <div class="block"><h4>代码落点</h4><p class="code-line">src/components/chat/SessionView.tsx（大纲）<br>src/app/api/chat/route.ts（intent 参数）<br>src/lib/ai/prompt.ts（rephrase 规则）</p></div>
+      </div>
+      <div class="check"><b>验收：</b>大纲项与页面 block 一一对应且可跳转；rephrase 请求在提示词中带明确意图，不新增会话；移动端无横向溢出。</div>
+    </div>
+
+    <div class="idea c2">
+      <div class="idea-top"><span class="idea-id">C4</span><span class="idea-title">导出学习记录</span><span class="idea-meta"><span class="tag c">价值 中</span><span class="tag gray">成本 低</span><span class="tag b">批次三</span></span></div>
+      <div class="scene"><b>场景：</b>一周学完，想复盘或发给同学；现在只能截图，题目、答案、反馈、掌握度变化全散在界面里。</div>
+      <div class="grid2">
+        <div class="block"><h4>做法</h4><ul>
+          <li>会话页提供“导出为 Markdown”，包含：讲解正文、题目、我的作答、判题反馈、掌握度变化、来源引用。</li>
+          <li>未作答的练习只导出题干，绝不导出答案。</li>
+          <li>浏览器打印样式即可得到 PDF，不引入额外依赖。</li>
+        </ul></div>
+        <div class="block"><h4>代码落点</h4><p class="code-line">新增 /api/sessions/[id]/export<br>src/app/s/[id]/page.tsx（按钮）<br>src/app/globals.css（打印样式）</p></div>
+      </div>
+      <div class="check"><b>验收：</b>导出内容与界面一致；未作答题目无答案字段；Markdown 结构有快照测试。</div>
+    </div>
+
+    <div class="idea c2">
+      <div class="idea-top"><span class="idea-id">C5</span><span class="idea-title">全局搜索</span><span class="idea-meta"><span class="tag c">价值 中</span><span class="tag gray">成本 中</span><span class="tag b">批次三</span></span></div>
+      <div class="scene"><b>场景：</b>“上次那道关于机会成本的题挺有意思”——现在只能按会话标题找，找不到就只能翻历史。</div>
+      <div class="grid2">
+        <div class="block"><h4>做法</h4><ul>
+          <li>SQLite FTS5 建 <code>messages_fts</code> / <code>concepts_fts</code> / <code>exercises_fts</code>。</li>
+          <li>中文必须用 <code>tokenize='trigram'</code>，默认 unicode61 对中文分词几乎不可用。</li>
+          <li>结果按类型分组，点击回到会话对应位置；只索引本地数据，不上传。</li>
+        </ul></div>
+        <div class="block"><h4>代码落点</h4><p class="code-line">src/lib/db/schema.ts（虚表 + 触发器）<br>新增 /api/search<br>AppShell 搜索框</p></div>
+      </div>
+      <div class="check"><b>验收：</b>中文两字以上可命中；结果不含已删除会话；搜索延迟在本机数据量下 &lt; 100ms。</div>
+    </div>
+
+    <h3 style="margin:26px 0 12px;color:var(--blue)">D · 成本与可靠性</h3>
+
+    <div class="idea c2">
+      <div class="idea-top"><span class="idea-id">D1</span><span class="idea-title">用量与成本面板</span><span class="idea-meta"><span class="tag c">价值 中</span><span class="tag gray">成本 低</span><span class="tag b">批次三</span></span></div>
+      <div class="scene"><b>场景：</b>用户用自己的 API Key，月底才发现账单翻倍；<code>usage_log</code> 记了 tokens 与延迟，但界面上一个字都没露。</div>
+      <div class="grid2">
+        <div class="block"><h4>做法</h4><ul>
+          <li>设置页增加“用量”：今日 / 7 天 / 30 天的 tokens、请求数、成功率、P50/P95 延迟。</li>
+          <li>价格表可配置（每百万 token），估算费用；不做硬编码的厂商价格。</li>
+          <li>可设月度预算，超 80% 提示一次，不阻断使用。</li>
+        </ul></div>
+        <div class="block"><h4>代码落点</h4><p class="code-line">usage_log（已有）<br>新增 /api/usage/summary<br>src/app/settings/page.tsx</p></div>
+      </div>
+      <div class="check"><b>验收：</b>统计值与 SQL 手算一致；无数据时显示空态；价格未配置时只显示 tokens 不显示金额。</div>
+    </div>
+
+    <div class="idea c2">
+      <div class="idea-top"><span class="idea-id">D2</span><span class="idea-title">主模型 / 快模型分级</span><span class="idea-meta"><span class="tag c">价值 中</span><span class="tag gray">成本 中</span><span class="tag b">批次三</span></span></div>
+      <div class="scene"><b>场景：</b>生成提示、开放题评阅、会话标题这些短任务，和主讲共用同一个贵模型。成本高，且这些任务对模型能力要求并不高。</div>
+      <div class="grid2">
+        <div class="block"><h4>做法</h4><ul>
+          <li>设置页增加“快模型”一档（可留空，回退主模型）。</li>
+          <li>提示生成、开放题评阅、标题、摘要走快模型；主讲与出题走主模型。</li>
+          <li>usage_log 记录实际使用的模型，D1 面板按模型拆分。</li>
+        </ul></div>
+        <div class="block"><h4>代码落点</h4><p class="code-line">src/lib/ai/config.ts（fastModel）<br>src/app/api/settings/ai/route.ts<br>hint / attempts / chat 三处调用</p></div>
+      </div>
+      <div class="check"><b>验收：</b>未配置快模型时行为不变；配置后提示请求的 usage 记录为快模型；失败自动回退主模型并留日志。</div>
+    </div>
+
+    <div class="idea c2">
+      <div class="idea-top"><span class="idea-id">D3</span><span class="idea-title">提示词评测集（改提示词前的安全网）</span><span class="idea-meta"><span class="tag c">价值 高</span><span class="tag gray">成本 中</span><span class="tag b">批次一</span></span></div>
+      <div class="scene"><b>场景：</b>A1、B1 都要改系统提示词。这类改动没有编译错误，却可能让模型突然“先讲十分钟再出题”或“把答案写进正文”。现在只能靠肉眼碰运气。</div>
+      <div class="grid2">
+        <div class="block"><h4>做法</h4><ul>
+          <li>建 20-30 条黄金用例：该出题 / 该只回答 / 该拒答（涉及答案） / 该引用材料 / 该承认不知道。</li>
+          <li><code>npm run eval</code> 调真实模型跑一遍，断言“工具选择 + 答案不泄露 + 是否引用”，输出通过率。</li>
+          <li>无 API Key 时跳过并明确提示，不假装通过；结果存 JSON 便于对比版本。</li>
+          <li>把“答案绝不出现在正文”做成硬断言：扫描模型文本是否包含标准答案。</li>
+        </ul></div>
+        <div class="block"><h4>代码落点</h4><p class="code-line">tests/eval/cases.json<br>tests/eval/run.mjs<br>package.json scripts.eval<br>（复用 provider.completeJson / streamChat）</p></div>
+      </div>
+      <div class="check"><b>验收：</b>用例覆盖 5 类意图；答案泄露用例为 0 通过即失败；每次改 <code>prompt.ts</code> 前后各跑一次并记录差异。<b>为什么排第一批：</b>它是后续所有提示词改动的护栏，先有它再动 prompt。</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">05</span><h2>不建议做</h2></div>
+    <p class="lead">下面这些不是“以后再说”，是现在就不该做——它们会让产品偏离“可信证据”这条主线，并持续消耗维护成本。</p>
+    <div class="no-list">
+      <div class="no-item"><h4>排行榜 / 积分 / 徽章</h4><p>单机学习工具没有社交比较对象；把内在动机换成外部积分，通常换来的是刷题而不是学会。</p></div>
+      <div class="no-item"><h4>社区 / 分享动态</h4><p>需要账号、审核、存储与隐私合规，和“本地单用户、数据不出机器”的定位直接冲突。</p></div>
+      <div class="no-item"><h4>AI 数字人 / 语音陪聊</h4><p>成本高、延迟高，对“掌握一个知识点”没有增量；真正缺的是诊断，不是拟人。</p></div>
+      <div class="no-item"><h4>一上来就上向量库</h4><p>本机材料量级用 FTS5 + 关键词足够；向量库会引入嵌入成本、索引同步与召回不可解释的问题。</p></div>
+      <div class="no-item"><h4>多租户 SaaS 化</h4><p>要重做鉴权、隔离、计费与运维；当前 SQLite 单文件架构会全部推倒。除非换商业模式，否则不做。</p></div>
+      <div class="no-item"><h4>继续堆工具类型</h4><p>8 个工具已覆盖教学表征；再加只会让模型选择困难、前端维护面变大。先把现有工具用对。</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">06</span><h2>怎么衡量有没有变好</h2></div>
+    <p class="lead">别用“消息数”和“使用时长”自欺——它们只能证明用户在用聊天框，不能证明学会了。</p>
+    <table>
+      <thead><tr><th style="width:24%">指标</th><th style="width:40%">定义</th><th style="width:18%">方向</th><th>数据来源</th></tr></thead>
+      <tbody>
+        <tr><td class="b">北极星：每周独立正确知识点</td><td>一周内产生“独立、未看解析”的正确作答的不同知识点数</td><td>上升</td><td>evidence + attempts</td></tr>
+        <tr><td class="b">激活率</td><td>首次会话 24 小时内完成 ≥1 次作答的用户占比</td><td>上升</td><td>sessions + attempts</td></tr>
+        <tr><td class="b">复习完成率</td><td>到期复习条目中，产生有效作答的比例</td><td>上升</td><td>review_items</td></tr>
+        <tr><td class="b">7 天复测保持率</td><td>复习后 7 天内同知识点新题仍答对的比例</td><td>上升</td><td>evidence 时间序列</td></tr>
+        <tr><td class="b">提示依赖率</td><td>正确作答中使用提示的比例</td><td>下降</td><td>attempts.used_hint</td></tr>
+        <tr><td class="b">看解析率</td><td>作答前查看解析的比例</td><td>下降</td><td>exercises.solution_viewed_at</td></tr>
+        <tr><td class="b">题目作废率</td><td>被标记“这题有问题”的题目占比</td><td>下降（先升后降）</td><td>exercise_feedback</td></tr>
+        <tr><td class="b">每知识点成本</td><td>tokens 成本 / 产生证据的知识点数</td><td>下降</td><td>usage_log</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:12.5px;color:var(--ink3);margin-top:10px">单机应用没有服务端埋点，以上指标直接从本地库算即可；不要为此引入第三方分析 SDK。</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">07</span><h2>落地顺序</h2></div>
+    <p class="lead">按依赖关系排，不按“看起来酷”排。每批都有明确的完成定义，做完一批再开下一批。</p>
+    <table>
+      <thead><tr><th style="width:12%">批次</th><th style="width:40%">包含</th><th style="width:26%">完成定义</th><th>依赖</th></tr></thead>
+      <tbody>
+        <tr><td class="b">第一批<br><span style="font-weight:400;color:var(--ink3);font-size:12px">把闭环补完</span></td><td>A3 证据作废 · A1 错因 · A2 结构化复习 · D3 评测集</td><td>复习从“建议”变成“有始有终的一次会话”；错因能被记录、展示、注入；改提示词有回归护栏</td><td>无，全部基于现有表</td></tr>
+        <tr><td class="b">第二批<br><span style="font-weight:400;color:var(--ink3);font-size:12px">让材料与练习好用</span></td><td>B1 引用 · B2 材料出题 · C2 题目反馈/换一题 · C1 今日计划</td><td>回答能溯源；材料能直接练；坏题能被剔除；首页能给出“今天做什么”</td><td>B2 依赖 B1 的片段 id；C1 依赖 A2 的结构化会话</td></tr>
+        <tr><td class="b">第三批<br><span style="font-weight:400;color:var(--ink3);font-size:12px">长期使用</span></td><td>C3 大纲/换讲法 · C4 导出 · C5 搜索 · D1 用量 · D2 双模型 · A4 校准</td><td>长会话可导航、学习记录可带走、成本可见、模型可分级</td><td>C5 与 B1 共用 FTS/片段索引；A4 需要足够首答样本</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout" style="margin-top:18px">
+      <b>如果只能做一件事：</b>做 A2。它不需要新表、不需要新模型能力，只把复习页那句自然语言换成结构化字段，就能把“复习队列”变成“复习行为”。这是当前投入产出比最高的一处。
+    </div>
+  </section>
+
+  <section class="appendix">
+    <div class="sec-head"><span class="sec-no">08</span><h2>附录：代码落点索引</h2></div>
+    <p>所有建议都尽量复用现有结构，下面是新增/改动位置的一览，便于拆分任务。</p>
+    <pre>数据层
+  src/lib/db/schema.ts        attempts.error_type / evidence.voided / sessions.focus_concept_id
+                              exercise_feedback / FTS5 虚表
+  src/lib/db/repo.ts:129      recomputeConceptAggregates（A3 直接复用）
+  src/lib/db/repo.ts          证据作废、复习条目回写、今日计划查询
+
+教学与 AI
+  src/lib/learning/exercise.ts   客观题错因推断
+  src/lib/ai/prompt.ts           错因注入、复习模式约束、引用规则、rephrase 意图
+  src/lib/ai/tools.ts            材料出题复用 createExercise 路径
+  src/lib/ai/config.ts           快模型配置
+
+接口
+  POST /api/sessions                    接收 focusConceptId / reviewItemId
+  DELETE /api/evidence/[id]             软作废 + 重算
+  POST /api/exercises/[id]/retry        换一题
+  POST /api/materials/[id]/exercise     材料出题
+  GET  /api/sessions/[id]/export        导出 Markdown
+  GET  /api/usage/summary               用量统计
+  GET  /api/search                      FTS5 搜索
+
+前端
+  src/app/page.tsx                    今日计划卡片
+  src/app/review/page.tsx             传结构化参数
+  src/app/library/page.tsx            证据列表 / 错因 / 作废
+  src/app/materials/page.tsx          材料出题入口
+  src/components/blocks/ExerciseBlock.tsx   难度反馈 / 换一题
+  src/components/chat/SessionView.tsx        会话大纲 / 换讲法
+  src/components/Markdown.tsx                来源引用卡片</pre>
+    <p style="font-size:12.5px;color:var(--ink3)">说明：本方案只提功能与体验改进，不重复修复记录中已完成的事项；构建残留的 <code>middleware</code> 弃用警告建议顺手迁移为 <code>proxy.ts</code>，不计入正式建议项。</p>
+  </section>
+
+  <div class="foot">
+    <span>Lumina v0.1.0 · 功能与体验改进建议</span>
+    <span>2026-10-22 · 14 项建议 / 3 个批次</span>
+  </div>
+
+</div>
+</body>
+</html>

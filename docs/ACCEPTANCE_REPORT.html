@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lumina 验收报告 · 2026-10-22</title>
+<style>
+  :root{
+    --paper:#fbfaf7;
+    --panel:#ffffff;
+    --ink:#1c1b19;
+    --ink2:#4a4842;
+    --ink3:#7c7970;
+    --line:#e4e0d8;
+    --line-strong:#cfc9bd;
+    --accent:#2f5d50;
+    --accent-soft:#e8f0ec;
+    --p1:#a33a32;
+    --p1-soft:#fbecea;
+    --p2:#946213;
+    --p2-soft:#fbf3e2;
+    --p3:#5b6472;
+    --p3-soft:#eef1f5;
+    --ok:#2f6b4f;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    --serif:"Source Han Serif SC","Noto Serif SC",Georgia,"Songti SC",serif;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:15px;line-height:1.75;
+  }
+  .page{max-width:1000px;margin:0 auto;padding:56px 40px 96px}
+  code,.mono{font-family:var(--mono);font-size:.86em}
+  code{background:#f1eee7;padding:.12em .38em;border-radius:4px;color:#3c3a34}
+  h1,h2,h3,h4{font-family:var(--serif);font-weight:600;letter-spacing:.01em;color:var(--ink)}
+  h2{font-size:24px;margin:0 0 6px}
+  h3{font-size:17px;margin:0 0 4px}
+  p{margin:0 0 12px}
+  a{color:var(--accent)}
+
+  /* cover */
+  .cover{border-bottom:1px solid var(--line-strong);padding-bottom:32px;margin-bottom:40px}
+  .kicker{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3);margin-bottom:22px}
+  h1{font-size:40px;line-height:1.2;margin:0 0 10px}
+  .subtitle{color:var(--ink2);font-size:16px;margin:0 0 26px}
+  .meta{display:flex;flex-wrap:wrap;gap:10px 28px;font-size:13px;color:var(--ink2)}
+  .meta b{font-weight:600;color:var(--ink)}
+  .verdict-row{display:flex;gap:28px;align-items:center;flex-wrap:wrap;margin-top:28px}
+  .badge{display:inline-flex;align-items:center;gap:8px;padding:7px 16px;border-radius:999px;font-size:13.5px;font-weight:600;background:var(--p2-soft);color:var(--p2);border:1px solid #e8d6ac}
+  .score-wrap{display:flex;align-items:center;gap:18px}
+  .ring{width:112px;height:112px;border-radius:50%;background:conic-gradient(var(--accent) 0 87%,#e7e3da 87% 100%);display:grid;place-items:center;flex:none}
+  .ring-inner{width:88px;height:88px;border-radius:50%;background:var(--paper);display:grid;place-items:center;text-align:center}
+  .ring-num{font-family:var(--serif);font-size:30px;line-height:1;font-weight:600}
+  .ring-cap{font-size:10.5px;color:var(--ink3);letter-spacing:.08em;margin-top:4px}
+  .score-note{font-size:13px;color:var(--ink2);max-width:420px}
+  .score-note strong{color:var(--ink)}
+
+  /* sections */
+  section{margin:0 0 46px}
+  .sec-head{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:22px}
+  .sec-no{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.1em;padding-top:4px}
+  .lead{font-size:16px;color:var(--ink2);margin-bottom:18px}
+  .lead strong{color:var(--ink)}
+
+  /* kpi */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 18px 16px}
+  .kpi .n{font-family:var(--serif);font-size:30px;line-height:1;color:var(--accent)}
+  .kpi .l{font-size:12.5px;color:var(--ink3);margin-top:8px}
+  .kpi .d{font-size:11.5px;color:var(--ok);margin-top:2px}
+
+  /* table */
+  table{width:100%;border-collapse:collapse;font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th{text-align:left;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);font-weight:600;padding:11px 14px;background:#f6f4ef;border-bottom:1px solid var(--line)}
+  td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+  tr:last-child td{border-bottom:0}
+  td.b{color:var(--ink);font-weight:600}
+  td.num{font-family:var(--mono);white-space:nowrap}
+
+  /* score table */
+  .bars td{padding:13px 14px}
+  .bar{height:6px;border-radius:99px;background:#ece8e0;overflow:hidden;min-width:90px}
+  .bar>span{display:block;height:100%;background:var(--accent);border-radius:99px}
+  .tot td{background:#f6f4ef;font-weight:600;color:var(--ink);border-top:1px solid var(--line-strong)}
+
+  /* findings */
+  .finding{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:14px;border-left:3px solid var(--p3)}
+  .finding.p1{border-left-color:var(--p1)}
+  .finding.p2{border-left-color:var(--p2)}
+  .f-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  .chip{font-size:10.5px;font-weight:700;letter-spacing:.1em;padding:3px 9px;border-radius:5px}
+  .chip.p1{background:var(--p1-soft);color:var(--p1)}
+  .chip.p2{background:var(--p2-soft);color:var(--p2)}
+  .chip.p3{background:var(--p3-soft);color:var(--p3)}
+  .loc{font-family:var(--mono);font-size:11.5px;color:var(--ink3);margin-left:auto}
+  .f-title{font-family:var(--serif);font-size:17px;font-weight:600;margin:0}
+  .f-body{font-size:14px;color:var(--ink2);margin:10px 0 0}
+  .f-body p{margin:0 0 8px}
+  .evidence{background:#f7f5f0;border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:10px 0 0;font-family:var(--mono);font-size:12px;line-height:1.65;color:#3c3a34;white-space:pre-wrap;overflow-x:auto}
+  .fix{font-size:13.5px;color:var(--ink2);margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+  .fix b{color:var(--ink)}
+
+  /* figures */
+  .figs{display:grid;grid-template-columns:1.35fr .65fr;gap:16px;align-items:start}
+  figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
+  figure img{display:block;width:100%;height:auto;border-radius:6px}
+  figcaption{font-size:11.5px;color:var(--ink3);padding:7px 4px 2px}
+  .fig-wide{grid-column:1 / -1}
+
+  /* lists */
+  ul.clean{margin:0;padding-left:20px;color:var(--ink2);font-size:14.5px}
+  ul.clean li{margin-bottom:8px}
+  ul.clean b{color:var(--ink)}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+
+  /* callout */
+  .callout{background:var(--accent-soft);border:1px solid #cfe0d8;border-radius:12px;padding:18px 20px;font-size:14px;color:#264a3f}
+  .callout b{color:#1d3a31}
+
+  /* appendix */
+  .appendix{font-size:13px;color:var(--ink2)}
+  .appendix h4{font-size:14px;margin:18px 0 6px}
+  .appendix pre{background:#f4f1eb;border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-family:var(--mono);font-size:12px;line-height:1.7;overflow-x:auto;margin:0 0 10px}
+  .foot{border-top:1px solid var(--line-strong);margin-top:52px;padding-top:16px;font-size:11.5px;color:var(--ink3);display:flex;justify-content:space-between;gap:16px}
+
+  @media (max-width:820px){
+    .page{padding:32px 20px 64px}
+    h1{font-size:30px}
+    .kpis{grid-template-columns:1fr 1fr}
+    .figs,.two-col{grid-template-columns:1fr}
+    .cover{padding-bottom:24px;margin-bottom:28px}
+    .ring{width:92px;height:92px}
+    .ring-inner{width:72px;height:72px}
+    .ring-num{font-size:24px}
+    .loc{display:none}
+  }
+  @media print{
+    body{background:#fff;font-size:12pt}
+    .page{max-width:none;padding:0}
+    section{break-inside:avoid}
+    .finding{break-inside:avoid}
+    figure{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="cover">
+    <div class="kicker">
+      <span>验收报告 · Acceptance Review</span>
+      <span>Lumina v0.1.0</span>
+    </div>
+    <h1>Lumina · AI 动态学习工作台</h1>
+    <p class="subtitle">对话驱动的自适应导师：教学闭环、练习判题、学习证据与掌握度追踪</p>
+    <div class="meta">
+      <span><b>验收日期</b>　2026-10-22</span>
+      <span><b>验收方式</b>　代码审查 + 构建 + 自动化测试 + 真实浏览器</span>
+      <span><b>技术栈</b>　Next.js 16.2.2 / React 19 / SQLite</span>
+      <span><b>代码规模</b>　10,608 行（src，69 文件）</span>
+    </div>
+    <div class="verdict-row">
+      <div class="score-wrap">
+        <div class="ring"><div class="ring-inner"><div><div class="ring-num">87</div><div class="ring-cap">/ 100</div></div></div></div>
+        <div class="score-note">
+          <strong>综合评分 87，等级 B+。</strong><br />
+          核心教学闭环真实可用，不是演示壳子；但存在 1 项数据一致性缺陷必须先修，另有 5 项会削弱“学习证据可信度”的问题。
+        </div>
+      </div>
+      <div class="badge">结论：有条件通过</div>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">01</span><h2>结论摘要</h2></div>
+    <p class="lead">
+      这是一个<strong>完成度明显高于常见“AI 套壳项目”的作品</strong>。它没有把模型输出直接当教学结果，而是把答案、评分规则、掌握度推导全部收回服务端，并用 8 个白名单工具约束模型的输出形态。端到端链路（流式回答 → 工具出题 → 服务端判题 → 写证据 → BKT 更新 → 跨会话保留）在真实浏览器里跑通了，91 项自动化断言全绿。
+    </p>
+    <p class="lead">
+      但它有一个必须修的问题：<strong>“删除会话并连带删除证据”之后，知识点上的掌握度与证据计数没有重算</strong>，档案里会留下一条证据已经不存在、却仍显示“已作答 3 次、p=0.49、正在学习”的幽灵记录。对于一个把“证据可追溯”当作核心卖点的产品，这不是小瑕疵。此外，复习调度的难度/遗忘参数在调用处被写死、每轮提示词重复注入用户消息、以及证据标记依赖前端自报，都会让“可信”二字打折扣。
+    </p>
+    <div class="callout">
+      <b>放行条件：</b>修复 P1（会话删除后的聚合重算）；P2-1 ~ P2-3（复习参数、提示词重复注入、证据自报）在首次对外分发前完成。P2-4、P2-5 与全部 P3 可排入后续迭代。未发现阻塞级（P0）缺陷。
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">02</span><h2>实测结果</h2></div>
+    <p class="lead">全部验证在独立端口（3211）与独立数据目录中进行，未触碰已有实例与用户数据。</p>
+    <div class="kpis">
+      <div class="kpi"><div class="n">100%</div><div class="l">生产构建</div><div class="d">14 个页面生成成功，2 条警告</div></div>
+      <div class="kpi"><div class="n">31/31</div><div class="l">单元测试</div><div class="d">判题 · BKT · 调度 · 表达式</div></div>
+      <div class="kpi"><div class="n">28/28</div><div class="l">端到端冒烟</div><div class="d">真实 HTTP + 测试替身模型</div></div>
+      <div class="kpi"><div class="n">32/32</div><div class="l">浏览器交互</div><div class="d">桌面 + 移动端，零控制台错误</div></div>
+    </div>
+
+    <h3 style="margin:26px 0 10px">验收范围与方法</h3>
+    <table>
+      <thead><tr><th style="width:23%">验证项</th><th style="width:44%">实际执行</th><th>结果</th></tr></thead>
+      <tbody>
+        <tr><td class="b">构建</td><td><code>CODEBUDDY_SAFE_DELETE_ENABLED=0 npm run build</code>（Next 16 / Turbopack）</td><td>通过，14 静态页 + 22 API 路由</td></tr>
+        <tr><td class="b">单元测试</td><td><code>npm test</code>，2 个文件</td><td>31 通过 / 0 失败（451ms）</td></tr>
+        <tr><td class="b">端到端</td><td><code>tests/smoke.mjs</code> 指向 3211 实例 + 4318 测试替身模型</td><td>28 通过 / 0 失败</td></tr>
+        <tr><td class="b">浏览器</td><td><code>tests/ui-check.mjs</code>，本机 Edge 无头模式，1440×1000 与 390×844</td><td>32 通过 / 0 失败，无控制台错误</td></tr>
+        <tr><td class="b">代码审查</td><td>数据层、判题、BKT、调度、模型适配、22 个 API 路由、中间件、启动脚本</td><td>发现 1 项 P1、5 项 P2、6 项 P3</td></tr>
+        <tr><td class="b">缺陷复现</td><td>临时探针（vitest + 独立 DATA_DIR）实测三处逻辑，测后已清理</td><td>3 项全部复现</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:12.5px;color:var(--ink3);margin-top:10px">
+      说明：端到端与浏览器测试使用项目自带的确定性测试替身模型，验证的是应用自身代码路径与交互，<strong>不代表真实模型的教学质量</strong>。这一点项目文档自己也写明了，态度值得肯定。
+    </p>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">03</span><h2>评分卡</h2></div>
+    <table class="bars">
+      <thead><tr><th style="width:24%">维度</th><th style="width:8%">权重</th><th style="width:8%">得分</th><th style="width:22%">分布</th><th>依据</th></tr></thead>
+      <tbody>
+        <tr><td class="b">功能完整性</td><td class="num">25</td><td class="num">24</td><td><div class="bar"><span style="width:96%"></span></div></td><td>宣称的 8 题型、8 工具、材料解析、计划、复习、工作区均存在且可用</td></tr>
+        <tr><td class="b">教学闭环与判题</td><td class="num">20</td><td class="num">19</td><td><div class="bar"><span style="width:95%"></span></div></td><td>答案不下发、服务端判题、开放题降级不伪造、幂等设计</td></tr>
+        <tr><td class="b">学习证据与掌握度</td><td class="num">15</td><td class="num">11</td><td><div class="bar"><span style="width:73%"></span></div></td><td>BKT 与审计链扎实，但聚合不重算、调度参数失效、证据可自报</td></tr>
+        <tr><td class="b">工程质量</td><td class="num">15</td><td class="num">13</td><td><div class="bar"><span style="width:87%"></span></div></td><td>0 个 any、0 个 console.log、0 个 TODO；repo.ts 偏臃肿</td></tr>
+        <tr><td class="b">安全与健壮性</td><td class="num">10</td><td class="num">7</td><td><div class="bar"><span style="width:70%"></span></div></td><td>答案隔离与路径清洗到位；默认监听全网、无安全头、信息暴露</td></tr>
+        <tr><td class="b">文档与合规</td><td class="num">10</td><td class="num">9</td><td><div class="bar"><span style="width:90%"></span></div></td><td>README、开源调研、第三方许可声明完整；表数量表述有漂移</td></tr>
+        <tr><td class="b">测试覆盖</td><td class="num">5</td><td class="num">4</td><td><div class="bar"><span style="width:80%"></span></div></td><td>91 项断言全绿；API 层无单元测试、无覆盖率度量</td></tr>
+        <tr class="tot"><td>合计</td><td class="num">100</td><td class="num">87</td><td><div class="bar"><span style="width:87%"></span></div></td><td>B+ / 有条件通过</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">04</span><h2>缺陷清单</h2></div>
+    <p class="lead">按影响排序。每条都给出可定位的文件、复现证据与修复方向。</p>
+
+    <div class="finding p1">
+      <div class="f-top"><span class="chip p1">P1 · 必须修</span><span class="loc">src/lib/db/repo.ts:123-134</span></div>
+      <h3 class="f-title">删除会话并连带删除证据后，知识点统计不重算</h3>
+      <div class="f-body">
+        <p><code>deleteSession(id, { withEvidence: true })</code> 只删掉 <code>attempts</code> / <code>exercises</code> / <code>evidence</code> 三张表的行，却没有回写 <code>concepts</code> 上的 <code>evidence_count</code>、<code>p_mastery</code>、<code>status</code>、<code>wrong_streak</code> 等聚合字段。结果是证据已经不存在，档案仍然显示旧的掌握度。</p>
+        <p>同一路径还会留下指向已删除证据的复习条目（<code>review_items</code>），理由是“连续 2 次答错”，但那两次作答已经被删了。</p>
+        <div class="evidence">[探针B] 删除前: evidence 行=3, concept.evidenceCount=3, p=0.489, status=learning
+        删除后: evidence 行=0, attempts 行=0, concept.evidenceCount=3, p=0.489, status=learning</div>
+        <div class="fix"><b>修复方向：</b>在同一事务里按剩余 evidence 重算该会话涉及知识点的聚合值（无证据则回到 <code>untouched / 0.1</code>），并清理相关 open 状态的复习条目；重算逻辑抽成一个函数，供“删会话”“删单条证据”共用。</div>
+      </div>
+    </div>
+
+    <div class="finding p2">
+      <div class="f-top"><span class="chip p2">P2 · 首次分发前修</span><span class="loc">src/lib/db/repo.ts:585-594</span></div>
+      <h3 class="f-title">复习调度的 difficulty / lapses 在调用处被写死</h3>
+      <div class="f-body">
+        <p><code>scheduleNext()</code> 本身实现没问题，但调用时传的是 <code>difficulty: 5</code>、<code>lapses: 0</code>、<code>reps: concept.evidenceCount</code>。于是每次调用都从“难度 5、遗忘 0 次”重新开始：难度永远在 5 附近抖动，遗忘次数记一次就被下一次清零。</p>
+        <div class="evidence">[探针A] 第1次(错) difficulty=5.20 lapses=1 reps=0
+        第2次(对) difficulty=4.95 lapses=0 reps=2
+        第3次(对) difficulty=4.95 lapses=0 reps=3
+        第4次(对) difficulty=4.95 lapses=0 reps=4</div>
+        <p>实际效果是调度退化成“只看 stability 的间隔增长”，README 里“FSRS 启发式、难度与遗忘参与调度”的描述只兑现了一半。</p>
+        <div class="fix"><b>修复方向：</b>传 <code>concept.difficulty</code> / <code>concept.lapses</code> / <code>concept.reps</code>；补一条“连续答错应让间隔收敛”的回归测试。</div>
+      </div>
+    </div>
+
+    <div class="finding p2">
+      <div class="f-top"><span class="chip p2">P2 · 首次分发前修</span><span class="loc">src/app/api/chat/route.ts:43-49 + src/lib/ai/prompt.ts:142-174</span></div>
+      <h3 class="f-title">每轮提示词重复注入当前用户消息，并夹带空助手占位</h3>
+      <div class="f-body">
+        <p>用户消息在构建提示词之前就已写入数据库，<code>buildHistory()</code> 会把它读进历史；随后 <code>buildTeachingMessages()</code> 又在末尾追加了一次同样的文本。中间那条刚创建的 <code>status: "streaming"</code> 空助手消息则被渲染成 <code>（空）</code>。</p>
+        <div class="evidence">[探针C] 末尾消息序列:
+          system: "# 当前学习者上下文…"
+          user: "请解释机会成本"
+          assistant: "（空）"
+          user: "请解释机会成本"
+          同一用户消息出现次数: 2</div>
+        <p>每轮多付一次输入 token 是小事；更要紧的是模型看到“用户连说两遍、中间夹一条空回复”，容易重复回答或误判轮次。</p>
+        <div class="fix"><b>修复方向：</b>构建消息时排除本次刚落库的 user 消息（或先构建再落库）；<code>buildHistory()</code> 跳过 <code>content</code> 为空且 <code>status=streaming</code> 的助手消息。</div>
+      </div>
+    </div>
+
+    <div class="finding p2">
+      <div class="f-top"><span class="chip p2">P2 · 首次分发前修</span><span class="loc">src/app/api/exercises/[id]/solution/route.ts + src/app/api/attempts/route.ts:12-19</span></div>
+      <h3 class="f-title">“是否看过解析 / 是否用了提示”完全依赖前端自报</h3>
+      <div class="f-body">
+        <p><code>/solution</code> 明确不写任何服务端状态，提交时 <code>viewedSolution</code> 与 <code>usedHint</code> 由请求体决定。也就是说，先调一次 <code>/solution</code> 拿到答案，再以 <code>viewedSolution: false</code> 提交，这次作答会被当成“独立完成”计入掌握度。</p>
+        <p>对单机自用工具，这可以解释为“防君子不防小人”；但这个产品的核心卖点就是“可追溯、可信的学习证据”，证据链第一环由被考核者自己填写，逻辑上是闭环不了的。</p>
+        <div class="fix"><b>修复方向：</b><code>/solution</code> 在服务端给 exercise 或 block 打一个 <code>solution_viewed_at</code> 标记，提交时以服务端标记为准；提示同理，用服务端发放记录覆盖客户端布尔值。</div>
+      </div>
+    </div>
+
+    <div class="finding p2">
+      <div class="f-top"><span class="chip p2">P2 · 排期修</span><span class="loc">src/components/blocks/ExerciseBlock.tsx:158-176</span></div>
+      <h3 class="f-title">幂等键每次点击都新生成，服务端去重覆盖不到真正的重复提交</h3>
+      <div class="f-body">
+        <p><code>idempotencyKey: uuid()</code> 在 <code>submit()</code> 内部生成，两次调用必然得到两个不同的键。目前只靠 <code>pending</code> 状态挡重复点击，而 <code>setPending(true)</code> 是异步渲染，快速连点存在竞态窗口；网络层的自动重试同样会拿到新键。</p>
+        <p>README 写的“重复点击 / 重复提交只计一次证据”，严格说只对“同一个键的重复请求”成立，而客户端并不会复用这个键。</p>
+        <div class="fix"><b>修复方向：</b>幂等键按“练习 + 草稿内容”生成并缓存在 ref 里，提交成功后再清空；或服务端增加“同一练习 N 秒内的相同作答”去重。</div>
+      </div>
+    </div>
+
+    <div class="finding p2">
+      <div class="f-top"><span class="chip p2">P2 · 分发前处理</span><span class="loc">src/middleware.ts / src/app/api/system/route.ts / src/app/api/ai/test/route.ts</span></div>
+      <h3 class="f-title">默认监听全网且无鉴权，配套接口存在信息暴露与内网探测面</h3>
+      <div class="f-body">
+        <p>不带 <code>APP_ACCESS_TOKEN</code> 时中间件直接放行，而 <code>next start</code> 默认绑定 <code>0.0.0.0</code>。启动日志实测显示 <code>Network: http://10.12.126.88:3211</code>，同一局域网内任何人可读写学习档案、改模型配置。</p>
+        <p>在此基础上：<code>/api/system</code> 返回数据库绝对路径、Node 版本与平台；<code>/api/ai/test</code> 会把模型返回内容回显，而 <code>baseUrl</code> 可由设置接口改成任意地址——等于给内网探测提供了一个低带宽的读取通道（代码审查结论，未做攻击验证）。</p>
+        <div class="fix"><b>修复方向：</b>默认绑定 <code>127.0.0.1</code>，或首次启动自动生成随机 token 并在控制台打印访问链接；<code>/api/system</code> 去掉路径等敏感字段；<code>ai/test</code> 的 <code>detail</code> 截断并脱敏；补 CSP / X-Frame-Options / Referrer-Policy。</div>
+      </div>
+    </div>
+
+    <div class="finding p3">
+      <div class="f-top"><span class="chip p3">P3 · 体验</span><span class="loc">src/components/blocks/SimulatorBlock.tsx:219-246</span></div>
+      <h3 class="f-title">模拟器曲线图的 Y 轴刻度会被裁切、并与轴标题重叠</h3>
+      <div class="f-body">
+        <p>刻度文字以 <code>x = pad.l - 6 = 36</code> 右对齐，而左边距只有 42；八位数（如 19744.58）向左展开约 42px，直接越出 SVG 视口。截图里 <code>19744.58</code> 左侧被切、<code>6522.29</code> 与竖排轴标题叠在一起。</p>
+        <div class="fix"><b>修复方向：</b>按最长刻度动态计算左边距，或刻度改用紧凑记法（1.97 万）；轴标题与刻度分列两个槽位。</div>
+      </div>
+    </div>
+
+    <div class="finding p3">
+      <div class="f-top"><span class="chip p3">P3 · 资源</span><span class="loc">src/app/api/materials/route.ts:26-31</span></div>
+      <h3 class="f-title">解析失败或不支持的文件仍然落盘，且没有清理入口</h3>
+      <div class="f-body">
+        <p>无论 <code>parseMaterial()</code> 返回 <code>failed</code> 还是 <code>unsupported</code>，路由都会把原始文件写进 <code>data/uploads</code>。超过 20MB 被拒的文件也一样。界面上没有“材料管理/删除”入口（DELETE 接口存在但未接入 UI），文件只进不出。</p>
+        <div class="fix"><b>修复方向：</b>状态非 <code>parsed</code> 时不落盘；或提供材料列表与删除按钮，并在设置页展示占用空间。</div>
+      </div>
+    </div>
+
+    <div class="finding p3">
+      <div class="f-top"><span class="chip p3">P3 · 数据语义</span><span class="loc">src/lib/db/repo.ts:445-463</span></div>
+      <h3 class="f-title">“零证据空壳”清理会误伤“看过解析未计分”的知识点</h3>
+      <div class="f-body">
+        <p>判定条件是 <code>evidence_count = 0</code>。用户如果练习过、但每次都看了解析（按设计不计入掌握度），该知识点的 <code>evidence_count</code> 仍为 0，会被一键清理掉；清理时 <code>attempts.concept_id</code> 被置空，作答记录还在，但已经指不回任何知识点，审计链断掉。</p>
+        <div class="fix"><b>修复方向：</b>把“有 attempts 但无 evidence”排除在空壳之外，或在清理确认框里单独统计并提示这一类。</div>
+      </div>
+    </div>
+
+    <div class="finding p3">
+      <div class="f-top"><span class="chip p3">P3 · 性能</span><span class="loc">src/lib/db/repo.ts:923-951</span></div>
+      <h3 class="f-title">材料检索每轮把全部切片读进内存做子串匹配</h3>
+      <div class="f-body">
+        <p>单文档最多 400 个切片，<code>searchMaterialChunks()</code> 每次对话都 <code>select</code> 全表再在 JS 里 <code>includes</code>。材料达到几十份时，每条消息都要搬运数万行文本。README 已声明“关键词检索而非向量检索”，但没有提到这个全表扫描的实现代价。</p>
+        <div class="fix"><b>修复方向：</b>用 SQLite FTS5 建虚拟表，或至少先在 SQL 里用 <code>LIKE</code> 过滤再加权重排序。</div>
+      </div>
+    </div>
+
+    <div class="finding p3">
+      <div class="f-top"><span class="chip p3">P3 · 文档</span><span class="loc">README.md:74 / 构建输出</span></div>
+      <h3 class="f-title">文档表述与构建警告的小幅漂移</h3>
+      <div class="f-body">
+        <p>README 称数据模型为“21 张表”，实测数据库为 <strong>23 张</strong>（即使剔除 <code>schema_migrations</code> 与 <code>users</code> 才是 21，读者按字面理解会对不上）。构建有 2 条警告：<code>middleware</code> 约定在 Next 16 已弃用（应迁移到 <code>proxy</code>）；Turbopack 因 <code>dataDir()</code> 里的动态路径把整个项目纳入 NFT 追踪。</p>
+        <div class="fix"><b>修复方向：</b>修正表数量表述（或注明统计口径）；把 <code>src/middleware.ts</code> 迁移为 <code>proxy.ts</code>；给 <code>path.join(process.cwd(), 'data')</code> 加 turbopack 静态作用域或忽略注释。</div>
+      </div>
+    </div>
+
+    <div class="finding p3">
+      <div class="f-top"><span class="chip p3">P3 · 工程配套</span><span class="loc">package.json / 仓库根目录</span></div>
+      <h3 class="f-title">缺少版本控制与持续集成，依赖未声明运行时约束</h3>
+      <div class="f-body">
+        <p>仓库没有 <code>.git</code>，也没有 CI 配置；<code>package.json</code> 未声明 <code>engines</code>，而启动脚本实际上要求 Node 20+；<code>pdf-parse</code> 仍停留在 1.1.1（多年未更新，且以“加载测试文件失败”闻名）。这些不影响当前运行，但会让复现、回滚和协作变困难。</p>
+        <div class="fix"><b>修复方向：</b>初始化 git 并保留当前基线提交；加一条最简 CI（install + build + test）；声明 <code>engines.node &gt;= 20</code>；评估 PDF 解析替换方案（如 <code>pdfjs-dist</code>）。</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">05</span><h2>界面实测</h2></div>
+    <p class="lead">不是只看断言：用本机 Edge 无头模式真实作答、拖动滑块、刷新恢复，并逐页检查控制台。</p>
+    <div class="figs">
+      <figure>
+        <img src="assets/acceptance-session.png" alt="桌面端会话页，包含模拟器与判题反馈" />
+        <figcaption>桌面端会话页：讲解、可调参数模拟器、追问快捷入口在同一视图内；右下角可见当前模型标识。注意图表左侧刻度被裁切（P3）。</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/acceptance-mobile.png" alt="移动端首页" />
+        <figcaption>移动端 390px：无横向溢出，底部导航可用，首页信息层级清晰。</figcaption>
+      </figure>
+      <figure class="fig-wide">
+        <img src="assets/acceptance-settings.png" alt="设置页，模型配置与数据统计" />
+        <figcaption>设置页：内置 7 个服务商预设，API Key 仅显示掩码，底部展示数据库路径与记录数（这也是 P2-5 信息暴露的来源之一）。</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">06</span><h2>做得好的地方</h2></div>
+    <div class="two-col">
+      <div>
+        <h3 style="margin-bottom:8px">产品判断力</h3>
+        <ul class="clean">
+          <li><b>没有模型就明说。</b>未配置时直接告知“无法真正教学”，不拿固定话术假装上课——这是很多同类产品做不到的克制。</li>
+          <li><b>答案隔离是真做了。</b>答案与评分规则只存 <code>exercises.answer</code>，下发的 <code>ExercisePublic</code> 不含答案；端到端断言里专门有一条“响应中不含 answer 字段”。</li>
+          <li><b>开放题不伪造判分。</b>模型不可用时标记“未评阅”，明确不计入掌握度，而不是随机给个分。</li>
+          <li><b>掌握度只能由证据推导。</b>状态机阈值全部写死并给出原因文本，单次答对不足以“掌握”，同题刷多遍不会堆出掌握度。</li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="margin-bottom:8px">工程与文档</h3>
+        <ul class="clean">
+          <li><b>代码卫生罕见地好。</b>全量扫描：0 个 <code>any</code>、0 个 <code>console.log</code>、0 个 TODO/FIXME、无硬编码密钥；模拟器表达式用自研词法/语法分析，明确不用 <code>eval</code>。</li>
+          <li><b>边界处理完整。</b>流式中断保留已生成内容；工具参数 zod 校验失败降级为文字；组件有 ErrorBoundary；非法 LaTeX 与异常计划块都有回归测试。</li>
+          <li><b>数据模型克制。</b>23 张表把“会话 / 证据 / UI 状态”分开，删除会话默认保留证据，审计表齐全。</li>
+          <li><b>开源合规认真。</b><code>THIRD_PARTY_NOTICES.md</code> 连“为什么没用某个库”都写了，并附 MIT 原文；<code>docs/OPEN_SOURCE_RESEARCH.md</code> 记录了检索方式、star 数、源码级结论与取舍。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">07</span><h2>整改优先级</h2></div>
+    <table>
+      <thead><tr><th style="width:8%">序号</th><th style="width:38%">事项</th><th style="width:14%">级别</th><th>建议节奏</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td class="b">删除会话后重算知识点聚合与复习队列</td><td><span class="chip p1">P1</span></td><td>本次放行前</td></tr>
+        <tr><td class="num">2</td><td class="b">复习调度传入真实 difficulty / lapses</td><td><span class="chip p2">P2</span></td><td>本次放行前（改动小）</td></tr>
+        <tr><td class="num">3</td><td class="b">修掉提示词重复注入与空助手占位</td><td><span class="chip p2">P2</span></td><td>本次放行前（改动小）</td></tr>
+        <tr><td class="num">4</td><td class="b">解析查看 / 提示使用改为服务端留痕</td><td><span class="chip p2">P2</span></td><td>首次对外分发前</td></tr>
+        <tr><td class="num">5</td><td class="b">默认绑定本机 + 首次启动生成令牌 + 收敛 system 接口</td><td><span class="chip p2">P2</span></td><td>首次对外分发前</td></tr>
+        <tr><td class="num">6</td><td class="b">稳定幂等键，覆盖真实重复提交</td><td><span class="chip p2">P2</span></td><td>下一迭代</td></tr>
+        <tr><td class="num">7</td><td class="b">图表刻度、上传落盘、空壳清理语义、材料检索性能</td><td><span class="chip p3">P3</span></td><td>下一迭代</td></tr>
+        <tr><td class="num">8</td><td class="b">迁移 proxy、初始化 git/CI、声明 engines、升级 pdf-parse</td><td><span class="chip p3">P3</span></td><td>持续</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="appendix">
+    <div class="sec-head"><span class="sec-no">08</span><h2>附录：环境与复现</h2></div>
+    <h4>验收环境</h4>
+    <table>
+      <tbody>
+        <tr><td class="b" style="width:22%">操作系统</td><td>Windows 10.0.19045（win32）</td></tr>
+        <tr><td class="b">运行时</td><td>Node.js 22.22.2 / npm；Python 3.13.12（未参与）</td></tr>
+        <tr><td class="b">浏览器</td><td>本机 Microsoft Edge，headless，1440×1000 与 390×844</td></tr>
+        <tr><td class="b">验收实例</td><td><code>DATA_DIR=./data/acceptance npx next start -p 3211</code>（独立数据目录，测后已停止并清理）</td></tr>
+        <tr><td class="b">模型替身</td><td><code>tests/mock-llm-server.mjs</code>，127.0.0.1:4318，确定性回放</td></tr>
+      </tbody>
+    </table>
+
+    <h4>复现命令</h4>
+    <pre>npm test
+CODEBUDDY_SAFE_DELETE_ENABLED=0 npm run build
+DATA_DIR=./data/acceptance npx next start -p 3211
+BASE_URL=http://127.0.0.1:3211 MOCK_URL=http://127.0.0.1:4318/v1 node tests/smoke.mjs
+BASE_URL=http://127.0.0.1:3211 node tests/ui-check.mjs</pre>
+    <p style="font-size:12.5px;color:var(--ink3)">
+      注：当前环境的文件删除垫片会拦截 Next 构建清理 <code>.next/trace</code>，故构建命令需临时设置 <code>CODEBUDDY_SAFE_DELETE_ENABLED=0</code>；这是验收环境限制，不是项目缺陷。
+    </p>
+
+    <h4>本次审查覆盖的文件</h4>
+    <pre>src/lib/db/schema.ts           23 张表、索引与级联策略
+src/lib/db/repo.ts             1175 行数据访问层（重点审查）
+src/lib/learning/exercise.ts   8 题型判题引擎
+src/lib/learning/mastery.ts    BKT + 状态推导
+src/lib/learning/scheduler.ts  FSRS 启发式调度
+src/lib/learning/expr.ts       安全表达式求值器
+src/lib/ai/provider.ts         OpenAI / Anthropic 流式适配
+src/lib/ai/tools.ts            8 个教学工具与 zod 校验
+src/lib/ai/prompt.ts           系统提示词与上下文装配
+src/app/api/**/route.ts        22 个 API 路由
+src/middleware.ts              访问令牌校验</pre>
+  </section>
+
+  <div class="foot">
+    <span>Lumina v0.1.0 · 独立验收报告</span>
+    <span>验收日期 2026-10-22 · 共 12 项发现（P1×1 / P2×5 / P3×6）</span>
+  </div>
+
+</div>
+</body>
+</html>

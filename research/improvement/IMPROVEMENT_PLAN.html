@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html data-page-node-id="j3MpFNlAqbR3hFgmkgtYmS" lang="zh-CN">
+<head data-page-node-id="GyMHrcB07P1Zc0UgZqfWx0">
+<script data-page-node-id="8HFxrKj6JroW04ZGiWHPLg" src="/page/page_comm/inject.js"></script>
+<meta data-page-node-id="9IotnVfldtQNJYQ0817HmT" charset="utf-8">
+<meta data-page-node-id="bfHeEYlkfltqljCbXQVa6v" content="width=device-width, initial-scale=1" name="viewport">
+<title data-page-node-id="vMnZeX9d39vBTcxCh8wbQY" data-pnid-children="se0hQPkAu8ZaQkNpsao64E">Lumina 改进建议 · 2026-10-22</title>
+<style data-page-node-id="ZmFZfkmma9qmdDtMZSGe6K" data-pnid-children="LBOWv3bP0OLPFFoaQpBtzX">
+  :root{
+    --paper:#fbfaf7; --panel:#fff; --ink:#1c1b19; --ink2:#4a4842; --ink3:#7c7970;
+    --line:#e4e0d8; --line-strong:#cfc9bd;
+    --accent:#2f5d50; --accent-soft:#e9f1ed; --accent-ink:#24483e;
+    --amber:#946213; --amber-soft:#fbf3e2;
+    --blue:#3f5478; --blue-soft:#eef1f7;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    --serif:"Source Han Serif SC","Noto Serif SC",Georgia,"Songti SC",serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;font-size:15px;line-height:1.75}
+  .page{max-width:1000px;margin:0 auto;padding:56px 40px 96px}
+  code,.mono{font-family:var(--mono);font-size:.86em}
+  code{background:#f1eee7;padding:.12em .38em;border-radius:4px;color:#3c3a34}
+  h1,h2,h3,h4{font-family:var(--serif);font-weight:600;letter-spacing:.01em;color:var(--ink);margin:0}
+  h2{font-size:24px;margin:0 0 6px}
+  h3{font-size:17px}
+  h4{font-size:14px}
+  p{margin:0 0 12px}
+  a{color:var(--accent)}
+
+  .cover{border-bottom:1px solid var(--line-strong);padding-bottom:32px;margin-bottom:40px}
+  .kicker{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3);margin-bottom:22px}
+  h1{font-size:40px;line-height:1.2;margin:0 0 10px}
+  .subtitle{color:var(--ink2);font-size:16px;margin:0 0 24px}
+  .meta{display:flex;flex-wrap:wrap;gap:10px 28px;font-size:13px;color:var(--ink2)}
+  .meta b{font-weight:600;color:var(--ink)}
+  .thesis{margin-top:26px;background:var(--accent-soft);border:1px solid #cfe0d8;border-radius:12px;padding:18px 20px;font-size:14.5px;color:#264a3f}
+  .thesis b{color:#1d3a31}
+  .top5{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .top5 span{font-size:12px;padding:5px 11px;border-radius:999px;background:#fff;border:1px solid var(--line-strong);color:var(--ink2)}
+  .top5 span b{color:var(--accent);font-family:var(--mono);font-size:11px;margin-right:5px}
+
+  section{margin:0 0 46px}
+  .sec-head{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:22px}
+  .sec-no{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.1em;padding-top:4px}
+  .lead{font-size:16px;color:var(--ink2);margin-bottom:18px}
+  .lead strong{color:var(--ink)}
+
+  table{width:100%;border-collapse:collapse;font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th{text-align:left;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);font-weight:600;padding:11px 14px;background:#f6f4ef;border-bottom:1px solid var(--line)}
+  td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+  tr:last-child td{border-bottom:0}
+  td.b{color:var(--ink);font-weight:600}
+  td.num{font-family:var(--mono);white-space:nowrap}
+  .tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.06em;padding:2px 7px;border-radius:4px;white-space:nowrap}
+  .tag.a{background:var(--accent-soft);color:var(--accent-ink)}
+  .tag.b{background:var(--amber-soft);color:var(--amber)}
+  .tag.c{background:var(--blue-soft);color:var(--blue)}
+  .tag.gray{background:#efede7;color:var(--ink3)}
+
+  /* matrix */
+  .matrix-wrap{display:grid;grid-template-columns:28px 1fr;grid-template-rows:1fr 26px;gap:6px;margin:6px 0 8px}
+  .y-label{writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;color:var(--ink3);letter-spacing:.1em;text-align:center}
+  .x-label{grid-column:2;text-align:center;font-size:11px;color:var(--ink3);letter-spacing:.1em}
+  .matrix{position:relative;height:380px;border:1px solid var(--line-strong);border-radius:12px;background:
+    linear-gradient(to right,transparent 49.8%,var(--line) 49.8%,var(--line) 50.2%,transparent 50.2%),
+    linear-gradient(to bottom,transparent 49.8%,var(--line) 49.8%,var(--line) 50.2%,transparent 50.2%),
+    #fff}
+  .q{position:absolute;font-size:11px;color:#a9a49a;letter-spacing:.04em}
+  .q.tl{top:12px;left:14px}.q.tr{top:12px;right:14px}.q.bl{bottom:12px;left:14px}.q.br{bottom:12px;right:14px}
+  .dot{position:absolute;transform:translate(-50%,-50%);font-family:var(--mono);font-size:10.5px;font-weight:700;
+    background:var(--accent);color:#fff;border-radius:999px;padding:3px 7px;line-height:1.2;box-shadow:0 1px 3px rgba(0,0,0,.12);white-space:nowrap}
+  .dot.amber{background:var(--amber)}
+  .dot.blue{background:var(--blue)}
+  .dot.gray{background:#8d897f}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink3);margin-top:6px}
+  .legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+
+  /* cards */
+  .idea{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:14px;border-left:3px solid var(--accent)}
+  .idea.b2{border-left-color:var(--amber)}
+  .idea.c2{border-left-color:var(--blue)}
+  .idea-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:6px}
+  .idea-id{font-family:var(--mono);font-size:11.5px;color:var(--accent);font-weight:700}
+  .idea-title{font-family:var(--serif);font-size:17.5px;font-weight:600;color:var(--ink)}
+  .idea-meta{margin-left:auto;display:flex;gap:6px;align-items:center;font-size:11px;color:var(--ink3)}
+  .scene{font-size:13.5px;color:var(--ink2);background:#f7f5f0;border-left:2px solid var(--line-strong);padding:7px 12px;border-radius:0 6px 6px 0;margin:8px 0 12px}
+  .scene b{color:var(--ink)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px 26px}
+  .block h4{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin:0 0 5px;font-weight:700}
+  .block ul{margin:0;padding-left:17px;font-size:13.5px;color:var(--ink2)}
+  .block li{margin-bottom:4px}
+  .block p{font-size:13.5px;margin:0}
+  .code-line{font-family:var(--mono);font-size:11.5px;color:var(--ink3);line-height:1.7;word-break:break-all}
+  .check{font-size:13px;color:var(--ink2);background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin-top:12px}
+  .check b{color:var(--accent-ink)}
+
+  .no-list{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .no-item{background:#fff;border:1px solid var(--line);border-radius:10px;padding:13px 16px}
+  .no-item h4{font-size:13.5px;color:var(--ink);margin-bottom:3px}
+  .no-item p{font-size:12.5px;color:var(--ink3);margin:0}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+  ul.clean{margin:0;padding-left:20px;color:var(--ink2);font-size:14px}
+  ul.clean li{margin-bottom:7px}
+  ul.clean b{color:var(--ink)}
+  .callout{background:var(--amber-soft);border:1px solid #e8d6ac;border-radius:12px;padding:16px 20px;font-size:14px;color:#6c4a10}
+  .callout b{color:#54390a}
+
+  .appendix{font-size:13px;color:var(--ink2)}
+  .appendix pre{background:#f4f1eb;border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-family:var(--mono);font-size:12px;line-height:1.7;overflow-x:auto;margin:0 0 10px}
+  .foot{border-top:1px solid var(--line-strong);margin-top:52px;padding-top:16px;font-size:11.5px;color:var(--ink3);display:flex;justify-content:space-between;gap:16px}
+
+  @media (max-width:820px){
+    .page{padding:32px 20px 64px} h1{font-size:30px}
+    .grid2,.no-list,.two-col{grid-template-columns:1fr}
+    .matrix{height:320px}
+    .idea-meta{margin-left:0}
+    .cover{padding-bottom:24px;margin-bottom:28px}
+  }
+  @media print{ body{background:#fff;font-size:12pt} .page{max-width:none;padding:0} section,.idea{break-inside:avoid} }
+</style>
+</head>
+<body data-page-node-id="KEAPRl9iMwlUBCymeN1Gvi">
+<div data-page-node-id="w0TOdXPV2pibhXlMfKAp2k" class="page">
+
+  <header data-page-node-id="UEuXXk5MfQ1ggj2czyiSu0" class="cover">
+    <div data-page-node-id="HFmo9JhXKMc13Ll8GG8jZl" class="kicker"><span data-page-node-id="CNR7Bd7QgQgQtd7kemDKmo"><!--pnid:CUn1L12aRaKwfHx2uKftZw-->改进建议 · Improvement Proposal</span><span data-page-node-id="a9enMMISAjCO3wHvJvLAR0"><!--pnid:zEfJ2FLG3SHwSJOM4NVXun-->Lumina v0.1.0</span></div>
+    <h1 data-page-node-id="2f9HaHcijZKAxwzILovyUE"><!--pnid:8ZsEtXIQGLDd2qzu7Pi2tx-->从「能用」到「会有人第二次打开」</h1>
+    <p data-page-node-id="ySA0PueiZguzPsjHih4gc2" class="subtitle"><!--pnid:s7zqZCjNs64u3ckLSYaUFJ-->基于修复后基线（37/37 测试通过）的功能与体验改进建议</p>
+    <div data-page-node-id="RCTLKc3OrJZKb1nUkI1mph" class="meta">
+      <span data-page-node-id="fojHLuzKSqhZS4Z3MHCxOR"><b data-page-node-id="d9KhydUpMD5k8h6re4LRSN"><!--pnid:SNbH9RTls2uu3K2yYNXL4D-->日期</b><!--pnid:N1p8kJSzW6DzlxjaH2ujrW-->　2026-10-22</span>
+      <span data-page-node-id="Kem9ccNgva5QCS7xWQ6zHU"><b data-page-node-id="S56APDh4Qe1J80IPvqSZFx"><!--pnid:m4g7LOPdxRF8DNwkL46mBr-->基线</b><!--pnid:tLOxWeoWGeUJkDcSV05Er1-->　P1/P2/P3 已修复，37 项测试通过</span>
+      <span data-page-node-id="fUb7SATmfUgAESD6CfIRdH"><b data-page-node-id="viQmO4t3eQr7osP8qn826e"><!--pnid:PWZgMIY0hvI9tnCwQc99YM-->建议数量</b><!--pnid:mkK34IVE9uWqJUGmxr9xzl-->　14 项（分 3 批）</span>
+      <span data-page-node-id="F8AkHtI5gfVqDQc7YwNW6E"><b data-page-node-id="RhA8vMXt6L1VdL6ZwkFCKS"><!--pnid:M5WBRcJt19VDr5890c6TuO-->核心主张</b><!--pnid:7NVD5XUMWjhpEWR57eiuTO-->　不加功能，先补闭环</span>
+    </div>
+
+    <div data-page-node-id="imC4L4XPrTiv05yEckJJ3h" class="thesis">
+      <b data-page-node-id="OMNfPZtLwSfyUISMC8nRO6"><!--pnid:s0QMnImhZii99mIAPYujD2-->一句话结论：</b><!--pnid:6qG4Srp9INfS4YyErJAlvz-->这个项目已经不缺“能力”，缺的是“理由”——用户下一次为什么会主动打开它。答案不是再加一个工具或换一套皮肤，而是把已有的证据链往前接两步：<b data-page-node-id="ZZPi1tOtuLxN2ztjNWCwrX"><!--pnid:mV7e6gdXUs44tmTtsGrYEx-->从证据到诊断</b><!--pnid:IgLldGVlt740gOsEZO3r6n-->，<b data-page-node-id="ilcvx4Ri7vNykwTXRMuFKf"><!--pnid:SjKoTFk7OjNkEK21rGS2Ir-->从诊断到行动</b><!--pnid:3luxG80bwq3mQIJ9Y9zaMB-->。目前证据只被展示，没有被用来改变讲法；复习只有队列，没有真正的“复习会话”。
+    </div>
+
+    <div data-page-node-id="CTnFfoXrUxo7wOD1ci46lk" class="top5">
+      <span data-page-node-id="uQN4pmYgC4Ci3en5K5aEwy"><b data-page-node-id="O07EO4W3wa20rWakBuNdoZ"><!--pnid:9LblwEkvD9oJ7fJ7TYYRqQ-->A1</b><!--pnid:ZzVHUGUTlb9qMMeSu4dYwf-->错因结构化 + 错题本</span>
+      <span data-page-node-id="Zvf6k8LDDi7MYA4p1CujyQ"><b data-page-node-id="ofyJDwM9M1MulTjl3Efske"><!--pnid:xGlZHfHDPEu8znFUBLPSTS-->A2</b><!--pnid:iDzv0MQNqPoUuZHc8AmWwo-->结构化复习会话</span>
+      <span data-page-node-id="xjvXd3s4L5abNFIniLXMdc"><b data-page-node-id="TP0FbU8Eo1ouZOqvCvJC4C"><!--pnid:lmtC0MhYb4qeGess97D9ru-->A3</b><!--pnid:blVHpWoeSXa0FIxrgGMwjH-->证据作废与重算</span>
+      <span data-page-node-id="0ySIxYvBh1AELPWxoOqbtK"><b data-page-node-id="B3oesO6xT60snDpGrBdbXh"><!--pnid:LNIIPorbUYHTf9HVDPuNVf-->B1</b><!--pnid:I82rJ4FNu6PvNhuGOlzJx1-->材料引用可溯源</span>
+      <span data-page-node-id="uZ5t3nc4VmDMSwWc9qkaxK"><b data-page-node-id="MSLGDfauDaj8YFqbvY3Wl2"><!--pnid:sR4X0RofnJGl73fJIl7ks8-->D3</b><!--pnid:fi2eeyKy564Ww8FP1Fx3yd-->提示词评测集</span>
+    </div>
+  </header>
+
+  <section data-page-node-id="2C3SbOlBPpyuqwpDpK1Cyb">
+    <div data-page-node-id="SYOlNfFDIwFwnNau8uRjRr" class="sec-head"><span data-page-node-id="C6mGdBTwwvrVjnEi2eFU1u" class="sec-no"><!--pnid:Bnj4CGmkn11QvRlVEA0CQV-->01</span><h2 data-page-node-id="JE5IyTG9JhhBjQ0IHBzPUD"><!--pnid:XR9Mha3jHaYT7OyXQDMEkB-->基线复核</h2></div>
+    <p data-page-node-id="TWg5aSh7UBKy9C8CSJDhb4" class="lead"><!--pnid:BQOYD7JkJQqg7H4CJN6BVO-->先确认地基，再谈加层。修复后的实测结果与修复记录基本一致，只有一处小出入。</p>
+    <table data-page-node-id="48vNSwJCXClTrV7vJqTT3v">
+      <thead data-page-node-id="8q8PjbU02fRhayZIkkDuGF"><tr data-page-node-id="1IYqR1uESR0oiuimsPvedT"><th data-page-node-id="cVDXK1cy3dFV19BwEoWTYj" style="width:22%"><!--pnid:9E8or3GGys9ew728uhweME-->项目</th><th data-page-node-id="rARxWjoawjkQ8BncDjZJ8I" style="width:50%"><!--pnid:dFAGWlcvH5dWLA1WAwYqs0-->实测</th><th data-page-node-id="Ad18MRuFv2o23G9DBCkafp"><!--pnid:Fap6wWlHrB2sPg9MtnrMBK-->判断</th></tr></thead>
+      <tbody data-page-node-id="Ayt424blgMB80nepCVczNV">
+        <tr data-page-node-id="ZzMJy4ykFjicMiJ9nFtV0t"><td data-page-node-id="uEkoeR9lshcW86lsx49PD9" class="b"><!--pnid:lUiAB5sZDeap5K5NECZYyB-->单元 + 集成测试</td><td data-page-node-id="CqXzOJYr0x1cJDWUxBQTYY"><code data-page-node-id="wCYWYvjQW8zYI3NR7cA9Z6" data-pnid-children="unZWAQCaFmtcYMXYlKuMm9">npm test</code><!--pnid:cjmsquhRfBPr9W0MrpAhwo-->：3 个文件、37 个用例</td><td data-page-node-id="pLxjJ5lG0SL5E38HrKrMKp"><!--pnid:EsepM8E6qizWnBmbOku3LY-->通过，新增 6 项覆盖修复点</td></tr>
+        <tr data-page-node-id="zr0HboE3GgzsP5QfBYufrC"><td data-page-node-id="ZxVQOtocDX3ywscyH2Nla0" class="b"><!--pnid:F2Lnl07ePInJdl8mIxCnDc-->生产构建</td><td data-page-node-id="LGUjvB1S9RhH99UFJuCaFy"><code data-page-node-id="E3chAG7Hb4vevUSlZwfFEV" data-pnid-children="GUmI0jAsSzG0GIvPY37FEN">next build</code><!--pnid:bQ9FwLHu2egDbiCNItcS6L--> 退出码 0，14 静态页 + 22 API 路由</td><td data-page-node-id="jwxVNdm2qx49QJD55j6bzV"><!--pnid:sWrNifeE2ahOKNe9afvkOm-->通过</td></tr>
+        <tr data-page-node-id="4GIcrt7L4WsVstnqTzfJ2j"><td data-page-node-id="XS41xwblNAKLuJyr0DHxuw" class="b"><!--pnid:KhrzQBmTUnR3mCDGMIjr53-->构建警告</td><td data-page-node-id="IhqxmPNgmqBczXyY2LIqpB"><!--pnid:XxjhPn2y2Fva712P8qnMc3-->仍有 1 条：<code data-page-node-id="RZ3ABqg31rFh884F4dxoAX" data-pnid-children="sQzzBNPZTK1KF9hUcazOXj">middleware</code><!--pnid:iF20RFM02QeODeruS3Cddh--> 约定在 Next 16 弃用</td><td data-page-node-id="ftZtZUCvTsaihrpdsNUFpd"><!--pnid:UsqwjH0zZrgQ5RHPQfC4Nh-->与修复记录“0 警告”不符，建议迁移 <code data-page-node-id="IDu52HxDSX6vGcEFXEAFoN" data-pnid-children="TjV72qaER8HaCD5c31r065">proxy.ts</code></td></tr>
+        <tr data-page-node-id="CzTKeu5eRbdxmv54onW9Ew"><td data-page-node-id="UZmUjhCwKsGMvuoXNfaR0P" class="b"><!--pnid:kYQ7WuKwtl282mNFatWC9X-->数据一致性</td><td data-page-node-id="3P38XlegmtxWpOnAHr5unX"><code data-page-node-id="nxydWqtYHRz4Hu76JTiKGo" data-pnid-children="WeYkx78fzP0LgFUvKBAxCF">recomputeConceptAggregates()</code><!--pnid:3inauA8EWYhGJXbo3YviE3--> 已实现“按剩余证据重放 BKT”</td><td data-page-node-id="2lvHofqAl0QMfMgrVxvjRG"><!--pnid:KoVitUbZtQVAcN4PCrCxzn-->修复方式正确，不是简单减一</td></tr>
+        <tr data-page-node-id="jJAh0pAkzW66AikD4wXOta"><td data-page-node-id="ZIq3C9fySVRV5TAzfAfcDE" class="b"><!--pnid:si5wYaqIi3qLhC4E5eDqBc-->证据可信</td><td data-page-node-id="WRi3BqoOZL0AWn5pLPDkIM"><code data-page-node-id="m40ByLqVTgbfXTSDoBfLnk" data-pnid-children="5YKT9ThvSIem1PYW763ZXG">solution_viewed_at / hint_used_at</code><!--pnid:tpVAg9vyzhd9YUbgn7qkme--> 服务端留痕，提交以服务端为准</td><td data-page-node-id="MjcKJATbBbWcpucldeX26t"><!--pnid:Ngu4B3gD99S5CsHUNuimfM-->已堵住自报绕过</td></tr>
+        <tr data-page-node-id="TfleuVZJmUbFhmTXU3t61B"><td data-page-node-id="x9WjvYqkyhxMDBuHvid16z" class="b"><!--pnid:Z8rxetJh0WCROW1RV6lrqT-->安全</td><td data-page-node-id="Wz6ZQIQO6Y3X0qEgeLE0hQ"><!--pnid:B8rsXzfeTyBbGGVh3zcSov-->默认 <code data-page-node-id="AOGzj1sv6qticcVK3Iulrz" data-pnid-children="IpExrI16KKtT2ey0EeVXNf">127.0.0.1</code><!--pnid:LGY1d6sZRl3nXbLXAIXOZc-->、CSP 等安全头、system 接口脱敏</td><td data-page-node-id="TRiEnkRqRIfdsTyFtKOgVm"><!--pnid:HrzWJYBYfvAGpjiU68cPJg-->已处理；局域网模式需显式开启</td></tr>
+      </tbody>
+    </table>
+    <p data-page-node-id="M6ejvr0cfsrOqUg3LNdos2" style="font-size:12.5px; color:var(--ink3); margin-top:10px"><!--pnid:IouWGKKbGXOMG3L5TbVyhG-->当前体量：10,566 行源码、69 个文件、9 个页面、23 张表、8 个教学工具、8 种题型。数据层 <code data-page-node-id="gWqD8LLLY6NfsLZVV8DB3I" data-pnid-children="p4t35hGjU2fCI9f0Pc4J2O">repo.ts</code><!--pnid:ZoBQgZq70RFpyE4bHsQ9jG--> 已增至 1,374 行。</p>
+  </section>
+
+  <section data-page-node-id="dl8vrxVezz2l6PDx4jd8Cl">
+    <div data-page-node-id="GhSJYHYxLziTF4MYZzpeXE" class="sec-head"><span data-page-node-id="IbD1AxWSnCYklrLkG5nNSr" class="sec-no"><!--pnid:iLZVpwVLWuJC7kC44PsFjl-->02</span><h2 data-page-node-id="IHuFiXJZBUV1WV2xHKlYYa"><!--pnid:na3O2cLNWq67xT4SjNyabR-->产品判断</h2></div>
+    <div data-page-node-id="Mpp2cu08rYnMfKKcwKgfux" class="two-col">
+      <div data-page-node-id="x1pHzzY3B01Be5DNafK8ZF">
+        <h3 data-page-node-id="BBaEvYTjT4eeGXgcEA9Xv8" style="margin-bottom:8px"><!--pnid:oOFwYL3r1k7cZuItBhmQyK-->它已经是什么</h3>
+        <ul data-page-node-id="myoakUA07eWmUimIDdtUsp" class="clean">
+          <li data-page-node-id="DB52ci3jIiqGdWpsPqv62z"><b data-page-node-id="a5e5ysisjM0wNLqRmWodus"><!--pnid:Ocvr6JaYIZAAHnuosQsY56-->一个诚实的单机导师。</b><!--pnid:VXGid7V6YwCdshq2ztlaAc-->没模型就说没模型，评不了就说评不了，答案不下发——这三点比大部分“AI 学习产品”都硬。</li>
+          <li data-page-node-id="PSuUD8mfp2gCvaL5aMBiaB"><b data-page-node-id="8xEa6rFR9jywDi5hfQcnAG"><!--pnid:BluUEi5INPv9HcIF7Emgjx-->一个证据系统。</b><!--pnid:qGNZTTxvge5achvKilZ6tP-->BKT、审计、快照、复习队列都在，删除会话还能正确重放。</li>
+          <li data-page-node-id="tmRpQ5r4oWSoERcs8toWO1"><b data-page-node-id="D1v4z9qyr3etj2gfGG9JR6"><!--pnid:95GmygRwL8zYfKfFr4eUjN-->一个内容生成器。</b><!--pnid:voveH5wBsMaF93TUqZ0Edl-->8 个白名单工具把模型输出约束成可交互组件，而不是一坨 Markdown。</li>
+        </ul>
+      </div>
+      <div data-page-node-id="Cj0xXfchvOThulfOkY0nbN">
+        <h3 data-page-node-id="PUbRA4XHQxD1ZdpWx69o3y" style="margin-bottom:8px"><!--pnid:IaBGTTCvBk3b31yttNEdPg-->它现在还不是什么</h3>
+        <ul data-page-node-id="65C1ijKKHnZRtsr9EeUgB0" class="clean">
+          <li data-page-node-id="uobgKyW8DmCjNylGyw1lT2"><b data-page-node-id="J4WeWf2iJcsUSQsk47lImK"><!--pnid:uYjN4mKPcFvSgW0cnaQKoH-->不是一个“每天想打开”的工具。</b><!--pnid:86IVzXSRGvYNCuzW40jzoq-->首页能开始学习，但没有“今天该做什么”的确定答案。</li>
+          <li data-page-node-id="KAW7APInRG87SJ7K6SI2hz"><b data-page-node-id="UqaDhqIwrXNgJT0EccrY4g"><!--pnid:myy481xV9BMdhSrIlZKi86-->不是一个能读懂教材的助教。</b><!--pnid:eJaZdRFgEXB6aVGA7aa3bl-->材料被塞进上下文，但回答没有引用，用户无法验证依据。</li>
+          <li data-page-node-id="QI5CegCGW0suDrsF3lQ2Ru"><b data-page-node-id="vxQsiukBKAOI8FehNCq9BW"><!--pnid:xTGYLwAmcG92rLpxjWgw2h-->不是一个会因材施教的导师。</b><!--pnid:tYYPdLlKIZ2cdJrPiq73X3-->它知道你“没掌握”，但不太知道你“为什么没掌握”。</li>
+        </ul>
+      </div>
+    </div>
+    <div data-page-node-id="CAjmT1Itm8ubqUel9KiQ9O" class="callout" style="margin-top:18px">
+      <b data-page-node-id="2uUQ7ccmePHN5bMk1eCfRv"><!--pnid:cl5Cdxt0t308Jz44gjnMym-->护城河判断：</b><!--pnid:4rN6v94D2LRHWRRk3fsUYa-->通用聊天工具可以讲得一样好，甚至更好；它们缺的是“跨会话记住你错过什么、并按错因换一种方式再测你”。所以功能建议一律围绕这条线，凡是不能增强“证据 → 诊断 → 复测”的，优先级都往后放。
+    </div>
+  </section>
+
+  <section data-page-node-id="CRkPBggZB3xYfhirgNNBly">
+    <div data-page-node-id="N2VaFhhHsXSgk5lSmdXIea" class="sec-head"><span data-page-node-id="jj9iNEDGCkqWlPIR6pPKHn" class="sec-no"><!--pnid:xGV6xghDA22fiC8iVHecwl-->03</span><h2 data-page-node-id="Z9eUkafsDdFM1z757qFTQS"><!--pnid:SNXCDps6kpMf2HArOnlTNV-->建议总览</h2></div>
+    <p data-page-node-id="K9exEtx1d7gyPxGWhpBoPG" class="lead"><!--pnid:MfZpeklkk711CWDQpMklx9-->横轴是改动成本，纵轴是用户价值。左上角先做，右下角不做。</p>
+
+    <div data-page-node-id="6qak8T9uEh4XkwDy19fC1q" class="matrix-wrap">
+      <div data-page-node-id="VSuBS88ljhoEmDi1QzKxae" class="y-label"><!--pnid:cSFTZw4kVHcRSVDkywTaip-->用户价值</div>
+      <div data-page-node-id="8CfuJDvFXp5TAxVVBcdQ5D" class="matrix">
+        <span data-page-node-id="vPMVK7O1OgS3Sf6euxnu1C" class="q tl"><!--pnid:9mYbErlNRkpHHxmHU4zRMA-->先做 · 高价值 / 低成本</span>
+        <span data-page-node-id="4lP76dAowwUrDu71XerkRS" class="q tr"><!--pnid:PA5aNo7o2PlGTGMZz4l7Lb-->规划 · 高价值 / 高成本</span>
+        <span data-page-node-id="Butfvqdo6g3gXzhzZmHqM3" class="q bl"><!--pnid:vitB0k3mqWvIPR8nnSQVZl-->顺手 · 低价值 / 低成本</span>
+        <span data-page-node-id="v0eKgSlopqJ065dQhzkBby" class="q br"><!--pnid:P3dzXJs9rje2y67cUvuToV-->不做 · 低价值 / 高成本</span>
+
+        <span data-page-node-id="JT9GHWW72OQtwgiFIrqufa" class="dot" style="left:27%; top:9%"><!--pnid:KrOIHFG2Q03g4mviKVPjGc-->A2</span>
+        <span data-page-node-id="X5fLTB356j5TaxI2GdkLvU" class="dot" style="left:16%; top:29%"><!--pnid:3X7K6RvwNoo4x608eX0Xr9-->A3</span>
+        <span data-page-node-id="HVK3SWgNXLZSCqlDa5L8Nv" class="dot" style="left:54%; top:10%"><!--pnid:AGKnTWkTg0IexrIyI3Nxrn-->A1</span>
+        <span data-page-node-id="LCLne70BJPhFr9KAqcFqVy" class="dot" style="left:64%; top:18%"><!--pnid:NPBcPME8DRCbGzuBNIvGqv-->B1</span>
+        <span data-page-node-id="aM5hYvvvwpxVlmrWDVh0H4" class="dot" style="left:44%; top:24%"><!--pnid:fevTz53bS5E2QCMF7k80Vv-->D3</span>
+        <span data-page-node-id="U6fQJH58Gfajpfh467p1qb" class="dot amber" style="left:38%; top:30%"><!--pnid:9My049qqTA71aefSNNfQU5-->B2</span>
+        <span data-page-node-id="SWKIeztLpIkRQKg9VnrppB" class="dot amber" style="left:27%; top:31%"><!--pnid:6JduQViNYLC6RE7yIvCUy6-->C2</span>
+        <span data-page-node-id="5MKsb4bti4V4HjsSQnjiqP" class="dot amber" style="left:56%; top:34%"><!--pnid:wsmnqnCrbpbuERl3vSTJRs-->C1</span>
+        <span data-page-node-id="IIUZDaTCB1oho3t8aBdakM" class="dot blue" style="left:27%; top:43%"><!--pnid:g24xDGdBF7IzsDkiHXwbNI-->D1</span>
+        <span data-page-node-id="ihzlEmSHrDxTGhtjEmdv84" class="dot blue" style="left:45%; top:47%"><!--pnid:ypogKLT4yYDiiahDG8L8J3-->D2</span>
+        <span data-page-node-id="ZhujLngyZbrcy8rMnF1unn" class="dot blue" style="left:55%; top:52%"><!--pnid:IGoBak4Dke0xVPribOVTNq-->C3</span>
+        <span data-page-node-id="8yMFh6jIUc4DeNfjrOKyzG" class="dot blue" style="left:37%; top:52%"><!--pnid:3m0Nv3cDiTci0lE7NtoRzR-->C5</span>
+        <span data-page-node-id="BWVSU0Dy6HHnGX6HDIgMYO" class="dot blue" style="left:8%; top:52%"><!--pnid:t6MQhTVZ5BifcUen394Xr5-->C4</span>
+        <span data-page-node-id="lrNvgQmdw2qJZv2LOGFCjq" class="dot blue" style="left:74%; top:62%"><!--pnid:KnFWBqoC6AnBnHT85XhFhV-->A4</span>
+      </div>
+      <div data-page-node-id="ejXGLCjEaVWrAYAMxPyL5S"></div>
+      <div data-page-node-id="cxSCj1NVt0AeEX4Ji1N4C8" class="x-label"><!--pnid:2rZWaC1iN8UW3g1P5PSaBB-->改动成本 →</div>
+    </div>
+    <div data-page-node-id="mA7HtWytMGfkefln1x1vPh" class="legend">
+      <span data-page-node-id="EzvS9id4dMSbBPV56Wtt9T"><i data-page-node-id="e3w0lLrkN0XNJzQ24ivfmG" style="background:var(--accent)"></i><!--pnid:4YajABZRR6zfhN6o7jppcr-->批次一 · 补完证据闭环</span>
+      <span data-page-node-id="Y0ISSPXk8M8lneF36nXksj"><i data-page-node-id="BwQigucSe3xRfpoYo3SZmZ" style="background:var(--amber)"></i><!--pnid:aPP81qTTLenvZ3qpWkx0pE-->批次二 · 材料与练习</span>
+      <span data-page-node-id="FnaIzuuil70wVob2ueXuXT"><i data-page-node-id="siZVjgcZqXgLftQWaGa1jB" style="background:var(--blue)"></i><!--pnid:hjMdJN1nXELB8aaS846QU4-->批次三 · 长期使用</span>
+    </div>
+
+    <table data-page-node-id="XrSKrPdxIimQeGeODm0KL8" style="margin-top:20px">
+      <thead data-page-node-id="0wKHL25b4kGVkoVAlcMKiD"><tr data-page-node-id="6bOWmU5fGzuRSxO2DFu7MW"><th data-page-node-id="HKxHmgkaDcPTg72Ww68t6k" style="width:7%"><!--pnid:ZPZ62iBWSl6YGWOPnwN35X-->编号</th><th data-page-node-id="IDkWTXMbjgEhuUlebzEF0Q" style="width:34%"><!--pnid:DZih2V98SY3afIAdVLUq2v-->建议</th><th data-page-node-id="yKeoC2oZa4RuSEDUcQPtSO" style="width:33%"><!--pnid:bCntGuQPfAC3UvqJjMPTEy-->解决的问题</th><th data-page-node-id="VIST8ZrXrPeLZE7ib8oIkB" style="width:8%"><!--pnid:pP8Tbc4X6wIgZkb0yNp7C5-->价值</th><th data-page-node-id="koQdjDcbUOUFsqCbZDdWft" style="width:8%"><!--pnid:ojxnFBQG5whiWlrQLuwLKj-->成本</th><th data-page-node-id="qzf2hN2WAKUS5HFSKffGJt"><!--pnid:BU0cph3eKPZkDzZ0BLxuOJ-->批次</th></tr></thead>
+      <tbody data-page-node-id="LZiNlJVaDcpNoaY4yooSPB">
+        <tr data-page-node-id="hjvbZRYXPHkMaGzs7tdDrw"><td data-page-node-id="fMteIhBRq921wwesOCto8i" class="num"><!--pnid:88E8HvBs5KZu8tkvY983cG-->A1</td><td data-page-node-id="L8wat2uofVRwQTLj5ZwAse" class="b"><!--pnid:MA7EXQTOcXO06LFwcoTAC9-->错因结构化 + 错题本</td><td data-page-node-id="JZ0pDHol8SOhPrmidaVl2J"><!--pnid:BWFJG5jJyCDXe3uVdCMQoD-->知道你“没掌握”，不知道“为什么”</td><td data-page-node-id="Mp1DRFQY3jWp54dwJzCUwj"><!--pnid:i6CcdCcVwPlj9hStMdWCij-->高</td><td data-page-node-id="3qn3iEBkcRWH1xt4TXGGL0"><!--pnid:dJH0w4m1ULry4O3xIeRZcX-->中</td><td data-page-node-id="XlUig2WGgOfVdiov9PJCGt"><!--pnid:XD2xrWsngTkdQQh2jqrij0-->一</td></tr>
+        <tr data-page-node-id="7W5mNKFN5WTbUTYFEga2i8"><td data-page-node-id="IRDa961KLKhPPd3UWe0oGv" class="num"><!--pnid:XYuncvyA69T4trFAQdm7sq-->A2</td><td data-page-node-id="SongjWA6YhlJl52x1hQ1i3" class="b"><!--pnid:LMSDKtraKLHCtrUeULipxT-->结构化复习会话</td><td data-page-node-id="wrWNpCMY38BvdaqMREM6J9"><!--pnid:QEHqFxFNgGvEhNoLUzRVes-->复习只有队列，行动靠一句自然语言</td><td data-page-node-id="IfJhaGUo4oYYZFR488FgHR"><!--pnid:xNFhu6km9iOimf9ax61vap-->高</td><td data-page-node-id="IE7gi5VFciLm4NLbUQWAPx"><!--pnid:q3KzSuXw1gna9rBXtNc7Tm-->低</td><td data-page-node-id="qv2gpfJNJSFuZ8fC1I5z50"><!--pnid:wt6olRrfLLz6Z6Rymn8eFe-->一</td></tr>
+        <tr data-page-node-id="d1bMnctPlj0PToWTfaatRn"><td data-page-node-id="tt6cap6Ibj18TtYwmstcyF" class="num"><!--pnid:hOzepdaDeA26jRBlpuwVBg-->A3</td><td data-page-node-id="upWjIxqIzBi9rK04x4uIXn" class="b"><!--pnid:55ojDmOKZMHN6fJKz1XyUG-->单条证据作废与重算</td><td data-page-node-id="tTTpMIZyc4PniGGsMv9MCs"><!--pnid:fLaUYbBiP3P6uL9IcAkrpx-->误判/坏题无法剔除，档案只能整条删</td><td data-page-node-id="PS7arNl4iNlYdGf7N87Ucd"><!--pnid:Df3rysO3uMl5KmgNLs9VlM-->高</td><td data-page-node-id="8LxrZga1emLv43C4yae8pW"><!--pnid:3c0awNCaJgJncvKo35uhyp-->低</td><td data-page-node-id="TOfIaoadF1CSkjKenACTOz"><!--pnid:H0fQwL4PzijwytAQfKvWAc-->一</td></tr>
+        <tr data-page-node-id="4vyIr98Xv3uzBCQKPe2xQZ"><td data-page-node-id="buix1eE9mBKvFfO9VcEZ6h" class="num"><!--pnid:JA5G7BulY26jNXVgfltouq-->A4</td><td data-page-node-id="EA8QHsFkjjqX5uA3DtLIVm" class="b"><!--pnid:iAjVEZPBYmG4K41VfT0fwb-->掌握度校准视图</td><td data-page-node-id="drzgR1MG7dZY8q9Ad0zg6x"><!--pnid:SaO1zZnRiX2VCMxxqoWdkD-->预测的 p 值与真实正确率是否一致，无从判断</td><td data-page-node-id="bmPHSmrAc4XaCDjQr2Aug8"><!--pnid:hyMwwSxiiRoRvNMqXNxmV7-->中</td><td data-page-node-id="L2KT5G47s7AZGAU2azEH1P"><!--pnid:FwCe0gHGVPYyRjRkZ4sMEu-->高</td><td data-page-node-id="lW3dw34x0vI4w1IrG436KF"><!--pnid:By5va5IBWcJZt69VK8BeLm-->三</td></tr>
+        <tr data-page-node-id="tjfkwgrwANjqnknk13L5Vs"><td data-page-node-id="NNTUKaT6lJlOT2CfL2db9Z" class="num"><!--pnid:I8RDjcm4dpwHH7gm2lrElo-->B1</td><td data-page-node-id="o9NRL3bQTWV3Fj8euGNogy" class="b"><!--pnid:dfYEEBLA8iPSalushqJiA5-->材料引用可溯源</td><td data-page-node-id="yUUUGm3sOxz8eeBpjTWaNZ"><!--pnid:ZDz3I22js697JJnZidtC7T-->回答里的“材料依据”无法验证</td><td data-page-node-id="VvSTTQOjQOdDc7z9bkuvpZ"><!--pnid:9nIb4OCXpmGXRkEvQ6NhdQ-->高</td><td data-page-node-id="o4l85CmGOSDJtq5VX2dnVJ"><!--pnid:0ku88AYu47DRfeM3pc6fmH-->中</td><td data-page-node-id="WKqDwB6vqq3Mb4UcsksayK"><!--pnid:DznDL216i0zCCVsNynz1VL-->二</td></tr>
+        <tr data-page-node-id="1YSNWeh2ljVVk5YHezBBd6"><td data-page-node-id="v2fFvlPNoOLPH4Nz9LCSLC" class="num"><!--pnid:NTaCsrpX9DmbeUlv4JmQXk-->B2</td><td data-page-node-id="jVDZ7DfXwEIYrVZKv7UOH9" class="b"><!--pnid:olGjFyBe3B2iGZic9nXHdu-->从材料段落出题</td><td data-page-node-id="3lQIYXM8qBauY6a3yQcPuo"><!--pnid:iRxUopEvE0dPlZVAQDthcs-->材料只能“被引用”，不能“被练”</td><td data-page-node-id="fxGFu2JSOcc4H4sDmuBOwH"><!--pnid:eusm96SbohciE5Ze0Ecfj5-->高</td><td data-page-node-id="lNlyF5ekVFusa4zhwTeZ23"><!--pnid:9DSkhxGEPDwxoKFEsbih3E-->中</td><td data-page-node-id="XIrNOfq8fJs0QfynFoTcjj"><!--pnid:lIduaps4Ygwm53YQKoTa10-->二</td></tr>
+        <tr data-page-node-id="ILUDDeWStD1bcPTYSRIhzo"><td data-page-node-id="QynRNTIV1y2sIiggr0mnVG" class="num"><!--pnid:Q1jhUiapZBWCqgjpS8pkTO-->C1</td><td data-page-node-id="RiQcazkhPdpTzh5e055ZZo" class="b"><!--pnid:Mpdm4cEd4BIWMAp1m0TQJA-->今日计划（10 分钟）</td><td data-page-node-id="q4rMJ6kckfD8kZjCCS7upI"><!--pnid:svG6vKkDuISNjVPQ7m0RtX-->打开首页不知道今天该干什么</td><td data-page-node-id="6b2DtKuvNgjMnkSN2gqh5i"><!--pnid:gu5SKkG2q0iYenEWaUSMMN-->高</td><td data-page-node-id="RbWZlwP0ht9oHTN1vemq61"><!--pnid:NFWQPCSGdIDirkGnKIUTyz-->中</td><td data-page-node-id="zczGvY1X0xx7qq5ONABYgp"><!--pnid:nRVEhwx5gjCU90DLh6AKPi-->二</td></tr>
+        <tr data-page-node-id="IYdIxmmc6HA82ZuOlY3EFo"><td data-page-node-id="UKZ1MFjGoYr5UttU9m67k3" class="num"><!--pnid:P1Uctf0ot0DrFxZ20Cuhmc-->C2</td><td data-page-node-id="lAURMSIt3G2pkhfXjG0fsr" class="b"><!--pnid:wYPb2NLXSy5MbImyOFUas7-->题目反馈与“换一题”</td><td data-page-node-id="8NQgNKFooZTk2W3AQOcUlJ"><!--pnid:KE199m84Bhzml0dvvIplmh-->题太难/太简单/有错，用户无法反馈</td><td data-page-node-id="0gGoIeZUgr7jg5UQYxF3zG"><!--pnid:L1zGdw1aUw8t7UUdLWm4xO-->高</td><td data-page-node-id="4FFSxp5VGghIu8NDXlkbuc"><!--pnid:IuLvIML1HW0KCjpOjyIZTJ-->低</td><td data-page-node-id="ZhJGEZ9gw0ygnaGoN2RQS8"><!--pnid:MmpMSOwTVfNXDn36e61Qvu-->二</td></tr>
+        <tr data-page-node-id="eZpTw5V5vlmmUPlUUPQoJ8"><td data-page-node-id="8nVquDlxwWNLVry5xZRkB6" class="num"><!--pnid:qXGTnLLmcBlQdpHd9XTnXi-->C3</td><td data-page-node-id="GBZYsMtvGXTrNZQSzsQ3KC" class="b"><!--pnid:sf3Yey21jo6MV2whAikWSQ-->长会话大纲 + 换讲法</td><td data-page-node-id="VBsbgzaqWNNMlCiQEUpcSL"><!--pnid:NfpR9pZcbsoM1pQ3jFmi8w-->50 条消息后找不到那道题；讲法无法重来</td><td data-page-node-id="AXQqB0Wvqssk880EuqlTv1"><!--pnid:dgsjkx1PcqWKVEPZppTDGU-->中</td><td data-page-node-id="K4S5YycVjfpoS9U36lZOzp"><!--pnid:mvcxXRg7sdybHSNo61tcGN-->中</td><td data-page-node-id="qtFSVknHGMSDmNMDgngrGJ"><!--pnid:lMVFz3pFFnum7COjVv309z-->三</td></tr>
+        <tr data-page-node-id="qVcSHH29ihieVoaiRGyDTe"><td data-page-node-id="7gUbtU3EAxlivUuMuAatmK" class="num"><!--pnid:HvVa5cpKSnWUcD4zTQEVFB-->C4</td><td data-page-node-id="RaUgr2JgdmRpaYVlSwqN41" class="b"><!--pnid:O9WagZGYhA3lBCyCeuef9b-->导出学习记录</td><td data-page-node-id="1zp8quF0MqThzAswfTpU0A"><!--pnid:nk2XyelXyfp1kiPoWeKYMe-->学完就散，无法复盘或带走</td><td data-page-node-id="r9vGNbtyJoXZVDTWvomKQr"><!--pnid:vBM5BjJYsbGeEt3b7JQ0tt-->中</td><td data-page-node-id="qNK0zLs91kIUnmfwDJAoaf"><!--pnid:80brIemKaq1Gf1DBDNJrK0-->低</td><td data-page-node-id="CBept3UASguGpXQeERlckE"><!--pnid:sogb6O3KP7Za0PGmIeGQ3z-->三</td></tr>
+        <tr data-page-node-id="Gdrqr8AkJqTXEWDHW2nmC9"><td data-page-node-id="vSkcOUW0iiO0CuSNP9zH4A" class="num"><!--pnid:k5K1njwWNl6KSpJKj9XAV2-->C5</td><td data-page-node-id="eb7Qg94dO9w5iNBNl5YYUc" class="b"><!--pnid:gAwI9GMkrOkmHIWJ64sBrA-->全局搜索（会话/知识点/题目）</td><td data-page-node-id="HnFq8ff7WUImHddHBylCqz"><!--pnid:DT83ZC4C70vUF5vhjmXqXs-->只有会话标题搜索，找不到“上次那道题”</td><td data-page-node-id="MQaBpriw1km075WCaAnKEp"><!--pnid:8v0ZjJ2Vx9mtWGMDgMWJQE-->中</td><td data-page-node-id="OpaDN32fvKQJ3dqCpjQf8g"><!--pnid:G7IrDhG0ZJr6aKGeCSfFBc-->中</td><td data-page-node-id="9uYAQwYybnj9Fu8fkZmrid"><!--pnid:msXXp3s8gECR8eGBzWrPa1-->三</td></tr>
+        <tr data-page-node-id="7Mp9Z25XJk1chCHOkVhbXu"><td data-page-node-id="laJxa4sK4XUQzN0TtOgnPl" class="num"><!--pnid:0rwnnVp3WR118uqgKNseuD-->D1</td><td data-page-node-id="7eOo3OX1DsRzSRT6eX2xw8" class="b"><!--pnid:Pk885xSQyangrbrLrMoB01-->用量与成本面板</td><td data-page-node-id="oqhunojIKQDqFtfBHTu6bC"><code data-page-node-id="ijKxpr6zFyduLMrFFgVGw8" data-pnid-children="qzPFm8vW3lTVDZ8SKmhh4R">usage_log</code><!--pnid:x9yqw0nz9o2wSF6WKp5IZ4--> 有数据但从不展示</td><td data-page-node-id="qcJOyboFrPM1ICOKuHXWwp"><!--pnid:AcTFbqk8UJkCdnpeEBI29j-->中</td><td data-page-node-id="PLB2VwvFhgZuCj1pyTSORG"><!--pnid:CwO4x9r7xXAdeRuT5uOv61-->低</td><td data-page-node-id="LMf3Dc5UUpX9WU6h3yJqhB"><!--pnid:9wWkX3PnbvW10m7VAZwNVt-->三</td></tr>
+        <tr data-page-node-id="IxFWxcTYJlGYBOnMSJe9hz"><td data-page-node-id="JNagUzd19EaMLvpZa4Ku9V" class="num"><!--pnid:60r4H33bjGHmSLBuPPYmIZ-->D2</td><td data-page-node-id="SRfWlQr6UueSnxmbmbhjJQ" class="b"><!--pnid:mKWxVh9t2teti491pHVvHy-->主模型 / 快模型分级</td><td data-page-node-id="IZVqiSLimT8xrqgEcjef7f"><!--pnid:Ac0wzZ5obY0gLL4h87Euct-->提示、判题、标题都在用贵模型</td><td data-page-node-id="Rvv4Ui2vh9f7w8WO3h624r"><!--pnid:0ufxEo90eR8Y0oa6xoRufe-->中</td><td data-page-node-id="A2f2IfMMlY2mXCCeyaCMV0"><!--pnid:vpHFR3STnoE7Mu1ySAEOJS-->中</td><td data-page-node-id="ZRlcyqCqfWv6bJZrFeE3kC"><!--pnid:1JMnZmauAxGNjSlDIJmM3R-->三</td></tr>
+        <tr data-page-node-id="fDQfQt94iwfdm6Yyc0Dh2A"><td data-page-node-id="oLwVswxLg4Q0O9jxEoRb17" class="num"><!--pnid:7KG18BvnMFWxFbax0RjyaP-->D3</td><td data-page-node-id="hL5U2n635HHQn84zr4HGpD" class="b"><!--pnid:4aciugbJ5OSD4XDzJ7pcSt-->提示词评测集</td><td data-page-node-id="v40ky1XrDsNfP5UHITaopF"><!--pnid:yGTroXEXBNtdlRGFDxBhmS-->改一句提示词，教学风格可能整体崩坏</td><td data-page-node-id="pBlYh7YxlNZD3fqHSh18UT"><!--pnid:UvpY3yGteK3fYTU7ENID9Q-->高</td><td data-page-node-id="7NoCSiDff80QKP0CB6nWOW"><!--pnid:HXE2Ewn3R2HaGP6PgUsHAW-->中</td><td data-page-node-id="OghEEpLkZeDqS5L19WZjDQ"><!--pnid:c9hET3SuqCwTnTpPFY0WSt-->一</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section data-page-node-id="4xyfo8ib8Jk9Y6XxoQXM04">
+    <div data-page-node-id="KFx4whOCzOPTZKhN4gxo0r" class="sec-head"><span data-page-node-id="7wNcltqqhhaiThD15CSTBJ" class="sec-no"><!--pnid:mT00PvDCsWXEeX9QOQsCqH-->04</span><h2 data-page-node-id="VAuxpHvzz7Hceb0IbBfyZP"><!--pnid:Uv4qWWHgd7gLr0cDoC5Ujr-->详细建议</h2></div>
+    <p data-page-node-id="i3j16yslUlfnP7T3UCt4Gk" class="lead"><!--pnid:M7VFxyByPpqYJsRgJgyCGr-->每项都给出场景、做法、代码落点与可验收标准。落点尽量复用已有结构，不新造轮子。</p>
+
+    <h3 data-page-node-id="7mZYZykf4BHAEojlNL2ZRq" style="margin:6px 0 12px; color:var(--accent-ink)"><!--pnid:mHAa5j4Nqi1nDzZXEh08ec-->A · 把证据变成诊断</h3>
+
+    <div data-page-node-id="9PvNZrfsQG1g5qBD0s3kNY" class="idea">
+      <div data-page-node-id="8sWQ8Rhp7XdyQobdpNmhZo" class="idea-top"><span data-page-node-id="HaMukG3X63GaTiuQigJnFP" class="idea-id"><!--pnid:qlHX9zhbM6s94sCq1EvKDg-->A1</span><span data-page-node-id="YuaIuKgAcj5udM42lgJbAl" class="idea-title"><!--pnid:6jGd1WbvAI0bpfLbU7hIIQ-->错因结构化 + 错题本</span><span data-page-node-id="k60QDwZuZGlzQ0iSCZJRYJ" class="idea-meta"><span data-page-node-id="fifCbDSjr8FIXCrLmH9P7L" class="tag a"><!--pnid:jpAa9UButRoOMxSFwYBjtU-->价值 高</span><span data-page-node-id="oIVOkTYcwVNYNJzfPXdsVQ" class="tag gray"><!--pnid:9nMyKHutlaHV8fzPcndutc-->成本 中</span><span data-page-node-id="g6hS97QrWbVVpmn24jTfZY" class="tag b"><!--pnid:ue8Acx0ynphgHvb9cfyNLt-->批次一</span></span></div>
+      <div data-page-node-id="3Y8NUSGu4VZOcjicQGK124" class="scene"><b data-page-node-id="ULXzxVgjodQbnF7BNx61PS"><!--pnid:IfIbbqKiqOveOkuuKPCRKt-->场景：</b><!--pnid:oVEiDKtlhUpeKHa1i8SGaj-->用户在「导数」上连错三次，档案显示“需要巩固”。但他到底是公式记错、还是审题漏条件、还是计算符号错？现在系统不知道，模型也不知道，只能泛泛地“换个讲法”。</div>
+      <div data-page-node-id="WWOO7xVvU9ASntSzrQy2eM" class="grid2">
+        <div data-page-node-id="rJ6pIQ4PjgSv4Bemyun8IH" class="block"><h4 data-page-node-id="evUcyBEfXcOmW13SM2TuvJ"><!--pnid:2r3YCcf9eqrPvdCymgW8Y6-->做法</h4><ul data-page-node-id="22AGPQaREP0f8Xv3Vr67ao">
+          <li data-page-node-id="GD4ysRKYuUSyx1yw0sOCtS"><code data-page-node-id="PrjS1x7B2H3akf22aaXgxy" data-pnid-children="YSFzLqb9btuypotFWqw5i5">attempts</code><!--pnid:IMNx4iBU5Qd5ynLnSTOsJH--> 增加 <code data-page-node-id="MiiB0FvRIUpRJMk19ID5vz" data-pnid-children="eg5c1Qj20kItjKLwlESdZ9">error_type</code><!--pnid:kcg5c2ijYU0dwkD78767A0-->：概念混淆 / 计算失误 / 审题遗漏 / 表述不全 / 知识缺口。</li>
+          <li data-page-node-id="iIDyfwzu0tPhoA27lu74Ts"><!--pnid:ry1t0zJ03zbIU2ENwQU16G-->客观题由判题器直接推断（多选漏选 → 审题遗漏；数值量级错 → 单位/量级；填空近似 → 表述不全）；开放题由评阅模型在 JSON 里返回。</li>
+          <li data-page-node-id="0XGlnigZXNA6YC0aeL1THL"><!--pnid:Hab0JoWxXC9nBpvUuRGCCl-->知识点详情聚合“Top 错因”，复习建议按错因生成不同文案。</li>
+          <li data-page-node-id="w5GUBlukr1heOLtv7wgYS1"><!--pnid:ajhaHfEZfH3GN6HTmnJUXT-->上下文注入从“状态 + p 值”升级为“最近 3 次错因 + 当时选了什么”。</li>
+        </ul></div>
+        <div data-page-node-id="lIGCwKOGkztaxWBS5SJLI8" class="block"><h4 data-page-node-id="OnbzzVI6vRZmDy7Hz5KRJo"><!--pnid:1j2hvCZzXv5U2xHVYlHIA4-->代码落点</h4><p data-page-node-id="BTGmieDSRzVJhhecMTWIrc" class="code-line"><!--pnid:YS7mBfotmZEOGZSHgN7dnw-->src/lib/db/schema.ts（attempts 加列）<br data-page-node-id="5icCYVTCPmqd3CVkey87YQ"><!--pnid:EQGiHwkBvjYTSb55BWsGKU-->src/lib/learning/exercise.ts（判题侧推断）<br data-page-node-id="kaSUXXX42Dj9oJ65k7Umn2"><!--pnid:Ib4DoRfBXcZpL2Ma52YOMK-->src/app/api/attempts/route.ts（写入）<br data-page-node-id="6SVPPc0dqStm7EmatQvEEk"><!--pnid:y2oYTCE4tQFT2mQU8Wn1yC-->src/lib/ai/prompt.ts（注入错因）<br data-page-node-id="G4ZPBWpjRDltoENuU3djBY"><!--pnid:5jhE1SlQLHk08W64olnYh4-->src/app/library/page.tsx（错因展示）</p></div>
+      </div>
+      <div data-page-node-id="gGZzX0yoRrMDqn9x71fjwr" class="check"><b data-page-node-id="ykU4RoqDN6ztWNsrMymgVm"><!--pnid:KNyqqetnl2HSxP2F2eIH2L-->验收：</b><!--pnid:sabyP6hAH9fo26OFuV227H-->同一知识点连续 3 次“概念混淆”后，复习理由与提示词里出现该错因；答对一次后错因不再主导；每类错因至少有 1 个单元用例。<b data-page-node-id="5In8HrGVaX9ZfsvHoutkwQ"><!--pnid:BoX0milTXrjfZvID4B21te-->注意：</b><!--pnid:PzSxdKxmPpYvWOAf24sUxD-->错因只用于“怎么教”，不得反过来直接改掌握度——证据优先的原则不能破。</div>
+    </div>
+
+    <div data-page-node-id="Fwld30l2mueT31dZ0LoMi1" class="idea">
+      <div data-page-node-id="t0eebN1UtwxAj35hwirIY0" class="idea-top"><span data-page-node-id="XmYDrEJiAkDpwuYQjkDyBO" class="idea-id"><!--pnid:CXZljEeFojaNM0ZRjUnv9C-->A2</span><span data-page-node-id="zJgsnxcliVc8s7SIIZehIT" class="idea-title"><!--pnid:bz6IkMGSpHaIQpKEtJmD0V-->结构化复习会话</span><span data-page-node-id="rEJ84nogMYUa0rlnV6DrGI" class="idea-meta"><span data-page-node-id="Lc7EVpcmYPmJJZLttDyeYU" class="tag a"><!--pnid:XPaVngwWFklzsPhxiHN3Yt-->价值 高</span><span data-page-node-id="9zBA1sh2IUdYb834TtUvwf" class="tag gray"><!--pnid:HXZbxeaipHc5w1l99sjzkt-->成本 低</span><span data-page-node-id="AMcNkqQ7apic8F6zupUUrr" class="tag b"><!--pnid:xBcDGjJaC2VqrYuxrRkvpp-->批次一</span></span></div>
+      <div data-page-node-id="5epfKJOHlckyAUYkovrh0p" class="scene"><b data-page-node-id="iA0YlggxjdzGViNI3TRld6"><!--pnid:EfnqpoeSeHxTzUtewyvyEk-->场景：</b><!--pnid:m6XVrEYRudipbj8ScoRvnP-->复习页点“练一练”，现在只是拼一句话：“来做一个短复习：知识点「X」……先用一两道题测我”。模型可能先讲十分钟，也可能出三道超纲题，系统完全无法约束。</div>
+      <div data-page-node-id="gmXkSOk0kjMKZ2bJyPLzJ5" class="grid2">
+        <div data-page-node-id="Q8hkyPoKe0QoH3eoRCXeaT" class="block"><h4 data-page-node-id="fymSR0qGtnGjQXNw0e7FdR"><!--pnid:fXmyYYxHNzaH3YIRCHN2bb-->做法</h4><ul data-page-node-id="TO79k4rTy8YAHWh52ULoMu">
+          <li data-page-node-id="q7u8Y0ovozo2UjJXPw19Rs"><!--pnid:B22uRjhXs21IAH0yrhNzHK-->创建会话时传结构化参数：<code data-page-node-id="l7c5dlJVGIZ0joBBKXe1p4" data-pnid-children="9iKM7aPpL63n2rqJOVPSGy">{ mode:"review", focusConceptId, reviewItemId }</code><!--pnid:ytCoQz2oU0oGYrxnZyaVKs-->，而不是只传一句自然语言。</li>
+          <li data-page-node-id="Ldmu1rkuyUnRY3Y7j1PMPT"><!--pnid:2fWIDvFVlGW7hgFzIWTwiw-->上下文明确约束：本轮先 <code data-page-node-id="MoEVfCMkdpkfBHLfqLiTiQ" data-pnid-children="LogYO4Z36SawdOakGhTghS">present_exercise</code><!--pnid:VbW9sRBhS8AfQcS8LlOBMx-->（同型 1 道 + 变式 1 道），答完再决定讲不讲；拿不到证据就不算复习完成。</li>
+          <li data-page-node-id="F3CJt65MLZBqR4K62fEqQu"><!--pnid:3TkGV6cMH4iDQBNJqjhqFD-->会话与复习条目绑定：产生有效作答后自动把条目置为 <code data-page-node-id="3d7B0CpcdT54A85v1iSMVq" data-pnid-children="RmR6ykzicj0AFixZjgcUQc">done</code><!--pnid:Tgso2PVLaX98R3OZMQb9sC-->，并刷新 <code data-page-node-id="nrlSglunIYMkh6xByba5Px" data-pnid-children="lEGoNqHxQym2N74Pafashv">next_review_at</code><!--pnid:J0OeYwSTom63Mt3Ah1HS54-->；无作答退出则保留条目。</li>
+          <li data-page-node-id="6PyD3qtCLmRgursVDWZP47"><!--pnid:Uz95kIPs59R2ktzegTYhgJ-->会话结束时给一句“这次复习解决了什么 / 还差什么”，写回条目备注。</li>
+        </ul></div>
+        <div data-page-node-id="d81ggqVi5BXRkDbmofpSnl" class="block"><h4 data-page-node-id="6goAlcQ9iTXAhXzEI3EQf5"><!--pnid:D2xvNc1AV1OUMFAotCk6An-->代码落点</h4><p data-page-node-id="1fH5JTeKz9bZHOziV2XNil" class="code-line"><!--pnid:jvadEfsCARoxSb4DhKD5jN-->src/app/review/page.tsx（改成传 id）<br data-page-node-id="qBpgqmxtYiTE5UEaCRT7Cy"><!--pnid:R7sZL6yRWfj7pFspFUUOEz-->src/app/api/sessions/route.ts（接收 focus）<br data-page-node-id="V9yCc4bLjhZyiK7CKMmUlg"><!--pnid:sEm9J744NK7jtxbv6WyV2L-->src/lib/db/schema.ts（sessions 加 focus_concept_id / review_item_id）<br data-page-node-id="fpLMzy3JDN5Hf1wtSPka2x"><!--pnid:RW3LgxlqpI1wGwCYF2kxi1-->src/lib/ai/prompt.ts（复习模式约束）<br data-page-node-id="NrmiqaeCclTUrIrf6AieyC"><!--pnid:U9iU38JL5izYbEDW8Mbufj-->src/app/api/attempts/route.ts（回写 review_items）</p></div>
+      </div>
+      <div data-page-node-id="yrWqtRzvfSrw1E3lr9Vmi5" class="check"><b data-page-node-id="M8dZ9SYxo9RS9cp4vfu7ro"><!--pnid:6snQcBErh55hNXdTsiB12u-->验收：</b><!--pnid:21ESp3GLv4CV4ixrNmwhpl-->从复习进入后，首个教学组件必须是练习；作答后该条目从队列消失且 <code data-page-node-id="gooSKgQdM4RK9ql4bLq14P" data-pnid-children="XTdEe6FZe6A2WZB3xIhEXE">next_review_at</code><!--pnid:9aNMu1VHBdBZyrCMrOS5vo--> 延后；直接退出会话则条目保留。<b data-page-node-id="3hPyI8CxlX6QCJXaGUIyfo"><!--pnid:VfybYi4sphL7mN9wUE9Por-->成本低的原因：</b><!--pnid:GZW9pOl8jITu4THLOdLayL-->队列、会话、证据三张表都已存在，只差把“自然语言约定”换成“结构化字段”。</div>
+    </div>
+
+    <div data-page-node-id="jlssyzcMrGiusAo9TWdScO" class="idea">
+      <div data-page-node-id="IJKXk7qcQFw6lnOU6IboNH" class="idea-top"><span data-page-node-id="RTmJJywNa5g13OxV6QCBuN" class="idea-id"><!--pnid:2N9klOdQ8kXp8xRPy8GTRE-->A3</span><span data-page-node-id="dZUn7jKTZwxCVceOCL8kIB" class="idea-title"><!--pnid:IlDCwfsHbv7i9fjbstZCPN-->单条证据作废与重算</span><span data-page-node-id="wnPzHXSTCHxqYMm0wqT6cJ" class="idea-meta"><span data-page-node-id="diOq6QP1VhIZhwHukBBzjm" class="tag a"><!--pnid:lasIppstCmjxw344Tbu0O2-->价值 高</span><span data-page-node-id="avZqrhhmRpklfKJzXwnump" class="tag gray"><!--pnid:hWSzEGI3YPKxr31tDNFiko-->成本 低</span><span data-page-node-id="WkUtVt6iyzC79UurT8Hv87" class="tag b"><!--pnid:4MYMyCGNc5Q7PMVhQ7z6pu-->批次一</span></span></div>
+      <div data-page-node-id="qeKOAePQzvTq42MUtpilvU" class="scene"><b data-page-node-id="Nz2HpF6lQYB4IJK2eVrQ7S"><!--pnid:db5pY45KUObW2rfwaWBe5I-->场景：</b><!--pnid:nSuAlrKZj3LeHsrWdk3XyJ-->模型出的一道题本身有歧义，用户答错被记了证据；或者开放题评阅明显误判。现在只能整条删除知识点，或者忍着。档案的“可追溯”变成了“只能信”。</div>
+      <div data-page-node-id="qp7ZTz1HRChnbTCmQ9Zbz4" class="grid2">
+        <div data-page-node-id="AfQzU4BoQVt2GAEnwwNLN4" class="block"><h4 data-page-node-id="JCd0wGwoFB0SYtdn8Z2EPH"><!--pnid:Enk8H4py0TEf8oqvoWVqef-->做法</h4><ul data-page-node-id="BLIvNyBDI9g3QlSmjhWtfD">
+          <li data-page-node-id="wWg2VKTF3CBHwWQ99mdUqt"><code data-page-node-id="dN5hHDSaAAX7EX0NPOmdQH" data-pnid-children="Gkc4DLhOS8NXiN3L7iAmAw">evidence</code><!--pnid:LrBbcKWYhRUbSeg731098D--> 增加 <code data-page-node-id="ZcTyPPBHSlVlxeAtOSuBxD" data-pnid-children="T4D33xIkWiO1N8uBRUrtWx">voided</code><!--pnid:437VlRwgVvoTHekGKoWzYO--> 与 <code data-page-node-id="WBdI7wVoSSG04N6IzzWrbY" data-pnid-children="7crwa9SdeBmRurNEwUtA1e">void_reason</code><!--pnid:ZtXYAyFKLvsk57sIUahbsz-->，软作废而不是物理删除，审计记录保留。</li>
+          <li data-page-node-id="fmpJc4zjIrFPMPL6mndsCu"><!--pnid:8ltKB14jHMZwDWR23cAE0t-->知识点详情列出每条证据（时间、题目、对错、是否用提示），提供“这条不算”与原因。</li>
+          <li data-page-node-id="7ADNmGm05OuniA7WH7otuz"><!--pnid:O5L2uV3F32qVaJdgcLcOFa-->复用现成的 <code data-page-node-id="ZgsySC7wBJeD4V2NPq623G" data-pnid-children="qWGh7an9H2hunRabXkSoeJ">recomputeConceptAggregates()</code><!--pnid:rPfbFJ8hOh7hQeXlAB09xf--> 重放剩余证据；作废动作写 <code data-page-node-id="bX2ys3X4tTBxbv6PIxE9a3" data-pnid-children="MqtOlPiW4DilRw9M7HoZZt">concept_events</code><!--pnid:FgtoHhTQk8H3hiaSyjC5TY-->。</li>
+          <li data-page-node-id="KxjucZ4dL0pQhgtdLobGOd"><!--pnid:Epd0I7gayJbTvNlgo3oPvN-->若作废后该知识点证据归零，状态回到“尚未接触”，而不是留着旧 p 值。</li>
+        </ul></div>
+        <div data-page-node-id="cTkM8g7hghU1Xt9RtH5Plr" class="block"><h4 data-page-node-id="y5N61qt3RA93NYbxfZXUT0"><!--pnid:zVfLXXwF8Fz9cxTqr1BB4E-->代码落点</h4><p data-page-node-id="LOvrzgYfvcppMsJ7CnXWY1" class="code-line"><!--pnid:erRH6Doc47mCxNZH8aSEm2-->src/lib/db/schema.ts（evidence 加列）<br data-page-node-id="eWGhLBCHNTEe3rCqJmejOM"><!--pnid:zUoXywDanw727kRRS2x1Wf-->src/lib/db/repo.ts:129（重算函数已存在）<br data-page-node-id="jotHnO8tepBloUHh3zWKRp"><!--pnid:qFZEalmfUGjcgJTImY3qqI-->src/app/api/evidence/[id]/route.ts（新增 DELETE）<br data-page-node-id="GxGtMEuz2iRSAw3F68bIfX"><!--pnid:C1IFSj4xmCHkwijKh0hvcx-->src/app/library/page.tsx（证据列表 + 作废）</p></div>
+      </div>
+      <div data-page-node-id="I66o8kiGk6VJuD9FdsgLtt" class="check"><b data-page-node-id="Qb4BZprRCcSNfIZXmdDv6N"><!--pnid:EgWS0eq5NY0WqoYlclMe7U-->验收：</b><!--pnid:GCrB67WFssucom1sVAn6bB-->作废一条证据后 p 值与状态按剩余证据重算、快照新增一条、审计写明“用户作废”；作废最后一条后回到 <code data-page-node-id="5AdEw52ysq4PameaUm4kzN" data-pnid-children="xuZSL2ZtgLPWExvxOUQlTG">untouched</code><!--pnid:3mC6mhhYaFTkOavbsWJ7L5-->。<b data-page-node-id="u4xAt8gC1yBXmtkw6Bcsmh"><!--pnid:u91VHSPeaX5zwGwbRb8vaY-->注意：</b><!--pnid:nDRLNgxZSKRYqJ6umPU66l-->软作废的数据仍参与导出与审计，不参与掌握度与复习调度。</div>
+    </div>
+
+    <div data-page-node-id="DsmMeJZeTzVcHsCC7RDfdQ" class="idea">
+      <div data-page-node-id="GPYpsa6cHcBZFCNS3ResTS" class="idea-top"><span data-page-node-id="R9zLl1DxeyFu7CSCs8U5UL" class="idea-id"><!--pnid:6y9TvMs8VWvROj6KhPd8gL-->A4</span><span data-page-node-id="snnac3vZKFBEIPtR6R58GM" class="idea-title"><!--pnid:pjaCphu8AgUVsJYwKNekZD-->掌握度校准视图</span><span data-page-node-id="Bpi2F3NIir7YoJjaBk5Wf6" class="idea-meta"><span data-page-node-id="ohQ83pxB6xiZV6dJ3g8xMY" class="tag a"><!--pnid:2BrX3zWxuagEjLP0BTrHqS-->价值 中</span><span data-page-node-id="xYOwp1JZ6EwoU9NvVl5fJb" class="tag gray"><!--pnid:Kam5eHV1ZI2GHPrc4rmZgS-->成本 高</span><span data-page-node-id="CvfOHokr7q2TeJyl6YKuPD" class="tag b"><!--pnid:92rLFbFlj01yRbgD3VcCce-->批次三</span></span></div>
+      <div data-page-node-id="135Oeksj17iafEQI0Iwc9V" class="scene"><b data-page-node-id="1OzlT4hxOfbRoMuiMxItwn"><!--pnid:FlpC2aVYywhPLeHGx3BJ3Y-->场景：</b><!--pnid:TtFGryUeQ145HjbJD991Ge-->系统说“p(掌握)=0.88”，用户下次做新题还是错。BKT 参数是否适合这个人？没有人知道。</div>
+      <div data-page-node-id="30kAvC5vKrxZqIAomNTS5Z" class="grid2">
+        <div data-page-node-id="PvaurxBgaOiJ74XjKIv5sA" class="block"><h4 data-page-node-id="55xwokkBZ8PmREMnCOJhhG"><!--pnid:kvs8V3RDRDUiiArfC4w5bF-->做法</h4><ul data-page-node-id="XuTx3tpj8ULlTPrpnCh0gz">
+          <li data-page-node-id="g7EvvRKgDOMpdwpQquXois"><!--pnid:7YX6V3v6S88VNNWlmBPcEl-->每次“新题首次作答”视为一次校准点：记录预测 p 与实际对错。</li>
+          <li data-page-node-id="eNtoj4mTMrV10OmZ9ma5c5"><!--pnid:JLJolPQJ7iOAHDIWfCCpqL-->按知识点/主题统计 Brier 分数或分桶正确率（0.6-0.7、0.7-0.8…），显示“高估/低估”。</li>
+          <li data-page-node-id="BsZ5lraI2RZa8tgGllGrqB"><!--pnid:dVJ852Ye6tBJwXeyC1Dolo-->校准长期偏差时，允许个人化调整 <code data-page-node-id="3Agc8jB8hcuhIN2BavdWOu" data-pnid-children="vErS56Jgq8TalsrqUwUkhW">pG / pS</code><!--pnid:xyZVUp43D5eedUBDkbN3hH-->（先只展示，不自动改）。</li>
+        </ul></div>
+        <div data-page-node-id="YfcHYPn2JkZZF5Dr0XcerT" class="block"><h4 data-page-node-id="aOg0KOxXpWCEG4GbY7Ikb0"><!--pnid:we7bIjkw1IJ6aNtdhEoQm1-->代码落点</h4><p data-page-node-id="jU1rXRBJ3ZejT5reKeRnFo" class="code-line"><!--pnid:fWWSdEE6vOtNdsSPI8bBRZ-->mastery_snapshots（已有时间序列）<br data-page-node-id="BPr90tltIUza1JNPBJ8txb"><!--pnid:1ibIJv6Dlw5y9QrmIONWxs-->attempts（首答标记）<br data-page-node-id="n58tBw41BscpReSAfkrRYg"><!--pnid:CCxObfsma1xtRpiTSy6KE4-->新增 /api/calibration<br data-page-node-id="r0aqcR78M1aHZOf2k27v05"><!--pnid:ZyUjhbPM0Yp0i9UbLOxaxq-->library 或独立小页</p></div>
+      </div>
+      <div data-page-node-id="0nmTHrkZGcRfUvpfdl1Byv" class="check"><b data-page-node-id="JUe5XneqmlaXf5nSwbBYnO"><!--pnid:bQXs43dlKcOvL34cmHOGs0-->验收：</b><!--pnid:85yj01yh2ga8LdywWvcSMn-->至少 20 个首答样本后展示分桶图；数值与手工 SQL 一致。<b data-page-node-id="9CeStG7cPUCXClP6L2Oxp0"><!--pnid:hyNSaEwUt8j5lea5s6DxOx-->为什么放后面：</b><!--pnid:aaoId8RlJXRVK7GHHiYbLL-->样本不足时图表只会制造噪音，先把 A1/A2 的证据密度做起来。</div>
+    </div>
+
+    <h3 data-page-node-id="qwm1rNDGeMXWJPWfACcdRi" style="margin:26px 0 12px; color:var(--amber)"><!--pnid:xVDaQae2VKFhKsVN9JLT3E-->B · 让材料真正参与教学</h3>
+
+    <div data-page-node-id="IyF2kbgaTfbcnsk29fhsfJ" class="idea b2">
+      <div data-page-node-id="Nhj6TtVGX0RLmP0LTAhKUN" class="idea-top"><span data-page-node-id="nHHAkHg31eptdpK8fRqCme" class="idea-id"><!--pnid:CvYVqk34yFLg7f8Ch0zGxF-->B1</span><span data-page-node-id="6FUPKf4KmhRwRENpyxuP5a" class="idea-title"><!--pnid:BaDepAPFKBJ6pM7j1W5Tu6-->材料引用可溯源</span><span data-page-node-id="YzrvI91gOi2bzeljSG6cpI" class="idea-meta"><span data-page-node-id="BPfG7fT0gX21xjNpn9F6Us" class="tag b"><!--pnid:JwtH8nVzmyXnR4jiXiqe2q-->价值 高</span><span data-page-node-id="CHN4jeonN4PKWl657wH6Dh" class="tag gray"><!--pnid:GXpX4zJTNJtBETBgfioJCj-->成本 中</span><span data-page-node-id="fV6Xk1RpE5k6eX25JzXTtG" class="tag b"><!--pnid:X4VzYq3u55ovQ4YTGtK8HP-->批次二</span></span></div>
+      <div data-page-node-id="eREpOZrR9Z36WuUO5Y8e7w" class="scene"><b data-page-node-id="ex05tr9HFEHuZCTtKtKdl0"><!--pnid:06DiPSAgVazX5E464luE9a-->场景：</b><!--pnid:mx1at5s0HvX43vszQ9eJEl-->用户上传课件后问“第三章说的那个条件是什么”，回答看起来对，但没有任何来源标记。用户无法判断这是课件内容，还是模型的通用知识——这正是“不编造”承诺最该被看见的地方。</div>
+      <div data-page-node-id="DNqZnmhniWjs3qCABe0jYm" class="grid2">
+        <div data-page-node-id="ozJcH9PYYd9HXapPNCSWIM" class="block"><h4 data-page-node-id="0Q0QtyS4Rp3szLShrGjB91"><!--pnid:wFhRoUlM7nw5QctjUYOn50-->做法</h4><ul data-page-node-id="U3MaTYCS4c5XVsC5InKNt6">
+          <li data-page-node-id="wA4IxSzHGp6lErkmAYfZ5J"><!--pnid:jwKiMtOkK5xE01Q2II0AmA-->注入材料片段时附带稳定 id，要求模型在正文用 <code data-page-node-id="THWfxQZYj36I10mBuCe8nt" data-pnid-children="jZd505lIge2wcpPaYqN7hC">[[cite:chunkId]]</code><!--pnid:2giD5gMLPqE2q1uKXgyml3--> 标注依据。</li>
+          <li data-page-node-id="JpOk2tsOSRE9OSxIz7tHzY"><!--pnid:WZBswA7LgGMXqaSj1yKSq8-->服务端解析标记：只接受本轮真实注入过的 id，其余丢弃并记一条降级提示（防编造引用）。</li>
+          <li data-page-node-id="tvuzEkiwmpmmiavWKGw47C"><!--pnid:u0gIG5k861YclpyGkAoS9F-->消息渲染为可点击的来源卡片：材料名 + 段落标题 + 片段预览，点击跳到材料页对应位置。</li>
+          <li data-page-node-id="bhdBWBPKN1w8K0BQgbbsCy"><!--pnid:LDkcgZTvI2BwggMxIJ6wXB-->没有材料依据时明确不标，不用“据资料”这类模糊措辞。</li>
+        </ul></div>
+        <div data-page-node-id="ItpycfEs8JVoceV62HhWQQ" class="block"><h4 data-page-node-id="rKXY4905pRUx4Dha3yerDr"><!--pnid:XO3XcTV1AGd9hASRdvxT34-->代码落点</h4><p data-page-node-id="UKdHG08bxjsoyHSRBKXTEz" class="code-line"><!--pnid:ztgBOoT0ZryWKgjN0sb4Z8-->src/lib/ai/prompt.ts（注入 id + 引用规则）<br data-page-node-id="giWVe78IXji80D1EfBPyxy"><!--pnid:hhfMVQG5CAg3L9lIyWzGlv-->src/lib/types.ts（MessagePart 加 citations）<br data-page-node-id="iMVTjFRICZccpezOuGQm6l"><!--pnid:YzryQPQij2Pxnhi8VdAti6-->src/app/api/chat/route.ts（解析与白名单校验）<br data-page-node-id="T1EwXTKoW6Tnh7camd0TWe"><!--pnid:gZJlgyq2ZFhT4lsel6xFPO-->src/components/Markdown.tsx（渲染来源卡片）</p></div>
+      </div>
+      <div data-page-node-id="VVniqV0LbJTsAw0ZDI22th" class="check"><b data-page-node-id="VFmOcNZMbzyn6YTqIngDTP"><!--pnid:VoBSQTiF5SWE1MRMLrIv8G-->验收：</b><!--pnid:xneR7NkEo81aSWd40F60tV-->问材料相关问题至少出现 1 个有效引用；伪造的 chunk id 被过滤且不留死链；未上传材料时不出现引用 UI。<b data-page-node-id="B8eBfsPXkaqfQ83zodd1n0"><!--pnid:blcumFYpJw5NRDMPvCaEbZ-->注意：</b><!--pnid:VUlgs3ZqcmwiP5UShC7bLE-->引用校验必须在服务端做，不能信任模型输出。</div>
+    </div>
+
+    <div data-page-node-id="MhLlr8grPOBR5tzxwk2kqs" class="idea b2">
+      <div data-page-node-id="IWgpDRVO3h0wESCMsoN6M4" class="idea-top"><span data-page-node-id="GZf7tZDiauQGkLlSWUc284" class="idea-id"><!--pnid:7pfG4cYouBWDZr68Z8RCDy-->B2</span><span data-page-node-id="bLW7syrf8s4AALumUPhtje" class="idea-title"><!--pnid:oKQa42IgF8hDCivFXJ0on5-->从材料段落直接出题</span><span data-page-node-id="Ekn8TghzQtsef77GsEEpje" class="idea-meta"><span data-page-node-id="f3rVAXBWftAaBlk5syKKEO" class="tag b"><!--pnid:0TuqlJregtwtihQOqvtEaZ-->价值 高</span><span data-page-node-id="2p7BBtOfbWFzR79TsFW0Y7" class="tag gray"><!--pnid:1VLkkoa7XMJjPcEv7i08FU-->成本 中</span><span data-page-node-id="xKXjfW9Q8zMKPSO7qIpS93" class="tag b"><!--pnid:Kfy9qsv9zGKna0KNz8sAzt-->批次二</span></span></div>
+      <div data-page-node-id="0KcmIXgGL8bwXu0QDge3J0" class="scene"><b data-page-node-id="WVJFb16nhgtXtvyL9bPpBh"><!--pnid:hlAO3yRyFWfAVyNgDUxgIH-->场景：</b><!--pnid:gWEvW6koxUibEIfUQmHiFu-->用户上传了 40 页讲义，想“就这一节练 3 道题”。现在只能回到聊天框描述，模型还得自己找段落，经常跑偏。</div>
+      <div data-page-node-id="QzRAnpYCywpG1lFksbjV41" class="grid2">
+        <div data-page-node-id="CGwqJ9V24SjCgYDuW5SryU" class="block"><h4 data-page-node-id="pdqOAcPEkqj2xMEWWbQaaD"><!--pnid:lKC7e2zRRDQgbvNZzJAxYY-->做法</h4><ul data-page-node-id="g4AZZskFGnYcgmb15l1n8f">
+          <li data-page-node-id="Z0b3FChM8Rq2MR5pH0kxrU"><!--pnid:H9aehV5GdxW4dtJ9XUoL17-->材料页每个切片提供“就这段出题”，可选题型与数量（1-3 道）。</li>
+          <li data-page-node-id="bzAU652OW4avs7AoV6GBBe"><!--pnid:pKzfQPE0VswFtJz7FJJPiN-->后台用该切片 + 现有 <code data-page-node-id="Pds4uDEAAiU85Hothicjgu" data-pnid-children="2UX8onN4GszVcaJoNeZz9h">exerciseInputSchema</code><!--pnid:0gd11Ij2zyLEd7wp5D1gLR--> 生成，走与聊天工具相同的校验与落库路径（答案仍只存服务端）。</li>
+          <li data-page-node-id="YYFOsVnHlccPGAim50rVvb"><!--pnid:muwQwos60K17eiqdrWG964-->出题结果进入一个轻量会话（或材料详情），可直接作答并计入知识点。</li>
+          <li data-page-node-id="jFSMyhCJAaZkp5Vzb7jUmh"><!--pnid:GxhmNCjo2QnBXnu23FWCLJ-->生成失败时明确提示“这段内容不足以出题”，不硬凑。</li>
+        </ul></div>
+        <div data-page-node-id="objcxk8DrM60b80AvByRW5" class="block"><h4 data-page-node-id="T6YglNGZG1OMmom6v9lK4j"><!--pnid:xo5YVNXFy5Azi9saC8tBz7-->代码落点</h4><p data-page-node-id="ZQLMlJFqojTAz2IAD52sdo" class="code-line"><!--pnid:qKRCMeWKvzZiwEpr5GEGqB-->src/app/api/materials/[id]/exercise/route.ts（新增）<br data-page-node-id="UlOJHeVtJThJFVi8Ql5sgm"><!--pnid:r87HRJpUZdwF0EEXGCtrEz-->src/lib/ai/tools.ts（复用 createExercise 路径）<br data-page-node-id="kZPBaoCOpP4c9gtpjMigAf"><!--pnid:Nlwt6zvvkfKYxdzFfrK2Nu-->src/app/materials/page.tsx（入口）</p></div>
+      </div>
+      <div data-page-node-id="kTiBxqiTmTP85jYXuOs4E3" class="check"><b data-page-node-id="CeKE9mtDfVrQeaOzgajJWK"><!--pnid:8rtwCfw3DG2LKgdfSKfAkP-->验收：</b><!--pnid:wD3fGKfOroNKV1TWsjFfyM-->生成的题目提交前响应不含答案；作答能正常判题并写证据；不足 50 字的切片给出明确失败提示。</div>
+    </div>
+
+    <h3 data-page-node-id="8vaJ21hipV3HmIUmx50ToO" style="margin:26px 0 12px; color:var(--blue)"><!--pnid:YHbKTHWLWN6GB2MeEVOwu7-->C · 学习节奏与可控性</h3>
+
+    <div data-page-node-id="MQBYC5RrgPmCDMX9E0Phbg" class="idea c2">
+      <div data-page-node-id="ABVJyXrGa4KmEMIjsX7Qrr" class="idea-top"><span data-page-node-id="QWOUG5zl7EbxSwVRmfs017" class="idea-id"><!--pnid:wqjoUw05C46GkQamNQj3U4-->C1</span><span data-page-node-id="PsCBYDGv95kzUHPALNTboE" class="idea-title"><!--pnid:51OMLacKvitF7qG8bnDwVx-->今日计划：给一个 10 分钟的确定答案</span><span data-page-node-id="h8SoPxU78070Os9Xju51FQ" class="idea-meta"><span data-page-node-id="uuA9bhUTVtxGGqEF3usD9X" class="tag c"><!--pnid:OB7L1WyqebFKmgEvMSsna5-->价值 高</span><span data-page-node-id="qasIag1w92XiV4gj5vpFpZ" class="tag gray"><!--pnid:A0zxOlpEyraiwWBjEy089G-->成本 中</span><span data-page-node-id="xWZFdMrCWwsF2MHzq2KU0L" class="tag b"><!--pnid:SisC8VaTiq9to7xBztSdro-->批次二</span></span></div>
+      <div data-page-node-id="gqHfretLY6ipXKkqzMPC92" class="scene"><b data-page-node-id="jtiIqVMl0T3V1rQGPBPCXb"><!--pnid:Gw1IAdTe0fkz3pfEk0ZAzy-->场景：</b><!--pnid:AXoiClBPj0zVYbA1WJVRo4-->用户打开首页，看到四个示例问题、最近会话、薄弱点、复习建议——信息很多，但没有一句“现在开始做什么”。选择成本就是流失成本。</div>
+      <div data-page-node-id="0GAEEvYJjaaV7IvgWE7EVM" class="grid2">
+        <div data-page-node-id="OK8WY76gbAwrt7iwzfVUq8" class="block"><h4 data-page-node-id="i7rzBLboXksJAhqISkF7ob"><!--pnid:WJoZDhTGOK9qvbwNfzyF1R-->做法</h4><ul data-page-node-id="SFOhjLinbQ4kuK1EfSReCW">
+          <li data-page-node-id="OcaZWBmxCuDVhvIle3mEbw"><!--pnid:zFIkn6PfAfJT760IL3vEaq-->首页顶部给一张“今天”卡片：到期复习 N 个 → 取 1 个；最薄弱 1 个；预计 10 分钟。</li>
+          <li data-page-node-id="cdCVjMWIz6UQXBPlI36kjR"><!--pnid:ugojslQJKmvG3YNjAqlitu-->一键开始，走 A2 的结构化会话；完成后回填“今天已完成”，不搞积分与排行榜。</li>
+          <li data-page-node-id="vqSgJxLpD96gtykC8auNLu"><!--pnid:VKrQhO85DqDJGfThFFldMr-->没有到期任务时，给“继续上次”或“试一个新主题”，不硬造任务。</li>
+        </ul></div>
+        <div data-page-node-id="914KfLvktnjcCAH6Gn8uZy" class="block"><h4 data-page-node-id="O4NanARnAYKAJFVUcLHW8L"><!--pnid:j0YkUI6jj4ufpBrSzoYgbC-->代码落点</h4><p data-page-node-id="PbiBN3Zd7QdYJZIhmkD7cE" class="code-line"><!--pnid:5lWNQnhGy4heUEHTPkmswY-->src/app/api/home/route.ts（返回 todayPlan）<br data-page-node-id="qjxnywchdsfseGkP1XJWj4"><!--pnid:g1Hm4bfGcz8LfCjzXkOaV7-->src/app/page.tsx（卡片 + 一键开始）<br data-page-node-id="kPgboqdb7w6lZS1NZEgYCl"><!--pnid:1zI4in8vRsTinFBEsIcevZ-->复用 refreshReviewQueue / listWeakConcepts</p></div>
+      </div>
+      <div data-page-node-id="9ja068RsfYs9vaIHEemywJ" class="check"><b data-page-node-id="8CrdkXiECCyjPRXGu6vGaD"><!--pnid:VX8qRyThImRTOTlrVUcucN-->验收：</b><!--pnid:cP7JMByLncepFXQgfGc5wN-->有到期条目时优先推荐复习；完成后当天不再重复推荐同一条；无数据时显示空态而非假任务。</div>
+    </div>
+
+    <div data-page-node-id="ZgDg5hgefDfJRgrDjSKlmi" class="idea c2">
+      <div data-page-node-id="TPpldOo3Ux5scFzhGDYrBv" class="idea-top"><span data-page-node-id="VMYtLIOPYkgZpwRnre0Xyr" class="idea-id"><!--pnid:beOIQz3NGfLuTIm2FK93la-->C2</span><span data-page-node-id="ctNXfkV1xcdJVPChrR55hG" class="idea-title"><!--pnid:Vgl0J923lkifHfLJ06PkEf-->题目反馈与“换一题”</span><span data-page-node-id="rUxDUvIOXbvJZ8BwupR6Ua" class="idea-meta"><span data-page-node-id="bWnHn2JcHwTyPA1VkvHylP" class="tag c"><!--pnid:TTk9Nh2hE0OLBBaLRtxgNQ-->价值 高</span><span data-page-node-id="VgSBSVIanUcarjwZS9KQa8" class="tag gray"><!--pnid:XEGbTbMfGhLvCsuohmKRTh-->成本 低</span><span data-page-node-id="fstgxPrQYlJJED4u23g7LY" class="tag b"><!--pnid:B9Ovo1OxOfDFQBMsBTwLyZ-->批次二</span></span></div>
+      <div data-page-node-id="kH6arvVgy1qundtIABL1jE" class="scene"><b data-page-node-id="30hKfiduSJhwafGQ6YI0wB"><!--pnid:43VHR47fDePrlBnMZtHEWL-->场景：</b><!--pnid:cEYeuimWdzQuCDey92ekyI-->模型出的题太难、太简单，或者答案本身有问题。用户唯一的选择是硬做或跳过，系统学不到任何东西。</div>
+      <div data-page-node-id="ef7C5ubIzPDYjrV6NEA0sP" class="grid2">
+        <div data-page-node-id="M0N9AxjlOB1YPda7QKU4Et" class="block"><h4 data-page-node-id="Oi6oeCtiDmxWxiZnHDxdqW"><!--pnid:T9mFDzwLxohXwsqMNKVi9l-->做法</h4><ul data-page-node-id="YU4Gev2NSA1KifvtwJAE1a">
+          <li data-page-node-id="AFHHTKhO8feQto6tXHount"><!--pnid:bcTz2cCnUsVm8Y0V7TytDe-->练习底部加三个轻量反馈：太简单 / 太难 / 这题有问题（可附一句说明）。</li>
+          <li data-page-node-id="f0vD2wW5pfWwGwIDMmaByt"><!--pnid:GE82CWpYTdBUH98s0JtFau-->“这题有问题”将该题排除出掌握度与复习（复用 A3 的作废逻辑），并降低同类题的生成倾向。</li>
+          <li data-page-node-id="QQQ0fphttYVS56bShxzAQ2"><!--pnid:1twaPnnEK4WfI5iM2i6gIl-->“换一题”：同知识点、不同题型重新生成，优先交错练习（上次单选，这次填空/判断）。</li>
+          <li data-page-node-id="41IeB97FIgi7yjXFHyB2mO"><!--pnid:7f2D2RmpiHafh33byagtbY-->反馈进入提示词，作为下一题难度的依据。</li>
+        </ul></div>
+        <div data-page-node-id="UosOLWbBJtUSXBGVyqzD0y" class="block"><h4 data-page-node-id="R33Mez6axkPevLFEAirsK4"><!--pnid:3rxn4kV1E8ABrcW5QNamnO-->代码落点</h4><p data-page-node-id="XIDLJvXz9tim917NoNiELG" class="code-line"><!--pnid:ux6YlZBKtmwUBYMwmteQpc-->新增 exercise_feedback 表<br data-page-node-id="0DuoiV4SA6MlPCeG9Zas19"><!--pnid:zY7ONOyGjbnDcq0I68nGb9-->src/components/blocks/ExerciseBlock.tsx（入口）<br data-page-node-id="I1qEtSe7EarwQliPGbKVS5"><!--pnid:jPOobi2EaG7c5qzogs5qjB-->src/lib/ai/prompt.ts（难度与题型偏好）<br data-page-node-id="eFy2sbGvGKllA0clk92SXG"><!--pnid:quBhH5KnTmaf5aAzVKjNLV-->src/app/api/exercises/[id]/retry/route.ts（新增）</p></div>
+      </div>
+      <div data-page-node-id="RcV8FQVAHmfVCMsMaORg0L" class="check"><b data-page-node-id="Coj9iIHuM5h4YzGOrPhMnT"><!--pnid:mdM95KwaTmI5hDqns8tFyJ-->验收：</b><!--pnid:7ASGOprq1GlxLI5k47XjfP-->反馈可持久化；“有问题”的题不再计入证据；换题与原题题型不同且知识点一致；连续两次“太简单”后下一题难度上调。</div>
+    </div>
+
+    <div data-page-node-id="Wko2hsXijwvF03XBgxGy4a" class="idea c2">
+      <div data-page-node-id="mbaI0RF4I68nc9Q4YYuwLf" class="idea-top"><span data-page-node-id="RWmgUzTitWp0UrB6N8dp7s" class="idea-id"><!--pnid:KgyhNvHSoI9NYpeukbvNWD-->C3</span><span data-page-node-id="uNenshTrR4N86CsXk6b38V" class="idea-title"><!--pnid:C9TeqLUzXgnSffJOm2rNLV-->长会话大纲 + “换一种讲法”</span><span data-page-node-id="euMzODGGrIHWs1YbvHOxYa" class="idea-meta"><span data-page-node-id="Ji4JWqvVXJKBcZLnINdCEr" class="tag c"><!--pnid:U8mMumuBrm7aevPJ1B4u6z-->价值 中</span><span data-page-node-id="UNcBEoo6QYcLddIIiCbqFv" class="tag gray"><!--pnid:5pPyTXXcn2vb31Ec8sdZjU-->成本 中</span><span data-page-node-id="VpsC7L0qp1Rbg8ozsEEkvu" class="tag b"><!--pnid:ZiUPI4dQrbOxJi3yI2oNWw-->批次三</span></span></div>
+      <div data-page-node-id="FrofyEZhK74qVUIluw8MqU" class="scene"><b data-page-node-id="mhV6mQLfj6A4LbHruWobvK"><!--pnid:Mhy9QZmo18tSbbX3KPryeo-->场景：</b><!--pnid:Haui0YtXfUun7MxMku4iqq-->一次会话 60 条消息，用户想回到“刚才那个模拟器”或“第三道题”，只能疯狂滚动。模型讲了一遍没听懂，用户只能重新打字“换个说法”。</div>
+      <div data-page-node-id="1R3efG78DwZgdCl6Wy4tDb" class="grid2">
+        <div data-page-node-id="wtmOniN52nWsqa8b4Azt1r" class="block"><h4 data-page-node-id="VvTsD0WMz4x9l1wgkJAU4Q"><!--pnid:Aoskq60PxZHLzkpDRXlsnv-->做法</h4><ul data-page-node-id="2ZU4R7O8hZ4yokxf63N5di">
+          <li data-page-node-id="SbrBJCHjGIwRynhf4jefhR"><!--pnid:OH5fgWgaLriFRVrjs6wtng-->会话侧栏按 block 生成大纲：练习 / 图表 / 模拟器 / 小结，点击滚动定位并高亮。</li>
+          <li data-page-node-id="rKpjgPW4kZF3vB4dQ7z04h"><!--pnid:2bwWKI3zMP1SG8KxnHzCfP-->助手消息提供“换一种讲法”：带上 <code data-page-node-id="3AJuiYWzrbuGglUhXe9zXT" data-pnid-children="W8LuwJp8YVjkC31IHEIgDS">intent: "rephrase"</code><!--pnid:UxaIoLItGHJYo1PFdykxA5-->，提示模型换表征（例子/图示/对比），而不是复述。</li>
+          <li data-page-node-id="NXASWnMO2wB5mTTSpylvSf"><!--pnid:zOhKtJJdmHVffBvl3PdiRo-->移动端大纲收进抽屉，不占正文宽度。</li>
+        </ul></div>
+        <div data-page-node-id="H6yGOMKl7cEcrzYv1BLSro" class="block"><h4 data-page-node-id="3oZ1qnHAVCO3hsTeQdWDWS"><!--pnid:Dq2g4VvzecJEGvlsjaxYii-->代码落点</h4><p data-page-node-id="AjRc4b4ItskM3UzNXiSjsb" class="code-line"><!--pnid:8CXkg6VHbAceJUdyxyWv7C-->src/components/chat/SessionView.tsx（大纲）<br data-page-node-id="TNf1lKO3PbWDEkM8rxUu7n"><!--pnid:2nckIjgw49Gug8Yttk7lOo-->src/app/api/chat/route.ts（intent 参数）<br data-page-node-id="ZN1wWukqLkSKyA8dXNKuVN"><!--pnid:DPcjhKdxeMNR4wI8OIorF1-->src/lib/ai/prompt.ts（rephrase 规则）</p></div>
+      </div>
+      <div data-page-node-id="BPcSFyeziEVCS9nlIMwfHA" class="check"><b data-page-node-id="Z0GAMGMs1nWfBBZw1h0sXI"><!--pnid:TJelHgUXOINoQLl2trlTuY-->验收：</b><!--pnid:ja0T10BUeAaqe4OtDvJ5Ts-->大纲项与页面 block 一一对应且可跳转；rephrase 请求在提示词中带明确意图，不新增会话；移动端无横向溢出。</div>
+    </div>
+
+    <div data-page-node-id="mkhXBLAYucZYMmnC4fXZZ4" class="idea c2">
+      <div data-page-node-id="HOBe4AqeElwdkSQfXdNN2y" class="idea-top"><span data-page-node-id="FoM3XwN1b124Gs5ElW4L1p" class="idea-id"><!--pnid:d3tddrnGGqdWKs8xdyxHSH-->C4</span><span data-page-node-id="hXHrXCkrTsbOIz578oTLfN" class="idea-title"><!--pnid:M0Daj6U5ildpZKVsHpKMNi-->导出学习记录</span><span data-page-node-id="ZezkugVzJOZNWgsrdQfMDb" class="idea-meta"><span data-page-node-id="w9Zz8i5ZYIlSKLGYkzAVMF" class="tag c"><!--pnid:Xj9Hpo91LFzjIjhqgu9VJr-->价值 中</span><span data-page-node-id="Bu3IHfXL0j9z43jvaxXkjL" class="tag gray"><!--pnid:VKdF2Wbb3vKVa2TlMqVwqf-->成本 低</span><span data-page-node-id="6PPSo0ChBUFxrtlww97P04" class="tag b"><!--pnid:6IOteXdpcrzvORgm58sWl0-->批次三</span></span></div>
+      <div data-page-node-id="lPRwS0vX7HX8MQuufnXOUK" class="scene"><b data-page-node-id="gJay302ahHl0bmf6mR1xgk"><!--pnid:ku3siMxxZ7uZReWZaYIkNk-->场景：</b><!--pnid:Jubepyg1wXahfw6vJDhlFY-->一周学完，想复盘或发给同学；现在只能截图，题目、答案、反馈、掌握度变化全散在界面里。</div>
+      <div data-page-node-id="qwmfI9mE6EAS2p3NqkkRXW" class="grid2">
+        <div data-page-node-id="tgDRqofDfk4y4lr16AbUCC" class="block"><h4 data-page-node-id="bBhn378ZQIy0ZJfk3WC6Cj"><!--pnid:eHuA0ATcr4xomWdLzzGigO-->做法</h4><ul data-page-node-id="Tna39XgyUrhLY6cYrorpHC">
+          <li data-page-node-id="ZzdcIYqxzjKMlTNyC5N5p7"><!--pnid:VgG6aF9kx9n6vTIP1mY9LO-->会话页提供“导出为 Markdown”，包含：讲解正文、题目、我的作答、判题反馈、掌握度变化、来源引用。</li>
+          <li data-page-node-id="uKKrHxkh5yR9ags3OvlYEi"><!--pnid:YymRIKiWe8NRRZjBilEZyR-->未作答的练习只导出题干，绝不导出答案。</li>
+          <li data-page-node-id="3tgyjWKiyL8QTXrOpeFQik"><!--pnid:cCSTVJtr8GDMeSRjxtClLt-->浏览器打印样式即可得到 PDF，不引入额外依赖。</li>
+        </ul></div>
+        <div data-page-node-id="B9RA14BVnStXVePZ6nUr0o" class="block"><h4 data-page-node-id="RMDvm2SUXrZlbDTGjQjI1F"><!--pnid:F49ok1nkPV4yhTOQShAjcz-->代码落点</h4><p data-page-node-id="0n3dfVcCGJiSECz7PPfub3" class="code-line"><!--pnid:ysbhfFcYRI2oJuXMLHPG3m-->新增 /api/sessions/[id]/export<br data-page-node-id="wWdtvGx4swbycH9Y3loePP"><!--pnid:aBn4Jpt6mjb5AVZgumnV3C-->src/app/s/[id]/page.tsx（按钮）<br data-page-node-id="8rmzxQ98rH4UhTDIDaVACV"><!--pnid:0rr0hXBhYkNzB4Vhnes9Fx-->src/app/globals.css（打印样式）</p></div>
+      </div>
+      <div data-page-node-id="HSkaPG1ypFJpdMmsljo3M8" class="check"><b data-page-node-id="8UeHMWF9oxSXO3jgMR1Z0c"><!--pnid:RoK7l7HEjX1xRJkxrRQX5V-->验收：</b><!--pnid:ZcibwKpW2OmuE2rvzsyPoS-->导出内容与界面一致；未作答题目无答案字段；Markdown 结构有快照测试。</div>
+    </div>
+
+    <div data-page-node-id="mqOdKSZXQ9MdWGHHNBC1sQ" class="idea c2">
+      <div data-page-node-id="h5Gu3xQRrlAUYsDE7T9VcV" class="idea-top"><span data-page-node-id="H9wehJnTvQUuxx1Y5HyVz1" class="idea-id"><!--pnid:pkqwrhCnkeWWFsM5ykQFN2-->C5</span><span data-page-node-id="cLZi5zP2WxdaojmhjVORHU" class="idea-title"><!--pnid:pby5g7M7pWmOQuWkdVlpTU-->全局搜索</span><span data-page-node-id="qA2FtK33iBz2sm8RqZv1od" class="idea-meta"><span data-page-node-id="a5T4nsLSHJkPnSokR5kqDI" class="tag c"><!--pnid:u6qFAFaUWit8rkuBAzu43n-->价值 中</span><span data-page-node-id="orusnIbohKosVfkC4VFBBK" class="tag gray"><!--pnid:lGkEpFejp7rWo7VXf5Sg81-->成本 中</span><span data-page-node-id="jpVs1pM5ZM6zc1Se0q9o1h" class="tag b"><!--pnid:qh4Uq3qpBrF4Usd6fE9A8S-->批次三</span></span></div>
+      <div data-page-node-id="WJZsCALj6BfpJE1dLSTygS" class="scene"><b data-page-node-id="jft3zBRh7jsewR5mzferow"><!--pnid:LvlRIpqg3pYC2d4z6gTqx3-->场景：</b><!--pnid:hPQB66Gi5n8u2ULz7gzmIt-->“上次那道关于机会成本的题挺有意思”——现在只能按会话标题找，找不到就只能翻历史。</div>
+      <div data-page-node-id="JnSpuPoO8bth2TxXzHwxNS" class="grid2">
+        <div data-page-node-id="24hMEV6BNPq7A6XuN4vHVN" class="block"><h4 data-page-node-id="8wfr8LaieHAVemNiNWs8pa"><!--pnid:BpVzn70f6bxMh6NkhVQqIB-->做法</h4><ul data-page-node-id="38aD7YjQoOzNkODrpYfwhp">
+          <li data-page-node-id="asBdjTDRFGUZX9UDHJguyJ"><!--pnid:yVatUZjoa0uuSPvL365mgR-->SQLite FTS5 建 <code data-page-node-id="Paa620MvjsrtetIiiZS2zI" data-pnid-children="S8sqW8WZHyVekLDMmhznrw">messages_fts</code><!--pnid:8Zp0NKC3Dic4Vwsi22HTar--> / <code data-page-node-id="pRIfDOguogsYmTn1xTxlJB" data-pnid-children="MvES9GQi1QuolHmcaZK1AI">concepts_fts</code><!--pnid:2IpidnjUGrbHTV2agHX1uC--> / <code data-page-node-id="MEUvYioortaXqykXquWYFZ" data-pnid-children="DrgMB21bPWXbLpKdfwIXh5">exercises_fts</code><!--pnid:9lQqfKtRKQ0bnrLfWplyH1-->。</li>
+          <li data-page-node-id="FXRcjUqzq477zVB3oojHgE"><!--pnid:cujbKAioT89TeGCG7UmE7s-->中文必须用 <code data-page-node-id="Qz2Bjo32rQLJqNB1ksrR2Y" data-pnid-children="TYXFFsCUE6bChkbPTzFpzT">tokenize='trigram'</code><!--pnid:9dSQUkbZVFlP5iP2ggktvO-->，默认 unicode61 对中文分词几乎不可用。</li>
+          <li data-page-node-id="kCoFvEXlf26AgZxVA9SF4H"><!--pnid:9W5o5cSIln105GaCuYipKS-->结果按类型分组，点击回到会话对应位置；只索引本地数据，不上传。</li>
+        </ul></div>
+        <div data-page-node-id="ZPYY44Xa4VZXaidtXHDpwN" class="block"><h4 data-page-node-id="SkZZUeGlVTsU738PgSLMKF"><!--pnid:pAvCoaTcCFJcwjjfokXW6x-->代码落点</h4><p data-page-node-id="F00TOI8y6J6aRumwoPKONl" class="code-line"><!--pnid:jyVrpyWad4uUIGMYVmN4Jv-->src/lib/db/schema.ts（虚表 + 触发器）<br data-page-node-id="syp7KpCBgk6md1ctTd5nyI"><!--pnid:0AmTlgnlQxIP8m8MZXLXcb-->新增 /api/search<br data-page-node-id="22PXyGhmkFEnSq5R0dNjsn"><!--pnid:xBsp1tSMXpuC3UyuayBCXD-->AppShell 搜索框</p></div>
+      </div>
+      <div data-page-node-id="W2jm5xc8XqA5UQuA83Juf6" class="check"><b data-page-node-id="9RihMp47RTfzIoKc05GUu5"><!--pnid:iPsO6TnUt3uTyF2ZhDwn6e-->验收：</b><!--pnid:9Gvd5kjTT4IctmJNm38l0k-->中文两字以上可命中；结果不含已删除会话；搜索延迟在本机数据量下 &lt; 100ms。</div>
+    </div>
+
+    <h3 data-page-node-id="kTdU5trBzCOj3TtZkFzl0s" style="margin:26px 0 12px; color:var(--blue)"><!--pnid:r9wco1Gi2R6vkCycuDUc2v-->D · 成本与可靠性</h3>
+
+    <div data-page-node-id="5KcM2dHJy3VJWYdWFk4BIs" class="idea c2">
+      <div data-page-node-id="mFC4YhH1k3UUVgDJAxnrLS" class="idea-top"><span data-page-node-id="MbkcV2oFf0gEtWjp7QDaUk" class="idea-id"><!--pnid:kKbBTuiZlNtJ8QRIzCnuRS-->D1</span><span data-page-node-id="rlEcNg9NmRqdrARKXhAS1O" class="idea-title"><!--pnid:f2MLmNmECgeYkSXN4m8fJJ-->用量与成本面板</span><span data-page-node-id="pDIyMlcLD90C62opLFLhtC" class="idea-meta"><span data-page-node-id="F1EhL5iSnJEOplJbZy0S4h" class="tag c"><!--pnid:1gxlxosqvdGByHCqrbiDV3-->价值 中</span><span data-page-node-id="YJ1CscGSC2EXiVzJfxQZti" class="tag gray"><!--pnid:2fftJaRwQVdCLKn6889iRf-->成本 低</span><span data-page-node-id="Ln2iSZIH227hyBYBXCxZO5" class="tag b"><!--pnid:AExoQYAGdq35k1sWv5HRoA-->批次三</span></span></div>
+      <div data-page-node-id="7nm6tpzcTabKB4gVqdIt9y" class="scene"><b data-page-node-id="TMfnt21pqlUX7vzNMgVqu4"><!--pnid:gJMpPJBtO7HdZkZu5gqeE4-->场景：</b><!--pnid:RpwKwYf8W5lES8yznkyPt4-->用户用自己的 API Key，月底才发现账单翻倍；<code data-page-node-id="oNxzYKoZ9m5zM9TJewJWus" data-pnid-children="6RwyKCrac7D6W7RaeAp9VT">usage_log</code><!--pnid:1jee6X9PDLYBGWFpXCWAKy--> 记了 tokens 与延迟，但界面上一个字都没露。</div>
+      <div data-page-node-id="6b0qrN4j3wePfJMMtZgfia" class="grid2">
+        <div data-page-node-id="5p30Hek49bVbIGORjFNHnK" class="block"><h4 data-page-node-id="qdWDybPSCvJKBA2YNWYkzT"><!--pnid:Eff8MK6DMdBn1n84VohXtC-->做法</h4><ul data-page-node-id="F6EbNsq4p11qWCFDz1oh6M">
+          <li data-page-node-id="Q9ov1cKdJLthniVrolldMg"><!--pnid:Z04O21KmU3ht6KmF2k8fhE-->设置页增加“用量”：今日 / 7 天 / 30 天的 tokens、请求数、成功率、P50/P95 延迟。</li>
+          <li data-page-node-id="Lulw0DxYyov00bl4sorFLS"><!--pnid:5FtMFcCK3dwuLjAipgZwnS-->价格表可配置（每百万 token），估算费用；不做硬编码的厂商价格。</li>
+          <li data-page-node-id="EgxqLfpHEG7DxR1niR2xN6"><!--pnid:HgbROmZ3Cxhxt2Ssbk6R3J-->可设月度预算，超 80% 提示一次，不阻断使用。</li>
+        </ul></div>
+        <div data-page-node-id="MEA4ld1QagbN3UIuaNETTY" class="block"><h4 data-page-node-id="aHiDwj9oL4HjzIX6WnJI8d"><!--pnid:bn1pcV1EyaJCrfVEZCKDlq-->代码落点</h4><p data-page-node-id="F6qpIydOUa0DKKo4BX6EWh" class="code-line"><!--pnid:JbO7jAtC8fawWbUJsYEyLu-->usage_log（已有）<br data-page-node-id="CEcC3N7ztTjuZvyrdpKPsL"><!--pnid:BGFw7njZiEmmMRnUCVIxUM-->新增 /api/usage/summary<br data-page-node-id="GlosKB1wMkZHv4nK9AmzzE"><!--pnid:2NpS89JfSupNmpJTdGRyYU-->src/app/settings/page.tsx</p></div>
+      </div>
+      <div data-page-node-id="mRsOLzaDHMXA2H5oNkvLnG" class="check"><b data-page-node-id="1NdvcQ9cAqwLuAMsRxmno9"><!--pnid:NPKIOGALpHgN09xG1kpFf8-->验收：</b><!--pnid:bAyDmRy249Nbe2U1KvgGfU-->统计值与 SQL 手算一致；无数据时显示空态；价格未配置时只显示 tokens 不显示金额。</div>
+    </div>
+
+    <div data-page-node-id="UfK10nxTWIYKplxA0iXSft" class="idea c2">
+      <div data-page-node-id="NA5ALeB1NdlE7Zgyycs6bg" class="idea-top"><span data-page-node-id="PUx93mZ5WSrvhLgFFnekV2" class="idea-id"><!--pnid:pIG9KccpYow9c3dKvuDPaS-->D2</span><span data-page-node-id="75LICvI4ULZyLPvpYKjCC1" class="idea-title"><!--pnid:Kiq7IpcAHWEXqyizJ630Lu-->主模型 / 快模型分级</span><span data-page-node-id="N060MK64nIy8Jee5FW2mx4" class="idea-meta"><span data-page-node-id="NUbit5WPWiG7hFIbHsPij1" class="tag c"><!--pnid:PKCjMO2Xn27EUVi75xWePD-->价值 中</span><span data-page-node-id="apRc4PATSx0hWUK6XRf1UX" class="tag gray"><!--pnid:r7L11NU5VFbI5lLPI7frmT-->成本 中</span><span data-page-node-id="IDOFonPdVQeifVF7hpBzOO" class="tag b"><!--pnid:plOujNlSPyGi0Xqk5ZNLgu-->批次三</span></span></div>
+      <div data-page-node-id="dUGSDfSTMnmq17Pd2i8Ap4" class="scene"><b data-page-node-id="hzahyQRe2hP4aWdOIzYzMm"><!--pnid:0CDcBR9V7lNuZyrxyHOuMq-->场景：</b><!--pnid:AwcA5gOxPQ2d3fdsGlBjKB-->生成提示、开放题评阅、会话标题这些短任务，和主讲共用同一个贵模型。成本高，且这些任务对模型能力要求并不高。</div>
+      <div data-page-node-id="rz8ICOzyXUxQ474nKtac7j" class="grid2">
+        <div data-page-node-id="VYwm8JIZHqW9U492zOxsZ8" class="block"><h4 data-page-node-id="IkWprWGoE4aLNAH6aB4qAP"><!--pnid:B6JUUdw4th6CoiTh54fBSt-->做法</h4><ul data-page-node-id="rpBx8G2CcA5mJenx38NWCt">
+          <li data-page-node-id="C2CBukUKb3mBDAtdvZJ0MY"><!--pnid:JbYf1adzArZNUyl2QRYT1j-->设置页增加“快模型”一档（可留空，回退主模型）。</li>
+          <li data-page-node-id="LIDNHHC3RBCYxPnWUAtxyO"><!--pnid:qXfxQ6dtHW4gVYUxmj7fAf-->提示生成、开放题评阅、标题、摘要走快模型；主讲与出题走主模型。</li>
+          <li data-page-node-id="jP7lDPBA5kLkvJW9cGCLrb"><!--pnid:vPAS1gkglx1XvU0b60PLdh-->usage_log 记录实际使用的模型，D1 面板按模型拆分。</li>
+        </ul></div>
+        <div data-page-node-id="VSNvs3DKKfWejT3hfL9CyY" class="block"><h4 data-page-node-id="ODgVaRqPexwLWREzGTY5Ow"><!--pnid:lS5Vf4tgrwEMUtNQ7xRizF-->代码落点</h4><p data-page-node-id="2uOhoZl5f2qyuaEc3rxFYr" class="code-line"><!--pnid:EPy798eqNiy661U2YYMV3B-->src/lib/ai/config.ts（fastModel）<br data-page-node-id="1xdFd6qbnwJxM4iXaYK2m5"><!--pnid:sdKx0UtniKWIqJ2t3zDseV-->src/app/api/settings/ai/route.ts<br data-page-node-id="0oUXOqo4RHIXKh9cZ564RH"><!--pnid:W8FcI85TkRADdYY6KH4jCS-->hint / attempts / chat 三处调用</p></div>
+      </div>
+      <div data-page-node-id="4sXEmBB7q7iqxHoF2esUIe" class="check"><b data-page-node-id="QTUrkm8bnV14rM1NTmiyTX"><!--pnid:CrXQ2MngGRQQJbxcY2sri4-->验收：</b><!--pnid:0bb9OzvCC8gyKCcbAEx12T-->未配置快模型时行为不变；配置后提示请求的 usage 记录为快模型；失败自动回退主模型并留日志。</div>
+    </div>
+
+    <div data-page-node-id="f53SISwITccqI89578KXDV" class="idea c2">
+      <div data-page-node-id="NnWJomvBMQBVKLsI97PGCt" class="idea-top"><span data-page-node-id="mMXgr24b9YXdkgTgM9RYLu" class="idea-id"><!--pnid:YQZdjXWsWSCfnCIFiCLTBI-->D3</span><span data-page-node-id="zQ2jj3AF9Oqhmh3SViuN0O" class="idea-title"><!--pnid:hX5k2SXG87CjI8UjhSoMiJ-->提示词评测集（改提示词前的安全网）</span><span data-page-node-id="msLBLJigNCf9M1WQpHEgIn" class="idea-meta"><span data-page-node-id="4k7uQYgJThx8sfguZMS3zK" class="tag c"><!--pnid:VT0MJXgQMR7tViCUaWkv0J-->价值 高</span><span data-page-node-id="SFll8p3UdcvDLWqczt8lWk" class="tag gray"><!--pnid:Vj2TTeH4PSskQraBMn1aF9-->成本 中</span><span data-page-node-id="cIjaSNrqXTzFUrCHwrWe4m" class="tag b"><!--pnid:QtxvBG3MpueVOoVAa1KlI7-->批次一</span></span></div>
+      <div data-page-node-id="QfpKgmnny8CftAB7WCvTcs" class="scene"><b data-page-node-id="Brpd9dBPCXFyfEdyaYL9SH"><!--pnid:HRVuiU8eonPhflgu1aObwT-->场景：</b><!--pnid:0tC0ihL24C56rkWhaAfh1G-->A1、B1 都要改系统提示词。这类改动没有编译错误，却可能让模型突然“先讲十分钟再出题”或“把答案写进正文”。现在只能靠肉眼碰运气。</div>
+      <div data-page-node-id="MIC0vVzQCjjqcDVoJnuYVL" class="grid2">
+        <div data-page-node-id="1VHP7mbzuU5AON3rmXYbln" class="block"><h4 data-page-node-id="b0GlqXTzwU9bFJtUZ3aSHG"><!--pnid:BubEeiJ7CBO3k1fRjmM9JV-->做法</h4><ul data-page-node-id="XRRUaetjSjRosGM3CVmAza">
+          <li data-page-node-id="HS1E9RYRVvWwPsgcKufSDJ"><!--pnid:1E3TMyYATREXn50J4x7PyM-->建 20-30 条黄金用例：该出题 / 该只回答 / 该拒答（涉及答案） / 该引用材料 / 该承认不知道。</li>
+          <li data-page-node-id="WZN0PxdIyB4rPoL0yXqA6B"><code data-page-node-id="SwUm1BRLr4yg0OWAYC0q9e" data-pnid-children="ka6WKyAgANglFfOCXUMmNZ">npm run eval</code><!--pnid:bNcnxrTw4WEAjvYRd2hA1R--> 调真实模型跑一遍，断言“工具选择 + 答案不泄露 + 是否引用”，输出通过率。</li>
+          <li data-page-node-id="bR5RgnVvogjeQjUvghdZ9c"><!--pnid:wPEbK7axWgH49IVV4BibSc-->无 API Key 时跳过并明确提示，不假装通过；结果存 JSON 便于对比版本。</li>
+          <li data-page-node-id="vQWb3LHefSc1bVHsRQsYVm"><!--pnid:AbPOzjR43gfOphkkWUOYOY-->把“答案绝不出现在正文”做成硬断言：扫描模型文本是否包含标准答案。</li>
+        </ul></div>
+        <div data-page-node-id="g5nabTiPlloHFOGVljXiuR" class="block"><h4 data-page-node-id="9XbZV2SMRlOzQpQGDGF596"><!--pnid:7MP5IQ4FzwlYO8Mr5tYFZu-->代码落点</h4><p data-page-node-id="1wSK3kZComNVkzoxIXoEK1" class="code-line"><!--pnid:cVwwptCGPpVmvlA1HvRRPn-->tests/eval/cases.json<br data-page-node-id="WL8q9qloFXIKIpXKgHCUvi"><!--pnid:fQeJ5A3EpKNI2Dktma1wSo-->tests/eval/run.mjs<br data-page-node-id="wItpNvzbdKHTXGZWYGmnj6"><!--pnid:f20bvUa01e9N6CPn3vdyk3-->package.json scripts.eval<br data-page-node-id="oR3wWmGUCw4O5J1AdYkaE9"><!--pnid:evfOAKGSLpJR13J5VbDADv-->（复用 provider.completeJson / streamChat）</p></div>
+      </div>
+      <div data-page-node-id="OZWplzI8mwN7ELzGkYFtDB" class="check"><b data-page-node-id="HkLHaSy5sQYEfXol2U2DdG"><!--pnid:VbYJIRPxHSwWFXeRTYq7kb-->验收：</b><!--pnid:Stebt75pP0fZe5zNMkWXUp-->用例覆盖 5 类意图；答案泄露用例为 0 通过即失败；每次改 <code data-page-node-id="f1UT3MsxjjlEzcES1RvkRt" data-pnid-children="9KYvrVWsyQq6TweLAZrdGL">prompt.ts</code><!--pnid:hRE70RtfaE7IEfxuflQDsT--> 前后各跑一次并记录差异。<b data-page-node-id="hn4M54lW9Il1qZcPqJcSIG"><!--pnid:GN1o5qdvLjtxeZ1iTF1Lv8-->为什么排第一批：</b><!--pnid:izkBa8NN6hG6KyR0GuMC5L-->它是后续所有提示词改动的护栏，先有它再动 prompt。</div>
+    </div>
+  </section>
+
+  <section data-page-node-id="ERwb7noGdLZQrDj4yoricW">
+    <div data-page-node-id="KGgNH1rfZ23SGFpgz4Aara" class="sec-head"><span data-page-node-id="2iOAb4miHEsjx0s3inACmg" class="sec-no"><!--pnid:1H3Rd6keFwRIYUI1spDL89-->05</span><h2 data-page-node-id="V8A3sppzMhj4nd5Ey3J5XM"><!--pnid:MrL0XPfYTSQv0BftNsFCVT-->不建议做</h2></div>
+    <p data-page-node-id="aRoefQdAU3CAPmQE6C9PVk" class="lead"><!--pnid:0d3lPQN4nUeg4Rf0VPVXUn-->下面这些不是“以后再说”，是现在就不该做——它们会让产品偏离“可信证据”这条主线，并持续消耗维护成本。</p>
+    <div data-page-node-id="c5l9S1fPbN3anV5Mlw64fR" class="no-list">
+      <div data-page-node-id="9HzjSHL5DhTLm82sRKUDkG" class="no-item"><h4 data-page-node-id="rixPju2N1C3J06HqCk0xk6"><!--pnid:l93FbZoJnZSqZ92xZRvu5c-->排行榜 / 积分 / 徽章</h4><p data-page-node-id="j0F9FQw9jp0PBKHAuovf22"><!--pnid:u0gyZ6mLzCK66BD16UOjba-->单机学习工具没有社交比较对象；把内在动机换成外部积分，通常换来的是刷题而不是学会。</p></div>
+      <div data-page-node-id="vftUqT5M1sVoXWWDezC2Fi" class="no-item"><h4 data-page-node-id="V2ZmqxRhnuNbheDoIawsk3"><!--pnid:7cLBpCcN58D9Xme4GjNYD2-->社区 / 分享动态</h4><p data-page-node-id="RkfZTSHtmh1lOViTkOojUG"><!--pnid:9hQSlIDmFyUU9MHkIXqssn-->需要账号、审核、存储与隐私合规，和“本地单用户、数据不出机器”的定位直接冲突。</p></div>
+      <div data-page-node-id="QhqNqbj8ekwtAKf4Vb1foe" class="no-item"><h4 data-page-node-id="SBps3CvL57ULNQZnAyh9Ez"><!--pnid:ZHT6ipnaETaoq4Xs55pD4P-->AI 数字人 / 语音陪聊</h4><p data-page-node-id="Mv5Jp2rCSwulVF5Q5vu3Y1"><!--pnid:EURlHfKiamP0hxyjEUkGhM-->成本高、延迟高，对“掌握一个知识点”没有增量；真正缺的是诊断，不是拟人。</p></div>
+      <div data-page-node-id="U8QM8GXOpIcBCMydtkL6iZ" class="no-item"><h4 data-page-node-id="mamyYWhQl387MdofJgKlT7"><!--pnid:Vfy8OhSn2gddxFwmCrpflV-->一上来就上向量库</h4><p data-page-node-id="CchrKhxJ03nD0OUQRRGXuN"><!--pnid:fj0IjUqxN5avqooa7KtKTo-->本机材料量级用 FTS5 + 关键词足够；向量库会引入嵌入成本、索引同步与召回不可解释的问题。</p></div>
+      <div data-page-node-id="xv3q6jFEYgiVsjkOKFhLF1" class="no-item"><h4 data-page-node-id="xnnWDAVdPTgzoCCIzsWSXI"><!--pnid:PGJiac2N2o4Qij2gCFfUQ4-->多租户 SaaS 化</h4><p data-page-node-id="eMKbBzebzdAvnS7YHYAyBo"><!--pnid:PzZYn0LsCDByF4g2xV4YAw-->要重做鉴权、隔离、计费与运维；当前 SQLite 单文件架构会全部推倒。除非换商业模式，否则不做。</p></div>
+      <div data-page-node-id="aPCUdb0dQLVEI5q8rCCANQ" class="no-item"><h4 data-page-node-id="v6KzfqBCp5OyqYB4071VsR"><!--pnid:Foqh8azEBwYGGvZVpnzbBO-->继续堆工具类型</h4><p data-page-node-id="ktMyaTXRolZ0ma1EhsJEfp"><!--pnid:ljVKM2RxbxOCd8jYcL6B1k-->8 个工具已覆盖教学表征；再加只会让模型选择困难、前端维护面变大。先把现有工具用对。</p></div>
+    </div>
+  </section>
+
+  <section data-page-node-id="5Z3Sd14stxcvPObcFlV156">
+    <div data-page-node-id="ZqMnSkoaReh2JSi5W2pLpA" class="sec-head"><span data-page-node-id="cLGTHNH8nX1Hu7tT6G7Xrw" class="sec-no"><!--pnid:YqX3EjHMps62HmhIFmBuSI-->06</span><h2 data-page-node-id="mRRaRo2mna8YM7o8vjEZwV"><!--pnid:vuuyj5klwsbmG1Prm6JVts-->怎么衡量有没有变好</h2></div>
+    <p data-page-node-id="8pIXy4QBarTSSnlzgJqikF" class="lead"><!--pnid:Gvq1hjYg9GW0gnV9GtHfQD-->别用“消息数”和“使用时长”自欺——它们只能证明用户在用聊天框，不能证明学会了。</p>
+    <table data-page-node-id="QeUYp64zmWJwJB6XF8nPGa">
+      <thead data-page-node-id="EzouPFxDyzfu1TpDNwa8F0"><tr data-page-node-id="Eofv3OTT6UMZ42hfqkBpap"><th data-page-node-id="aKhK6CBn68okjnd8tu4e0u" style="width:24%"><!--pnid:Zrf4zSiy2aZEX1v3fbfuFd-->指标</th><th data-page-node-id="bqIh6IQjKn5USCxzL8NjcZ" style="width:40%"><!--pnid:sYN0ShKoM4qRdm1LIPrW5q-->定义</th><th data-page-node-id="BbvfXBYnKELIt2Uy1T7Ivo" style="width:18%"><!--pnid:6hO6UnD9neuFO9kh1s9m0Z-->方向</th><th data-page-node-id="HOHtYDnc3gNvmR68FKWeXN"><!--pnid:k8KDdeiIzdM1O2nbLKevqE-->数据来源</th></tr></thead>
+      <tbody data-page-node-id="Q2q2iomM32twZCqultMccM">
+        <tr data-page-node-id="5jrOrnAuP7B1OFqtY7C3Xt"><td data-page-node-id="ychPpC9tD7zjsFH6RDsFe2" class="b"><!--pnid:ZahQ4OTvmCeRrSfMf05WU3-->北极星：每周独立正确知识点</td><td data-page-node-id="hSTzqUjIofXFfbPDB7HPdZ"><!--pnid:irmRPNo9HyKrc4UUCJJOUT-->一周内产生“独立、未看解析”的正确作答的不同知识点数</td><td data-page-node-id="eQ1sRTsHb6qa11kOun6jOl"><!--pnid:j0G1XGK67mPKPHnT24urSv-->上升</td><td data-page-node-id="TIkGCs6Ti3M5P1tjFEpvOX"><!--pnid:nVDB1SGh12eWhnjVtkiNh8-->evidence + attempts</td></tr>
+        <tr data-page-node-id="h6b7pGE3WRF4daSANJESae"><td data-page-node-id="s2g3teDSzKstwyd6WhloId" class="b"><!--pnid:91h7v09kbK7behSFU8ftnw-->激活率</td><td data-page-node-id="LkgOnzEuzJBqlRj5EhzJ4L"><!--pnid:qgW20nHHIdAX3Ix6mfYeLa-->首次会话 24 小时内完成 ≥1 次作答的用户占比</td><td data-page-node-id="6FAHnKoSlXu3xkqMwANMNf"><!--pnid:Gg8rwkWagZRhLazBiN68vk-->上升</td><td data-page-node-id="n1jutZ5ZOWiI109Z93K3YQ"><!--pnid:LFPAupX29iA95LKKXZMDSV-->sessions + attempts</td></tr>
+        <tr data-page-node-id="GEwvQRcLIsbXwIqv6t0veq"><td data-page-node-id="Ya5bH7sHLIiLBzV8tQOWID" class="b"><!--pnid:sPtoEVKZdUcWDv4fLhYcsW-->复习完成率</td><td data-page-node-id="oI55p1ma3t4Ps95u4z7O7i"><!--pnid:FKjEN866Q4AAmReW7W4qQX-->到期复习条目中，产生有效作答的比例</td><td data-page-node-id="l8AxXJr9ZgNCwnnawA1PEM"><!--pnid:XU9uoinqglZVE7vjSva8Sa-->上升</td><td data-page-node-id="FqPt5s34lcj4x2duCJsjXb"><!--pnid:0VarfJ3T0SoN4AZKYzorHE-->review_items</td></tr>
+        <tr data-page-node-id="ajcuBYSfeYiRk21wiCg5wR"><td data-page-node-id="CwvTNsannKeVF883LaquDa" class="b"><!--pnid:DxZJpd67MWICGUou7V2eBM-->7 天复测保持率</td><td data-page-node-id="w8COUJeas9qmA2WzV3jZpS"><!--pnid:mm9ntrimq4WHcLGuUZRuPA-->复习后 7 天内同知识点新题仍答对的比例</td><td data-page-node-id="6A2nznu3NYBlY5JdJqlF55"><!--pnid:ks3ccsyYl6vu66vrHDBhH5-->上升</td><td data-page-node-id="ccAo3ogyw2hMWRWqXQbyjl"><!--pnid:WmIZuTMTuLt5BbYwdifEK7-->evidence 时间序列</td></tr>
+        <tr data-page-node-id="Por1NNzwil8Zg7pLlVaC19"><td data-page-node-id="7EUDv3QFGReHiHOr2JfUQH" class="b"><!--pnid:A1997FH7mCLiFG4xcDkxUx-->提示依赖率</td><td data-page-node-id="LcwFf0kBCIoFtdS71TaFWM"><!--pnid:UXMwRy95QdZGTIr5NCCf7G-->正确作答中使用提示的比例</td><td data-page-node-id="55WRQtZbmy5PbKi7O8Lbmr"><!--pnid:AzZA7hCZjTQqJOSdp7Mi0Z-->下降</td><td data-page-node-id="eFTrTwY1Mv3IUllljulBiR"><!--pnid:6fGxi6CnkbbWDheljm5voQ-->attempts.used_hint</td></tr>
+        <tr data-page-node-id="MZQGYCmgIuSLch4bgc4qL2"><td data-page-node-id="m5CIdxEHmQmtp016cS62NI" class="b"><!--pnid:vPmaRGRe41zeRB5zDZZIZu-->看解析率</td><td data-page-node-id="TiKT4NnoxihewNtz7bhvsQ"><!--pnid:Vy3bfMe5F83MuowiBuFKE6-->作答前查看解析的比例</td><td data-page-node-id="P46vl8A8U12KEL0prbtcM8"><!--pnid:mTtcTYJIb5kQuViSvjvRdg-->下降</td><td data-page-node-id="jUnRlhvaUX33028HT7bVZL"><!--pnid:i75P73SmwJGG1FzkpODb0t-->exercises.solution_viewed_at</td></tr>
+        <tr data-page-node-id="EHyCQ6sMtARLQkJJJ2R3ZE"><td data-page-node-id="jpopdiO1GmvFMZqCYJSMw4" class="b"><!--pnid:esAzJXbfHsufQ4HL1o6vsp-->题目作废率</td><td data-page-node-id="Ed9lHsqPOQaYF5hiY0HGhk"><!--pnid:tHgqs7378UChKLjl94Pc1q-->被标记“这题有问题”的题目占比</td><td data-page-node-id="A55rIS1Yon88vTBf8mPNNf"><!--pnid:LwKEuEebZiR0lAwL4G1WNv-->下降（先升后降）</td><td data-page-node-id="3Gz34rTkzto35NVuSY6LE4"><!--pnid:aifMgq0fv7aJcRK2KW7HVe-->exercise_feedback</td></tr>
+        <tr data-page-node-id="iFMhhDviKWBLwUF2WhmY1R"><td data-page-node-id="HllgiQhloXXRSBlJKUDVQj" class="b"><!--pnid:2gl979YyLeAeWzrNxjzWfb-->每知识点成本</td><td data-page-node-id="u9eFLygmZk6IfXpmb8IJPG"><!--pnid:hWWxFvRm7KoyZQdMPnUygb-->tokens 成本 / 产生证据的知识点数</td><td data-page-node-id="ImEUdcose4ssgRAhcG2kXx"><!--pnid:bHuItDLxknchosdZxwrEbF-->下降</td><td data-page-node-id="ObfWcZ8cz3cOx8zcTtrjDC"><!--pnid:RSZ05Ld95HmBvH0q3UmRHr-->usage_log</td></tr>
+      </tbody>
+    </table>
+    <p data-page-node-id="dk0CvYs6V5dzkvqbiHMxLH" style="font-size:12.5px; color:var(--ink3); margin-top:10px"><!--pnid:7P6kipkdwcRrfRMiVKXcMG-->单机应用没有服务端埋点，以上指标直接从本地库算即可；不要为此引入第三方分析 SDK。</p>
+  </section>
+
+  <section data-page-node-id="VPOM0ezEjU2nK6jd4iYQAu">
+    <div data-page-node-id="R5lPhGtxg3eOZUlOQN213u" class="sec-head"><span data-page-node-id="4Mzh4caYCi3fjvarF2ZkIV" class="sec-no"><!--pnid:PO7amLJGIZGMABLYLUDQj2-->07</span><h2 data-page-node-id="UPPqbeKjPCaTHSXJU2mXvR"><!--pnid:OaN0OvcnX72WQMwJIPqauF-->落地顺序</h2></div>
+    <p data-page-node-id="LbnHGglSt5uSIJGs3RxYZf" class="lead"><!--pnid:mqTjiYAaUgJGdWGgy88NIc-->按依赖关系排，不按“看起来酷”排。每批都有明确的完成定义，做完一批再开下一批。</p>
+    <table data-page-node-id="utKS444tTQiHvGXIJnlVBf">
+      <thead data-page-node-id="CqDgfjP07lBlR3McLorVar"><tr data-page-node-id="gxqL1yVe7fMHuBYDBdFpSp"><th data-page-node-id="vBgMnoKqNpxreeJ5Sp5wkL" style="width:12%"><!--pnid:HVwDJ4WUAOe79qS52A7dWx-->批次</th><th data-page-node-id="T3VvWeDhPqFXVPvSi835DT" style="width:40%"><!--pnid:D3z3VBdL94rQ5S5AONbAd5-->包含</th><th data-page-node-id="iOh8R9Nfq7rUSH48Aekrqk" style="width:26%"><!--pnid:JE7foJMy862f0fc9WXEhWm-->完成定义</th><th data-page-node-id="JgODrEzGtJmzMaNzDzTXRm"><!--pnid:Yb0lGfFb5XZGOIAl1ZtLvH-->依赖</th></tr></thead>
+      <tbody data-page-node-id="Rx8G6MD57gjAYXwn19jqpO">
+        <tr data-page-node-id="uknzw1htl588VlaC97IieH"><td data-page-node-id="NsErT3yWpEUh9WnRZ85wt9" class="b"><!--pnid:vwfOpXc4hVVi4YrpAfH4a2-->第一批<br data-page-node-id="bLJgZB14WaOt2hu277LW8S"><span data-page-node-id="NCNXysEPhTPTlUBzdA3Iz3" style="font-weight:400; color:var(--ink3); font-size:12px"><!--pnid:4o5A9RPKYUkmL2Wy0pRD9X-->把闭环补完</span></td><td data-page-node-id="tYkA3XWxqiKvrC9S4Q2A9H"><!--pnid:pSINUlTbOqpANFjNe8URgL-->A3 证据作废 · A1 错因 · A2 结构化复习 · D3 评测集</td><td data-page-node-id="TYllqo5I8b1rHE7wuhDEYr"><!--pnid:KWy1LNHJ8MxllAgNZuLwNi-->复习从“建议”变成“有始有终的一次会话”；错因能被记录、展示、注入；改提示词有回归护栏</td><td data-page-node-id="zrn8oONYUk4jLFmTm0JtKp"><!--pnid:Af236Yxt3KR42engM5lqwB-->无，全部基于现有表</td></tr>
+        <tr data-page-node-id="F13fTcIgp8FV96E3iz1Bb4"><td data-page-node-id="1OaZs1HWydT5dhbhfSasJM" class="b"><!--pnid:oh5dRXG5mKpQ12hkpqq0Xk-->第二批<br data-page-node-id="3jCVMGh67uTZbFWMZmYtEh"><span data-page-node-id="pKaOo2s8LtOJI4h21rrEVa" style="font-weight:400; color:var(--ink3); font-size:12px"><!--pnid:vREdUjQLBJe9TiKEuYBqKb-->让材料与练习好用</span></td><td data-page-node-id="WbNhBWRYgY2tk00seIZlIj"><!--pnid:qGJrj0eTinNrLIWu6hgjVx-->B1 引用 · B2 材料出题 · C2 题目反馈/换一题 · C1 今日计划</td><td data-page-node-id="KuII8CPpaBHGf1atOFjOSk"><!--pnid:OWiBf176OLelodWSYbLV00-->回答能溯源；材料能直接练；坏题能被剔除；首页能给出“今天做什么”</td><td data-page-node-id="lt2hkIBSLa0mJjsZnIWJJb"><!--pnid:rZnhhxyG2IhJIePvUK5tfm-->B2 依赖 B1 的片段 id；C1 依赖 A2 的结构化会话</td></tr>
+        <tr data-page-node-id="ohmdKY3kaPbJcT5rVn0kLa"><td data-page-node-id="RytE3N5JpwXyYgg65GhAdf" class="b"><!--pnid:zrhNiqPv5TVwrIRYFKXaHs-->第三批<br data-page-node-id="9YRCkICeCV1SMRfGLUYyu7"><span data-page-node-id="moKClvXOBMdf4dL1z5BaOO" style="font-weight:400; color:var(--ink3); font-size:12px"><!--pnid:L6Xxqm1ob9Sa9imH6i6GFN-->长期使用</span></td><td data-page-node-id="KQEtoLITi5PbQ7LlEmX0xE"><!--pnid:zW39HRbvaxTp8t0jl4RexT-->C3 大纲/换讲法 · C4 导出 · C5 搜索 · D1 用量 · D2 双模型 · A4 校准</td><td data-page-node-id="sPGDVInLamzlidMriXTKre"><!--pnid:oUA2NB96AasaLZ06bIi09S-->长会话可导航、学习记录可带走、成本可见、模型可分级</td><td data-page-node-id="Gar2p4ipWUN4bJz348MrA3"><!--pnid:zcNYXguiJ5Fil4EcY4pZ3K-->C5 与 B1 共用 FTS/片段索引；A4 需要足够首答样本</td></tr>
+      </tbody>
+    </table>
+
+    <div data-page-node-id="5hPrXSNGLeM0Z3ZYtky58s" class="callout" style="margin-top:18px">
+      <b data-page-node-id="WpBSKNVM76Q80HjPmnkX6e"><!--pnid:T8ZSnUJzqZ08p8g82hhTxu-->如果只能做一件事：</b><!--pnid:UJRAuKvFYwWV5ZWFxuWwPQ-->做 A2。它不需要新表、不需要新模型能力，只把复习页那句自然语言换成结构化字段，就能把“复习队列”变成“复习行为”。这是当前投入产出比最高的一处。
+    </div>
+  </section>
+
+  <section data-page-node-id="OcEvPN8CJ3zSjZWgMlb01E" class="appendix">
+    <div data-page-node-id="hACq5RxkQos3jx5Cu8L2NT" class="sec-head"><span data-page-node-id="Eld2Pgxp167100OsSrrpoY" class="sec-no"><!--pnid:HSyNGlrqd9WJoZGGo3dGTx-->08</span><h2 data-page-node-id="47l3vmrMtocqcLHeXKyuEg"><!--pnid:AjZjnfM0K7r0H5IYJlq0Qa-->附录：代码落点索引</h2></div>
+    <p data-page-node-id="FKOq7y0O99VAgCRohq7UCv"><!--pnid:BrJ4Kvt4NjH5Ie6ZK8NKXb-->所有建议都尽量复用现有结构，下面是新增/改动位置的一览，便于拆分任务。</p>
+    <pre data-page-node-id="04JEN9ZII7LDEnneeInoSu" data-pnid-children="0BMUEY66vDQHwnNlFX1eNa">数据层
+  src/lib/db/schema.ts        attempts.error_type / evidence.voided / sessions.focus_concept_id
+                              exercise_feedback / FTS5 虚表
+  src/lib/db/repo.ts:129      recomputeConceptAggregates（A3 直接复用）
+  src/lib/db/repo.ts          证据作废、复习条目回写、今日计划查询
+
+教学与 AI
+  src/lib/learning/exercise.ts   客观题错因推断
+  src/lib/ai/prompt.ts           错因注入、复习模式约束、引用规则、rephrase 意图
+  src/lib/ai/tools.ts            材料出题复用 createExercise 路径
+  src/lib/ai/config.ts           快模型配置
+
+接口
+  POST /api/sessions                    接收 focusConceptId / reviewItemId
+  DELETE /api/evidence/[id]             软作废 + 重算
+  POST /api/exercises/[id]/retry        换一题
+  POST /api/materials/[id]/exercise     材料出题
+  GET  /api/sessions/[id]/export        导出 Markdown
+  GET  /api/usage/summary               用量统计
+  GET  /api/search                      FTS5 搜索
+
+前端
+  src/app/page.tsx                    今日计划卡片
+  src/app/review/page.tsx             传结构化参数
+  src/app/library/page.tsx            证据列表 / 错因 / 作废
+  src/app/materials/page.tsx          材料出题入口
+  src/components/blocks/ExerciseBlock.tsx   难度反馈 / 换一题
+  src/components/chat/SessionView.tsx        会话大纲 / 换讲法
+  src/components/Markdown.tsx                来源引用卡片</pre>
+    <p data-page-node-id="05fyKy4bZpShHbnp2br0g9" style="font-size:12.5px; color:var(--ink3)"><!--pnid:BUHIyNk1sRb6jam0UO2KGt-->说明：本方案只提功能与体验改进，不重复修复记录中已完成的事项；构建残留的 <code data-page-node-id="NWYK40yjsHl9cAqADKH916" data-pnid-children="ZsvaWAR4vyzKpMS5DoxkY9">middleware</code><!--pnid:UOLTTYjP8ozHU4Obct0KYZ--> 弃用警告建议顺手迁移为 <code data-page-node-id="6EszWb3Ju3lri5WWhb3syQ" data-pnid-children="coSspPCg2Ku8A3rEhHlZ37">proxy.ts</code><!--pnid:fp3xD5rsmn5Dq0Vdxi4gNI-->，不计入正式建议项。</p>
+  </section>
+
+  <div data-page-node-id="dna7o03sxIYqX9cN4x8V1D" class="foot">
+    <span data-page-node-id="UvMTywyKVDD8OwLqk2RboP"><!--pnid:YTVVqGeXtt1CYOvUTndJrx-->Lumina v0.1.0 · 功能与体验改进建议</span>
+    <span data-page-node-id="q5vxH9yX6FirNb5Xc3GZT3"><!--pnid:cT8qcTlOrctRQewpT60mR9-->2026-10-22 · 14 项建议 / 3 个批次</span>
+  </div>
+
+</div>
+</body>
+</html>
