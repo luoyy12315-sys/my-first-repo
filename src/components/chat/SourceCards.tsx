@@ -120,14 +120,14 @@ function Card({ src, index }: { src: SourceDTO; index: number }) {
       </button>
 
       {menuOpen ? (
-        <div className="absolute right-2 top-9 z-20 w-36 overflow-hidden rounded-lg border border-line bg-panel shadow-[0_10px_24px_rgba(0,0,0,0.14)]">
-          <p className="border-b border-line px-2.5 py-1.5 text-[12px] text-ink3">这条来源有问题</p>
+        <div className="absolute right-2 top-9 z-40 w-40 overflow-hidden rounded-2xl border border-line bg-panel p-1.5 shadow-[var(--shadow-lg)] animate-pop">
+          <p className="px-2 pb-1 pt-0.5 text-[12px] text-ink3">这条来源有问题</p>
           {FEEDBACK_KINDS.map((k) => (
             <button
               key={k.value}
               disabled={busy}
               onClick={() => void submit(k.value)}
-              className="block w-full px-2.5 py-1.5 text-left text-[12px] text-ink2 hover:bg-panel2 hover:text-ink disabled:opacity-50"
+              className="block w-full rounded-xl px-2 py-1.5 text-left text-[12.5px] text-ink2 transition-colors hover:bg-panel2 hover:text-ink disabled:opacity-50"
             >
               {k.label}
             </button>

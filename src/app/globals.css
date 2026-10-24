@@ -114,6 +114,18 @@ body {
   outline-offset: 2px;
 }
 
+/* 输入框不画方框：光标 + 边框变色已经足够，方框套在圆角卡片里很难看 */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--accent);
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -272,6 +284,26 @@ body {
   animation: rise 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* 下拉面板：轻微下坠 + 淡入，比直接闪现更像"从这里展开" */
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-pop {
+  animation: pop 0.14s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: top right;
+}
+.animate-pop-up {
+  animation: pop 0.14s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: bottom left;
+}
+
 @keyframes pulse-soft {
   0%,
   100% {
@@ -307,6 +339,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
+  .animate-pop,
+  .animate-pop-up,
   .animate-pulse-soft,
   .stream-caret::after {
     animation: none !important;

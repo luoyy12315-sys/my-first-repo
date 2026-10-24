@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -362,7 +362,7 @@ export default function ExerciseBlock({
       已反馈（{feedbackVote === "easy" ? "太简单" : feedbackVote === "hard" ? "太难" : "有问题"}）
     </span>
   ) : (
-    <OverflowMenu label="题目反馈">
+    <OverflowMenu label="题目反馈" placement="top">
       <MenuItem onClick={() => void sendFeedback("easy")}>太简单了</MenuItem>
       <MenuItem onClick={() => void sendFeedback("hard")}>太难了</MenuItem>
       <MenuItem tone="danger" onClick={() => setBrokenOpen((v) => !v)}>
@@ -659,3 +659,4 @@ function ResultPanel({
     </div>
   );
 }
+

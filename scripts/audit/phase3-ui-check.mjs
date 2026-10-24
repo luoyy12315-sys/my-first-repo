@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 阶段三 UI 验收（临时脚本，tests/_*.mjs 已被 .gitignore 忽略）
  *
  * 检查：各页面可打开、无控制台错误、390px 无横向溢出、设置页「用量」卡片有真实数字；
@@ -119,6 +119,56 @@ for (const width of [1440, 390]) {
   await page.waitForTimeout(900);
   const settingsChars = await page.evaluate(() => (document.querySelector("main")?.innerText ?? "").length);
   check("设置页文案 ≤ 1100 字", settingsChars <= 1100, `${settingsChars}`);
+
+  // 输入框聚焦不再画方框
+  await page.locator("input[type=text], input:not([type])").first().click();
+  await page.waitForTimeout(150);
+  const focusStyle = await page.evaluate(() => {
+    const el = document.activeElement;
+    return el ? getComputedStyle(el).outlineStyle : "none";
+  });
+  check("输入框聚焦没有方框 outline", focusStyle === "none", focusStyle);
+
+  // 侧边栏：搜索 + 折叠
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+  await page.evaluate(() => localStorage.removeItem("lumina-sidebar-collapsed"));
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(500);
+  const aside = page.locator("aside");
+  check("侧边栏有搜索框", (await page.getByLabel("搜索对话").count()) === 1);
+  const expandedWidth = (await aside.boundingBox())?.width ?? 0;
+  check("侧边栏默认展开 248px", expandedWidth > 200, String(expandedWidth));
+  await page.evaluate(() => localStorage.setItem("lumina-sidebar-collapsed", "1"));
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(400);
+  const collapsedWidth = (await aside.boundingBox())?.width ?? 0;
+  check("侧边栏可折叠成图标栏", collapsedWidth > 0 && collapsedWidth < 100, String(collapsedWidth));
+  await page.evaluate(() => localStorage.setItem("lumina-sidebar-collapsed", "0"));
+
+  // 会话页「…」菜单向下展开且在视口内
+  const sessions = await fetch(`${BASE}/api/sessions`).then((r) => r.json()).catch(() => ({ sessions: [] }));
+  if (sessions.sessions?.length) {
+    await page.goto(`${BASE}/s/${sessions.sessions[0].id}`, { waitUntil: "networkidle" });
+    await page.waitForTimeout(800);
+    await page.locator("summary").first().click();
+    await page.waitForTimeout(250);
+    const menu = await page.evaluate(() => {
+      const el = document.querySelector("details[open] > div");
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return {
+        inViewport: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth,
+        radius: getComputedStyle(el).borderRadius,
+        below: r.top >= (document.querySelector("summary")?.getBoundingClientRect().top ?? 0),
+      };
+    });
+    check("会话页菜单向下展开且不越界", Boolean(menu?.inViewport && menu?.below), JSON.stringify(menu));
+    check("下拉菜单是圆角面板", menu?.radius === "20px", String(menu?.radius));
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(150);
+    check("Esc 能收起菜单", (await page.locator("details[open]").count()) === 0);
+  }
+
   await context.close();
 }
 await browser.close();

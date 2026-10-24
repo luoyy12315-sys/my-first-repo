@@ -193,12 +193,10 @@ export default function Composer({
                 {pickerOpen ? (
                   <div
                     role="listbox"
-                    className="absolute bottom-full left-0 z-30 mb-2 w-64 overflow-hidden rounded-xl border border-line bg-panel shadow-[0_12px_32px_rgba(0,0,0,0.16)]"
+                    className="absolute bottom-full left-0 z-40 mb-2 w-64 overflow-hidden rounded-2xl border border-line bg-panel p-1.5 shadow-[var(--shadow-lg)] animate-pop-up"
                   >
-                    <p className="border-b border-line px-3 py-2 text-[12px] text-ink3">
-                      本会话使用的模型 · 切换后立即生效
-                    </p>
-                    <div className="max-h-64 overflow-y-auto py-1">
+                    <p className="px-2.5 pb-1.5 pt-1 text-[12px] text-ink3">本会话使用的模型</p>
+                    <div className="max-h-64 overflow-y-auto">
                       {models.map((m) => {
                         const selected = current ? m.id === current.id : m.id === defaultModel?.id;
                         return (
@@ -212,7 +210,7 @@ export default function Composer({
                               setPickerOpen(false);
                             }}
                             className={cx(
-                              "flex w-full items-start gap-2 px-3 py-2 text-left transition-colors hover:bg-panel2",
+                              "flex w-full items-start gap-2 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-panel2",
                               selected && "bg-accentsoft/40",
                             )}
                           >
@@ -221,7 +219,7 @@ export default function Composer({
                             </span>
                             <span className="min-w-0 flex-1">
                               <span className="flex items-center gap-1.5">
-                                <span className="truncate text-[12.5px] text-ink">{m.label}</span>
+                                <span className="truncate text-[13px] text-ink">{m.label}</span>
                                 {m.isDefault ? (
                                   <span className="shrink-0 rounded-full bg-panel2 px-1.5 text-[12px] text-ink3">默认</span>
                                 ) : null}
@@ -241,7 +239,7 @@ export default function Composer({
                     </div>
                     <a
                       href="/settings"
-                      className="block border-t border-line px-3 py-2 text-[12px] text-ink3 hover:bg-panel2 hover:text-ink"
+                      className="mt-1 block rounded-xl px-2.5 py-2 text-[12px] text-ink3 hover:bg-panel2 hover:text-ink"
                     >
                       管理模型（添加 / 修改）→
                     </a>

@@ -3,7 +3,7 @@
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { Loader2, MoreHorizontal, X } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { DISPLAY_STATUS_LABEL, type ConceptDisplayStatus, type ConceptStatus } from "@/lib/types";
 
 export const cx = (...parts: Parameters<typeof clsx>) => twMerge(clsx(...parts));
@@ -244,28 +244,62 @@ export function IconButton({
 
 /**
  * 溢出菜单：把"次要但偶尔要用的动作"收起来。
- * 用原生 <details> 实现，不引入弹层库，键盘与点击外部关闭都由浏览器兜底（点外部再点一次 summary 即可）。
+ * 默认向下展开（贴着触发按钮，不会顶出屏幕），也可指定向上（用于页面底部的输入区）。
+ * 点击外部 / Esc 关闭；用原生 <details> 保留键盘可达性，不引入弹层库。
  */
 export function OverflowMenu({
   label = "更多",
   align = "right",
+  placement = "bottom",
   children,
   className,
 }: {
   label?: string;
   align?: "left" | "right";
+  placement?: "bottom" | "top";
   children: ReactNode;
   className?: string;
 }) {
+  const ref = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (root.open && !root.contains(e.target as Node)) root.removeAttribute("open");
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && root.open) {
+        root.removeAttribute("open");
+        (root.querySelector("summary") as HTMLElement | null)?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
   return (
-    <details className={cx("relative shrink-0", className)}>
-      <summary className="flex cursor-pointer list-none items-center gap-1 rounded-full px-2.5 py-1.5 text-[12px] text-ink3 transition-colors hover:bg-panel2 hover:text-ink [&::-webkit-details-marker]:hidden">
+    <details ref={ref} className={cx("relative shrink-0", className)}>
+      <summary
+        aria-label={label || "更多操作"}
+        className={cx(
+          "flex h-8 cursor-pointer list-none items-center justify-center gap-1 rounded-full text-ink3 transition-colors hover:bg-panel2 hover:text-ink [&::-webkit-details-marker]:hidden",
+          label ? "px-2.5" : "w-8",
+        )}
+      >
         <MoreHorizontal className="size-4" />
-        {label}
+        {label ? <span className="text-[13px]">{label}</span> : null}
       </summary>
       <div
         className={cx(
-          "absolute bottom-full z-30 mb-1.5 w-48 overflow-hidden rounded-xl border border-line bg-panel p-1 shadow-[var(--shadow-lg)]",
+          "absolute z-40 min-w-[11rem] overflow-hidden rounded-2xl border border-line bg-panel p-1.5 shadow-[var(--shadow-lg)]",
+          placement === "top"
+            ? "bottom-full mb-2 animate-pop-up"
+            : "top-full mt-2 animate-pop",
           align === "right" ? "right-0" : "left-0",
         )}
       >
@@ -289,6 +323,7 @@ export function MenuItem({
   return (
     <button
       type="button"
+      role="menuitem"
       disabled={disabled}
       onClick={(e) => {
         // 选完就收起菜单，省得用户再点一次
@@ -296,7 +331,7 @@ export function MenuItem({
         onClick();
       }}
       className={cx(
-        "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] transition-colors disabled:opacity-45",
+        "flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] transition-colors disabled:opacity-45",
         tone === "danger" ? "text-bad hover:bg-badsoft" : "text-ink2 hover:bg-panel2 hover:text-ink",
       )}
     >
