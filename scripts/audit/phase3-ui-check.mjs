@@ -225,6 +225,16 @@ for (const width of [1440, 390]) {
       ["重命名", "置顶", "移至计划", "删除"].every((x) => sessionMenu.includes(x)),
       JSON.stringify(sessionMenu),
     );
+    const menuPanel = page.locator('body > div[role="menu"]').first();
+    const menuBox = await menuPanel.boundingBox();
+    const asideBox = await aside.boundingBox();
+    check(
+      "会话菜单一半露出侧栏",
+      Boolean(menuBox && asideBox) &&
+        Math.abs(menuBox.x + menuBox.width / 2 - (asideBox.x + asideBox.width)) < 24,
+      JSON.stringify(menuBox && [Math.round(menuBox.x + menuBox.width / 2), Math.round(asideBox.x + asideBox.width)]),
+    );
+    check("会话菜单比默认窄", Boolean(menuBox) && menuBox.width <= 160, String(menuBox?.width));
     await page.keyboard.press("Escape");
     await page.waitForTimeout(200);
   }

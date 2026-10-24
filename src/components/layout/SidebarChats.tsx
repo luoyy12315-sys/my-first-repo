@@ -153,7 +153,7 @@ export default function SidebarChats({
         {s.title}
       </Link>
       <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
-        <OverflowMenu compact ariaLabel="对话操作" align="right">
+        <OverflowMenu compact portal overhang narrow ariaLabel="对话操作">
           <MenuItem onClick={() => setRename({ type: "session", session: s })}>
             <Pencil className="size-3.5" />
             重命名
@@ -211,7 +211,7 @@ export default function SidebarChats({
             ) : null}
           </button>
           <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
-            <OverflowMenu compact ariaLabel="计划操作" align="right">
+            <OverflowMenu compact portal overhang narrow ariaLabel="计划操作">
               <MenuItem onClick={() => setRename({ type: "plan", plan: p })}>
                 <Pencil className="size-3.5" />
                 重命名

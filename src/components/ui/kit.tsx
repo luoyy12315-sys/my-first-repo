@@ -3,7 +3,8 @@
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { Loader2, MoreHorizontal, X } from "lucide-react";
-import { useEffect, useRef, type ReactNode, useState } from "react";
+import { useEffect, useRef, type ReactNode, useState, createContext, useContext, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { DISPLAY_STATUS_LABEL, type ConceptDisplayStatus, type ConceptStatus } from "@/lib/types";
 
 export const cx = (...parts: Parameters<typeof clsx>) => twMerge(clsx(...parts));
@@ -242,6 +243,9 @@ export function IconButton({
   );
 }
 
+/** 菜单项点击后通知外层收起（portal 模式没有 <details> 可关） */
+const MenuCloseContext = createContext<(() => void) | null>(null);
+
 /**
  * 溢出菜单：把"次要但偶尔要用的动作"收起来。
  * 默认向下展开（贴着触发按钮，不会顶出屏幕），也可指定向上（用于页面底部的输入区）。
@@ -253,6 +257,9 @@ export function OverflowMenu({
   placement = "bottom",
   compact = false,
   ariaLabel,
+  portal = false,
+  overhang = false,
+  narrow = false,
   children,
   className,
 }: {
@@ -263,12 +270,25 @@ export function OverflowMenu({
   compact?: boolean;
   /** 只给读屏用的名称（紧凑按钮不显示文字） */
   ariaLabel?: string;
+  /**
+   * 挂到 body 上、fixed 定位。侧栏这类带滚动/模糊的容器会裁掉绝对定位面板，
+   * 想在侧栏边缘露出一半就必须走 portal。
+   */
+  portal?: boolean;
+  /** portal 模式下把面板中心对齐到按钮右边缘（刚好一半在侧栏外） */
+  overhang?: boolean;
+  /** 窄面板（侧栏用），避免挡掉半个屏幕 */
+  narrow?: boolean;
   children: ReactNode;
   className?: string;
 }) {
   const ref = useRef<HTMLDetailsElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   // 面板默认向下展开；靠近窗口底部（侧栏最后几条）时自动向上，避免被裁掉
   const [flip, setFlip] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
 
   const updateFlip = () => {
     const summary = ref.current?.querySelector("summary");
@@ -296,6 +316,99 @@ export function OverflowMenu({
       document.removeEventListener("keydown", onKey);
     };
   }, []);
+
+  useEffect(() => {
+    if (!portal || !open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (btnRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        btnRef.current?.focus();
+      }
+    };
+    // 滚动时位置会漂，直接收起
+    const onScroll = () => setOpen(false);
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [portal, open]);
+
+  // 打开后按按钮位置定位；放不下就上下翻转，左右夹在窗口内
+  useLayoutEffect(() => {
+    if (!portal || !open) return;
+    const btn = btnRef.current;
+    const panel = panelRef.current;
+    if (!btn || !panel) return;
+    const r = btn.getBoundingClientRect();
+    const pr = panel.getBoundingClientRect();
+    const w = pr.width || 150;
+    const h = pr.height || 160;
+    // 露出侧栏时以侧栏边缘为基准：面板中心刚好压在边线上，一半在栏外
+    let left = overhang
+      ? (btn.closest("aside")?.getBoundingClientRect().right ?? r.right) - w / 2
+      : align === "right"
+        ? r.right - w
+        : r.left;
+    left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+    let top = r.bottom + 8;
+    if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 8);
+    setPos({ left, top });
+  }, [portal, open, overhang, align]);
+
+  if (portal) {
+    const summaryClass = cx(
+      "flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full text-ink3 transition-colors hover:bg-panel2 hover:text-ink",
+      compact ? "size-6" : "h-8",
+      label ? "px-2.5" : compact ? "" : "w-8",
+    );
+    return (
+      <>
+        <button
+          ref={btnRef}
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={label || ariaLabel || "更多操作"}
+          onClick={() => setOpen((v) => !v)}
+          className={summaryClass}
+        >
+          <MoreHorizontal className={compact ? "size-3.5" : "size-4"} />
+          {label ? <span className="text-[13px]">{label}</span> : null}
+        </button>
+        {open
+          ? createPortal(
+              <MenuCloseContext.Provider value={() => setOpen(false)}>
+                <div
+                  ref={panelRef}
+                  role="menu"
+                  style={{
+                    left: pos?.left ?? -9999,
+                    top: pos?.top ?? -9999,
+                    visibility: pos ? "visible" : "hidden",
+                  }}
+                  className={cx(
+                    "fixed z-50 overflow-hidden rounded-2xl border border-line bg-panel p-1.5 shadow-[var(--shadow-lg)] animate-pop",
+                    narrow ? "min-w-[8.75rem]" : "min-w-[11rem]",
+                  )}
+                >
+                  {children}
+                </div>
+              </MenuCloseContext.Provider>,
+              document.body,
+            )
+          : null}
+      </>
+    );
+  }
 
   return (
     <details
@@ -340,6 +453,7 @@ export function MenuItem({
   tone?: "neutral" | "danger";
   disabled?: boolean;
 }) {
+  const closeMenu = useContext(MenuCloseContext);
   return (
     <button
       type="button"
@@ -347,7 +461,8 @@ export function MenuItem({
       disabled={disabled}
       onClick={(e) => {
         // 选完就收起菜单，省得用户再点一次
-        (e.currentTarget.closest("details") as HTMLDetailsElement | null)?.removeAttribute("open");
+        if (closeMenu) closeMenu();
+        else (e.currentTarget.closest("details") as HTMLDetailsElement | null)?.removeAttribute("open");
         onClick();
       }}
       className={cx(

@@ -163,17 +163,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         )}
       </div>
 
-      <div className="px-3 pb-2">
+      <div className={cx("pb-1", expanded ? "px-3" : "px-2")}>
+        {/* 和下面的导航项同一套样式：同样的圆角、内边距、悬停底色 */}
         <Link
           href="/"
           title="新对话"
           className={cx(
-            "flex items-center justify-center gap-1.5 rounded-full bg-accent text-[13px] font-medium text-white transition-all hover:brightness-110",
-            expanded ? "px-3 py-2" : "size-10",
+            "flex items-center rounded-full text-ink2 transition-colors hover:bg-panel2 hover:text-ink",
+            expanded ? "gap-2.5 px-3 py-2" : "h-10 justify-center",
           )}
         >
-          <Plus className="size-4" />
-          {expanded ? "新对话" : <span className="sr-only">新对话</span>}
+          <Plus className="size-4 text-ink3" />
+          {expanded ? <span className="text-[13.5px]">新对话</span> : <span className="sr-only">新对话</span>}
         </Link>
       </div>
 
