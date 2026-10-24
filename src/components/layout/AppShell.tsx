@@ -33,7 +33,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/";
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [collapsed, setCollapsed] = useState(false);
-  const [peek, setPeek] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const immersive = pathname.startsWith("/w/");
 
@@ -55,7 +54,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toggleCollapsed = () => {
-    setPeek(false);
     setCollapsed((v) => {
       const next = !v;
       window.localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
@@ -131,7 +129,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <Link
           href="/"
           title="新对话"
-          onClick={() => setPeek(false)}
           className={cx(
             "flex items-center justify-center gap-1.5 rounded-full bg-accent text-[13px] font-medium text-white transition-all hover:brightness-110",
             expanded ? "px-3 py-2" : "size-10",
@@ -146,24 +143,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {expanded ? (
           <button
             type="button"
-            onClick={() => {
-              setPeek(false);
-              setSearchOpen(true);
-            }}
+            onClick={() => setSearchOpen(true)}
             className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-[13.5px] text-ink2 transition-colors hover:bg-panel2 hover:text-ink"
           >
             <Search className="size-4 text-ink3" />
-            <span>搜索对话</span>
-            <kbd className="ml-auto rounded-md border border-line bg-panel2 px-1.5 py-0.5 font-mono text-[12px] text-ink3">
-              ⌘K
-            </kbd>
+            <span>搜索</span>
           </button>
         ) : (
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
-            aria-label="搜索对话"
-            title="搜索对话"
+            aria-label="搜索"
+            title="搜索"
             className="flex h-10 w-full items-center justify-center rounded-full text-ink2 transition-colors hover:bg-panel2 hover:text-ink"
           >
             <Search className="size-4 text-ink3" />
@@ -181,7 +172,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               href={item.href}
               aria-current={active ? "page" : undefined}
               title={item.label}
-              onClick={() => setPeek(false)}
               className={cx(
                 "flex items-center rounded-full transition-colors",
                 expanded ? "gap-2.5 px-3 py-2" : "h-10 justify-center",
@@ -212,7 +202,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={s.id}
                   href={`/s/${s.id}`}
-                  onClick={() => setPeek(false)}
                   className={cx(
                     "rounded-xl px-3 py-1.5 transition-colors",
                     pathname === `/s/${s.id}`
@@ -268,24 +257,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* ── 桌面侧边栏：折叠后鼠标悬停临时展开（和 ChatGPT 一样） ── */}
       <aside
-        onMouseEnter={() => {
-          if (collapsed) setPeek(true);
-        }}
-        onMouseLeave={() => setPeek(false)}
         className={cx(
           "sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-line bg-panel/60 backdrop-blur-sm md:flex",
           collapsed ? "w-[68px]" : "w-[248px]",
         )}
       >
         {sidebarBody(!collapsed)}
-        {collapsed && peek ? (
-          <div
-            className="absolute left-0 top-0 z-40 flex h-dvh w-[248px] flex-col border-r border-line bg-panel shadow-[var(--shadow-lg)] animate-panel"
-            onMouseLeave={() => setPeek(false)}
-          >
-            {sidebarBody(true)}
-          </div>
-        ) : null}
       </aside>
 
       {/* ── 移动端顶栏 ── */}
@@ -299,8 +276,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              aria-label="搜索对话"
-              title="搜索对话"
+              aria-label="搜索"
+              title="搜索"
               className="grid size-8 place-items-center rounded-full text-ink3 transition-colors hover:bg-panel2 hover:text-ink"
             >
               <Search className="size-4" />

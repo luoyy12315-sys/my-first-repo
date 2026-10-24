@@ -1,4 +1,4 @@
-﻿import { AI_ERROR_HINT, AiError, aiStatus, resolveAiConfig } from "@/lib/ai/config";
+import { AI_ERROR_HINT, AiError, aiStatus, resolveAiConfig } from "@/lib/ai/config";
 import { streamChat, type LlmMessage } from "@/lib/ai/provider";
 import { buildTeachingMessages, fallbackTitle, findMaterialSources } from "@/lib/ai/prompt";
 import { parseCitations } from "@/lib/ai/citations";

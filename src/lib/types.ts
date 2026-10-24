@@ -204,6 +204,22 @@ export interface SessionSummary {
   topics: { id: string; name: string }[];
 }
 
+/** 全局搜索的一条结果 */
+export interface SearchHit {
+  id: string;
+  title: string;
+  meta: string;
+  href: string;
+  at?: number;
+}
+
+/** 全局搜索的分组（对话 / 计划 / 知识点 / 材料） */
+export interface SearchGroup {
+  key: "sessions" | "plans" | "concepts" | "materials";
+  label: string;
+  hits: SearchHit[];
+}
+
 export interface ConceptDTO {
   id: string;
   topicId: string;

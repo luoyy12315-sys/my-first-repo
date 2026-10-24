@@ -304,21 +304,6 @@ select:focus {
   transform-origin: bottom left;
 }
 
-/* 折叠侧栏悬停临时展开：从左侧滑出，不推挤正文 */
-@keyframes panel-in {
-  from {
-    opacity: 0;
-    transform: translateX(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-.animate-panel {
-  animation: panel-in 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
 @keyframes pulse-soft {
   0%,
   100% {
@@ -356,7 +341,6 @@ select:focus {
   .animate-rise,
   .animate-pop,
   .animate-pop-up,
-  .animate-panel,
   .animate-pulse-soft,
   .stream-caret::after {
     animation: none !important;
@@ -394,3 +378,6 @@ select:focus {
 .md .citation-chip:hover {
   border-color: var(--accent);
 }
+
+
+

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
