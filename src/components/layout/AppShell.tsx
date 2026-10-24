@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import SearchDialog from "./SearchDialog";
+import StudyTimer from "./StudyTimer";
 import SidebarChats from "./SidebarChats";
 import { cx } from "@/components/ui/kit";
 import type { PlanDTO, SessionSummary } from "@/lib/types";
@@ -166,7 +167,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* 新对话、折叠态的搜索、四个导航项在同一列里，间距统一为 gap-0.5 */}
       <div className={cx("mt-1 flex flex-col gap-0.5", expanded ? "px-3" : "px-2")}>
         <Link
-          href="/"
+          href="/new"
           title="新对话"
           className={cx(
             "flex items-center rounded-full text-ink2 transition-colors hover:bg-panel2 hover:text-ink",
@@ -251,6 +252,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-dvh bg-bg">
+      <StudyTimer />
       {/* 键盘用户不必先 Tab 过 12 个侧栏项才能到正文 */}
       <a
         href="#main-content"

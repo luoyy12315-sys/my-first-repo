@@ -283,6 +283,55 @@ export interface TodayPlan {
   courseTitle?: string | null;
 }
 
+/** 某一档的柱子：日 / 周 / 月 */
+export interface StudyTimeBucket {
+  /** 归一化的 key：日=YYYY-MM-DD，周=该周周一（YYYY-MM-DD），月=YYYY-MM */
+  key: string;
+  /** 展示用短标签：日=「8」，周=「10/20」，月=「10 月」 */
+  label: string;
+  seconds: number;
+}
+
+export interface StudyTimeSummary {
+  /** 累计秒数（全部历史） */
+  totalSeconds: number;
+  /** 有学习记录的天数 */
+  studyDays: number;
+  /** 连续学习天数（含今天或从昨天往前算） */
+  streak: number;
+  days: StudyTimeBucket[];
+  weeks: StudyTimeBucket[];
+  months: StudyTimeBucket[];
+  /** 今天已学秒数 */
+  todaySeconds: number;
+}
+
+/** 工作台上的一个计划进度 */
+export interface StudyPlanProgress {
+  id: string;
+  title: string;
+  status: string;
+  mastered: number;
+  total: number;
+  currentCourseTitle: string | null;
+  currentCourseId: string | null;
+  reviews: number;
+  sessions: number;
+}
+
+/** 需要再练的一条（弱点或到期复习） */
+export interface StudyWeakItem {
+  conceptId: string;
+  name: string;
+  kind: "review" | "weak";
+  reason: string;
+  planId: string | null;
+  courseTitle: string | null;
+  /** 掌握概率，0~1；弱点展示用 */
+  pMastery: number;
+  wrongStreak: number;
+}
+
 export interface ReviewItemDTO {
   id: string;
   conceptId: string;
@@ -428,4 +477,13 @@ export interface AiModelPublic {
   lastOkAt: number | null;
   lastTestMs: number | null;
   lastError: string | null;
+}
+
+/** 学习工作台（GET /api/study） */
+export interface StudyOverview {
+  ai: AiStatus;
+  todayPlan: TodayPlan;
+  plans: StudyPlanProgress[];
+  weak: StudyWeakItem[];
+  time: StudyTimeSummary;
 }

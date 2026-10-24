@@ -83,19 +83,67 @@ for (const width of [1440, 390]) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
 
-  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+  // 新对话独立成页：/new 才是输入框，/ 是学习工作台
+  await page.goto(`${BASE}/new`, { waitUntil: "networkidle" });
   await page.waitForTimeout(600);
-  const home = await page.evaluate(() => ({
+  const newChat = await page.evaluate(() => ({
     textareas: document.querySelectorAll("textarea").length,
-    sections: document.querySelectorAll("main section").length,
+    h1: document.querySelector("main h1")?.textContent?.trim() ?? "",
     chars: (document.querySelector("main")?.innerText ?? "").length,
     height: document.documentElement.scrollHeight,
-    links: document.querySelectorAll("main a").length,
   }));
-  check("首页只有一个输入框", home.textareas === 1, JSON.stringify(home));
-  check("首页不再有仪表盘区块", home.sections <= 1, JSON.stringify(home));
-  check("首页首屏一屏内", home.height <= 1000, `${home.height}px`);
-  check("首页文案 ≤ 120 字", home.chars <= 120, `${home.chars}`);
+  check("/new 是新对话页（一个输入框）", newChat.textareas === 1, JSON.stringify(newChat));
+  check("/new 标题是「想学什么？」", newChat.h1 === "想学什么？", newChat.h1);
+  check("/new 首屏一屏内", newChat.height <= 1000, `${newChat.height}px`);
+  check("/new 文案 ≤ 120 字", newChat.chars <= 120, `${newChat.chars}`);
+
+  // 学习工作台：四块内容 + 日/周/月/总切换，没有输入框
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  const study = await page.evaluate(() => {
+    const main = document.querySelector("main");
+    return {
+      h1: main?.querySelector("h1")?.textContent?.trim() ?? "",
+      text: main?.innerText ?? "",
+      textareas: main?.querySelectorAll("textarea").length ?? 0,
+      sections: main?.querySelectorAll("section").length ?? 0,
+      ranges: [...(main?.querySelectorAll("button") ?? [])].map((b) => b.textContent?.trim()),
+    };
+  });
+  check("学习页标题是「学习」", study.h1 === "学习", study.h1);
+  check("学习页没有输入框", study.textareas === 0, String(study.textareas));
+  check(
+    "学习页有四块内容：今天该学什么 / 学习时间 / 目标进度 / 需要再练",
+    ["今天该学什么", "学习时间", "目标进度", "需要再练"]
+      .filter((k) => !study.text.includes(k))
+      .length === 0,
+    JSON.stringify(["今天该学什么", "学习时间", "目标进度", "需要再练"].filter((k) => !study.text.includes(k))),
+  );
+  check("学习页有日/周/月/总四档", ["日", "周", "月", "总"].every((r) => study.ranges.includes(r)), JSON.stringify(study.ranges.slice(0, 10)));
+  check("学习页文案 ≤ 260 字", study.text.length <= 260, String(study.text.length));
+
+  // 学习时长接口：结构与范围
+  const studyApi = await fetch(`${BASE}/api/study`).then((r) => r.json()).catch(() => null);
+  check(
+    "/api/study 返回时长聚合",
+    Boolean(studyApi?.time) &&
+      Array.isArray(studyApi.time.days) &&
+      studyApi.time.days.length === 14 &&
+      studyApi.time.weeks.length === 8 &&
+      studyApi.time.months.length === 6,
+    JSON.stringify(studyApi?.time && { d: studyApi.time.days.length, w: studyApi.time.weeks.length, m: studyApi.time.months.length }),
+  );
+  check(
+    "/api/study 返回今天该学什么 + 需要再练 + 计划进度",
+    Boolean(studyApi?.todayPlan?.kind) && Array.isArray(studyApi?.weak) && Array.isArray(studyApi?.plans),
+    JSON.stringify(studyApi && Object.keys(studyApi)),
+  );
+  // 侧栏「新对话」进新对话页，不再和「学习」同页
+  const sidebarNewChat = await page.locator('aside a[title="新对话"]').first().getAttribute("href");
+  check("侧栏新对话指向 /new", sidebarNewChat === "/new", String(sidebarNewChat));
+  const learnHref = await page.locator('aside a[title="学习"]').first().getAttribute("href");
+  check("侧栏学习指向 /", learnHref === "/", String(learnHref));
+  check("学习页导航高亮在「学习」", (await page.locator('aside a[aria-current="page"]').first().innerText()).includes("学习"));
 
   await page.goto(`${BASE}/archive`, { waitUntil: "networkidle" });
   await page.waitForTimeout(800);
@@ -107,7 +155,7 @@ for (const width of [1440, 390]) {
   const meRes = await fetch(`${BASE}/me`);
   check("/me 已下线（404）", meRes.status === 404, String(meRes.status));
 
-  const budgets = { "/plan": 130, "/review": 130, "/archive": 160 };
+  const budgets = { "/plan": 130, "/review": 130, "/archive": 160, "/new": 120 };
   for (const [path, budget] of Object.entries(budgets)) {
     await page.goto(`${BASE}${path}`, { waitUntil: "networkidle" });
     await page.waitForTimeout(600);

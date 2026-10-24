@@ -179,7 +179,7 @@ export default function HistoryPage({ embedded = false }: { embedded?: boolean }
               : "换个搜索词或计划试试。"
           }
           action={
-            <Link href="/">
+            <Link href="/new">
               <Button variant="secondary">去学习</Button>
             </Link>
           }

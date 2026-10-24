@@ -44,7 +44,7 @@ export default function PlanPage() {
       <PageHeader
         title="学习计划"
         action={
-          <Button variant="secondary" size="sm" onClick={() => router.push("/?mode=goal")}>
+          <Button variant="secondary" size="sm" onClick={() => router.push("/new?mode=goal")}>
             设定新目标
           </Button>
         }
@@ -60,7 +60,7 @@ export default function PlanPage() {
           title="还没有学习计划"
           description="描述一个目标，AI 先给课程与知识点草稿，确认后才开始。"
           action={
-            <Button variant="secondary" onClick={() => router.push("/?mode=goal")}>
+            <Button variant="secondary" onClick={() => router.push("/new?mode=goal")}>
               去设定目标
             </Button>
           }

@@ -1,264 +1,224 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ArrowUp, Clock, Repeat2, Route as RouteIcon, TriangleAlert } from "lucide-react";
-import { toast } from "sonner";
-import { cx, Spinner } from "@/components/ui/kit";
-import { usePlans } from "@/components/PlanSelect";
-import type { AiStatus, SessionSummary, TodayPlan } from "@/lib/types";
+import { useRouter } from "next/navigation";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Clock,
+  Repeat2,
+  Route as RouteIcon,
+  Sparkles,
+  Target,
+  TriangleAlert,
+} from "lucide-react";
+import StudyTimeChart from "@/components/study/StudyTimeChart";
+import { Button, EmptyState, PageHeader, Spinner, cx } from "@/components/ui/kit";
+import type { StudyOverview, TodayPlan } from "@/lib/types";
 
-type Mode = "infinite" | "goal";
+function actionFor(plan: TodayPlan) {
+  if (plan.kind === "continue" && plan.sessionId) return { href: `/s/${plan.sessionId}`, label: "继续" };
+  if (plan.kind === "review") return { href: "/review", label: "去复习" };
+  if (plan.kind === "weak") {
+    return plan.planId ? { href: `/plan/${plan.planId}`, label: "练一练" } : { href: "/review", label: "练一练" };
+  }
+  return { href: "/new", label: "开始提问" };
+}
 
-const EXAMPLES = [
-  { mode: "infinite" as Mode, label: "解释一个概念", text: "用一个生活里的例子解释贝叶斯定理。" },
-  { mode: "infinite" as Mode, label: "出几道题", text: "给我 3 道二次函数的练习题，从易到难。" },
-  { mode: "goal" as Mode, label: "定个学习目标", text: "我想在两周内学会 SQL 查询。" },
-];
+function TodayIcon({ kind }: { kind: TodayPlan["kind"] }) {
+  const Icon = kind === "review" || kind === "weak" ? Repeat2 : kind === "continue" ? Clock : Sparkles;
+  return (
+    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accentsoft text-accent">
+      <Icon className="size-4" />
+    </span>
+  );
+}
 
-export default function HomePage() {
+export default function StudyPage() {
   const router = useRouter();
-  const { plans } = usePlans();
-  const [mode, setMode] = useState<Mode>("infinite");
-  const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
-  const [ai, setAi] = useState<AiStatus | null>(null);
-  const [sessions, setSessions] = useState<SessionSummary[]>([]);
-  const [today, setToday] = useState<TodayPlan | null>(null);
-  const [loading, setLoading] = useState(true);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [data, setData] = useState<StudyOverview | null>(null);
 
   const load = useCallback(async () => {
-    try {
-      const res = await fetch("/api/home", { cache: "no-store" });
-      if (res.ok) {
-        const data = (await res.json()) as {
-          ai: AiStatus;
-          sessions: SessionSummary[];
-          todayPlan: TodayPlan;
-        };
-        setAi(data.ai);
-        setSessions(data.sessions ?? []);
-        setToday(data.todayPlan ?? null);
-      }
-    } finally {
-      setLoading(false);
-    }
+    const res = await fetch("/api/study", { cache: "no-store" });
+    if (res.ok) setData((await res.json()) as StudyOverview);
   }, []);
 
   useEffect(() => {
     void load();
     const onChange = () => void load();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void load();
+    };
     window.addEventListener("sessions:changed", onChange);
     window.addEventListener("plans:changed", onChange);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.removeEventListener("sessions:changed", onChange);
       window.removeEventListener("plans:changed", onChange);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [load]);
 
-  // /plan 的「设定新目标」会带 ?mode=goal 回来：切到目标模式并聚焦输入框
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("mode") !== "goal") return;
-    setMode("goal");
-    const timer = setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 140);
-    const url = new URL(window.location.href);
-    url.searchParams.delete("mode");
-    window.history.replaceState({}, "", url.pathname + url.search + url.hash);
-    return () => clearTimeout(timer);
-  }, []);
+  if (!data) {
+    return (
+      <div className="mx-auto grid w-full max-w-3xl place-items-center px-4 py-24 md:px-6">
+        <Spinner />
+      </div>
+    );
+  }
 
-  const grow = useCallback(() => {
-    const el = inputRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
-  }, []);
-
-  useEffect(() => {
-    grow();
-  }, [text, grow]);
-
-  const start = async () => {
-    const content = text.trim();
-    if (!content || sending) return;
-    setSending(true);
-    try {
-      const res = await fetch("/api/sessions", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          mode,
-          title: mode === "goal" ? `规划：${content.slice(0, 24)}` : "新的学习",
-        }),
-      });
-      const payload = (await res.json()) as { session?: { id: string }; error?: string };
-      if (!res.ok || !payload.session) throw new Error(payload.error ?? "创建学习会话失败");
-      const q =
-        mode === "goal"
-          ? `我想系统学习：${content}。请先帮我生成一份待确认的学习计划草稿（按「课程 → 知识点」组织），不要直接开始教学，生成后告诉我去哪里确认和修改。`
-          : content;
-      router.push(`/s/${payload.session.id}?q=${encodeURIComponent(q)}`);
-    } catch (e) {
-      toast.error((e as Error).message);
-      setSending(false);
-    }
-  };
-
-  const continueItem = useMemo(() => {
-    if (today && today.kind !== "empty") {
-      const href =
-        today.kind === "continue" && today.sessionId
-          ? `/s/${today.sessionId}`
-          : today.kind === "review" && today.conceptId
-            ? "/review"
-            : today.planId
-              ? `/plan/${today.planId}`
-              : "/review";
-      return {
-        href,
-        title: today.title,
-        meta: `${today.kind === "review" ? "复习" : today.kind === "weak" ? "练一练" : "继续"} · ${today.minutes} 分钟`,
-        icon: today.kind === "review" || today.kind === "weak" ? Repeat2 : Clock,
-      };
-    }
-    const last = sessions.find((s) => s.messageCount > 0);
-    if (!last) return null;
-    return {
-      href: `/s/${last.id}`,
-      title: last.title,
-      meta: "继续上次",
-      icon: Clock,
-    };
-  }, [today, sessions]);
-
-  const draftCount = plans.filter((p) => p.status === "draft").length;
-  const unavailable = Boolean(ai && !ai.configured);
+  const today = data.todayPlan;
+  const action = actionFor(today);
+  const weakReviews = data.weak.filter((w) => w.kind === "review").length;
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-2xl flex-col justify-center px-4 pb-16 md:min-h-dvh md:px-6">
-      <h1 className="mb-7 text-center font-serif text-[26px] leading-tight tracking-tight text-ink md:text-[30px]">
-        想学什么？
-      </h1>
+    <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-2 md:px-6">
+      <PageHeader
+        title="学习"
+        action={
+          <Button variant="secondary" size="sm" onClick={() => router.push("/new")}>
+            新对话
+          </Button>
+        }
+      />
 
-      {unavailable ? (
+      {data.ai && !data.ai.configured ? (
         <div className="mb-4 flex items-start gap-2 rounded-xl bg-warnsoft/60 px-3.5 py-2.5 text-[13px] leading-relaxed text-ink">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warn" />
           <span>
-            {ai?.reason ?? "还没有配置模型"}。
+            {data.ai.reason ?? "还没有配置模型"}。
             <Link href="/settings" className="mx-1 underline">
               去设置
             </Link>
-            配置后才能开始。
+            配置后才能开始学习。
           </span>
         </div>
       ) : null}
 
-      {ai?.configured && ai.lastError ? (
-        <div className="mb-4 flex items-start gap-2 rounded-xl bg-badsoft/50 px-3.5 py-2.5 text-[13px] leading-relaxed text-ink">
-          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-bad" />
-          <span>
-            上次调用失败：{ai.lastError}。
-            <Link href="/settings" className="mx-1 underline">
-              去设置
-            </Link>
-            检查。
-          </span>
-        </div>
-      ) : null}
-
-      <div className="rounded-3xl border border-line bg-panel p-2 shadow-[var(--shadow)] transition-colors focus-within:border-accent/60">
-        <textarea
-          ref={inputRef}
-          value={text}
-          rows={2}
-          autoFocus
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              void start();
-            }
-          }}
-          placeholder={mode === "goal" ? "想系统学什么？我给你排一份计划草稿…" : "问一个问题，或者贴一段看不懂的内容…"}
-          className="max-h-[200px] w-full resize-none bg-transparent px-3.5 pt-2.5 text-[15px] leading-relaxed text-ink outline-none placeholder:text-ink3"
-        />
-        <div className="flex items-center justify-between gap-2 px-1.5 pb-1.5">
-          <div className="flex items-center gap-0.5 rounded-full bg-panel2 p-0.5">
-            {(["infinite", "goal"] as Mode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => {
-                  setMode(m);
-                  inputRef.current?.focus();
-                }}
-                className={cx(
-                  "rounded-full px-3 py-1 text-[12px] transition-colors",
-                  mode === m ? "bg-panel text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink3 hover:text-ink2",
-                )}
-              >
-                {m === "goal" ? "定目标" : "直接问"}
-              </button>
-            ))}
+      <div className="flex flex-col gap-4">
+        {/* 今天该学什么 */}
+        <section className="rounded-2xl border border-line bg-panel p-5">
+          <h2 className="mb-3 text-[13px] font-medium text-ink">今天该学什么</h2>
+          <div className="flex items-start gap-3">
+            <TodayIcon kind={today.kind} />
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate font-serif text-[19px] tracking-tight text-ink">{today.title}</h2>
+              <p className="mt-1 max-w-[58ch] text-[13px] leading-relaxed text-ink2">{today.reason}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button size="sm" onClick={() => router.push(action.href)}>
+                  {action.label}
+                  <ArrowRight className="size-3.5" />
+                </Button>
+                {today.planTitle && today.planId ? (
+                  <Link
+                    href={`/plan/${today.planId}`}
+                    className="truncate text-[12px] text-ink3 transition-colors hover:text-ink2"
+                  >
+                    {today.planTitle}
+                  </Link>
+                ) : null}
+              </div>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={() => void start()}
-            disabled={!text.trim() || sending || unavailable}
-            aria-label="开始"
-            title="开始（Enter）"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-white transition-all hover:brightness-110 disabled:opacity-35"
-          >
-            {sending ? <Spinner className="text-white" /> : <ArrowUp className="size-4" />}
-          </button>
-        </div>
+        </section>
+
+        <StudyTimeChart time={data.time} />
+
+        {/* 目标进度 */}
+        <section className="rounded-2xl border border-line bg-panel p-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-[13px] font-medium text-ink">目标进度</h2>
+            <Link href="/plan" className="text-[12px] text-ink3 transition-colors hover:text-ink2">
+              全部计划
+            </Link>
+          </div>
+          {data.plans.length ? (
+            <ul className="mt-2 flex flex-col">
+              {data.plans.map((p) => {
+                const pct = p.total ? Math.round((p.mastered / p.total) * 100) : 0;
+                return (
+                  <li key={p.id}>
+                    <Link
+                      href={`/plan/${p.id}`}
+                      className="group flex items-center gap-3 rounded-xl px-1 py-2.5 transition-colors hover:bg-panel2"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-baseline justify-between gap-2">
+                          <span className="truncate text-[13.5px] text-ink">{p.title}</span>
+                          <span className="shrink-0 text-[11.5px] text-ink3">
+                            {p.mastered}/{p.total}
+                          </span>
+                        </span>
+                        <span className="mt-1 block h-1 w-full overflow-hidden rounded-full bg-line">
+                          <span className="block h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+                        </span>
+                        <span className="mt-1 block truncate text-[11.5px] text-ink3">
+                          {p.currentCourseTitle ? `下一门：${p.currentCourseTitle}` : "课程都学完了"}
+                        </span>
+                      </span>
+                      <ArrowUpRight className="size-3.5 shrink-0 text-ink3 transition-colors group-hover:text-ink" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div className="mt-2 flex flex-col items-center gap-2.5 rounded-xl border border-dashed border-line px-4 py-6 text-center">
+              <p className="text-[12.5px] text-ink3">还没有进行中的计划</p>
+              <Button variant="secondary" size="sm" onClick={() => router.push("/new?mode=goal")}>
+                <Target className="size-3.5" />
+                定个学习目标
+              </Button>
+            </div>
+          )}
+        </section>
+
+        {/* 需要再练 */}
+        <section className="rounded-2xl border border-line bg-panel p-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-[13px] font-medium text-ink">需要再练</h2>
+            {weakReviews ? (
+              <Link href="/review" className="text-[12px] text-ink3 transition-colors hover:text-ink2">
+                去复习
+              </Link>
+            ) : null}
+          </div>
+          {data.weak.length ? (
+            <ul className="mt-2 flex flex-col">
+              {data.weak.map((w) => (
+                <li key={`${w.kind}-${w.conceptId}`}>
+                  <Link
+                    href={w.kind === "review" ? "/review" : `/archive?tab=concepts&c=${w.conceptId}`}
+                    className="group flex items-center gap-3 rounded-xl px-1 py-2.5 transition-colors hover:bg-panel2"
+                  >
+                    <span
+                      className={cx(
+                        "size-1.5 shrink-0 rounded-full",
+                        w.kind === "review" ? "bg-warn" : "bg-bad",
+                      )}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13.5px] text-ink">{w.name}</span>
+                      <span className="mt-0.5 block truncate text-[11.5px] text-ink3">
+                        {w.kind === "review" ? "到期复习" : "薄弱点"} · {w.reason}
+                        {w.courseTitle ? ` · ${w.courseTitle}` : ""}
+                      </span>
+                    </span>
+                    <ArrowRight className="size-3.5 shrink-0 text-ink3 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState
+              icon={<RouteIcon className="size-5" />}
+              title="暂时没有要补的"
+              description="做过练习、产生真实证据后，这里会列出该再练一次的知识点"
+            />
+          )}
+        </section>
       </div>
-
-      <div className="mt-4 flex flex-wrap justify-center gap-1.5">
-        {EXAMPLES.map((ex) => (
-          <button
-            key={ex.label}
-            type="button"
-            onClick={() => {
-              setMode(ex.mode);
-              setText(ex.text);
-              requestAnimationFrame(() => inputRef.current?.focus());
-            }}
-            className="rounded-full border border-line bg-panel px-3 py-1.5 text-[12px] text-ink2 transition-colors hover:border-linestrong hover:text-ink"
-          >
-            {ex.label}
-          </button>
-        ))}
-      </div>
-
-      {loading ? null : continueItem ? (
-        <Link
-          href={continueItem.href}
-          className="group mt-8 flex items-center gap-3 rounded-2xl border border-line bg-panel px-4 py-3 transition-colors hover:border-accent/40"
-        >
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-panel2 text-ink2">
-            <continueItem.icon className="size-4" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13.5px] text-ink">{continueItem.title}</span>
-            <span className="mt-0.5 block text-[12px] text-ink3">{continueItem.meta}</span>
-          </span>
-          <ArrowRight className="size-4 shrink-0 text-ink3 transition-transform group-hover:translate-x-0.5" />
-        </Link>
-      ) : null}
-
-      {draftCount > 0 ? (
-        <Link
-          href="/plan"
-          className="mt-2 flex items-center gap-2 rounded-xl px-4 py-2 text-[12px] text-accentink hover:bg-panel2"
-        >
-          <RouteIcon className="size-3.5" />
-          {draftCount} 份计划草稿待确认
-          <ArrowRight className="ml-auto size-3.5" />
-        </Link>
-      ) : null}
     </div>
   );
 }

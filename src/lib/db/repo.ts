@@ -2942,3 +2942,21 @@ export function logUsage(opts: {
       now(),
     );
 }
+// ── 学习时长 ────────────────────────────────────────────────────────────────
+
+/** 学习心跳：把秒数累加到当天（单次已限幅，防止跑飞的数值污染统计） */
+export function addStudySeconds(day: string, seconds: number) {
+  getDb()
+    .prepare(
+      `insert into study_time (day, seconds, updated_at) values (?, ?, ?)
+       on conflict(day) do update set seconds = seconds + excluded.seconds, updated_at = excluded.updated_at`,
+    )
+    .run(day, seconds, now());
+}
+
+/** 全部学习日（一天一行，一年也就 365 行），图表聚合在内存里做 */
+export function listStudyTimeRows(): { day: string; seconds: number }[] {
+  return getDb()
+    .prepare("select day, seconds from study_time order by day asc")
+    .all() as { day: string; seconds: number }[];
+}

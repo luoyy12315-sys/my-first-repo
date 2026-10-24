@@ -423,4 +423,12 @@ create table if not exists usage_log (
 );
 -- 设置页「用量」按今日/本月/全部聚合，需要按时间范围扫描
 create index if not exists ix_usage_created on usage_log(created_at);
+
+-- 学习时长：前端在会话/复习/课程页停留时按心跳累加真实秒数（本地日，YYYY-MM-DD）
+-- 只按天聚合，一年也就 365 行；不做会话级明细，避免行数膨胀
+create table if not exists study_time (
+  day text primary key,
+  seconds integer not null default 0,
+  updated_at integer not null
+);
 `;
