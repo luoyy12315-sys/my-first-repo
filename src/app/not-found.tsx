@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 export default function NotFound() {
   return (
@@ -16,7 +16,7 @@ export default function NotFound() {
           回到首页
         </Link>
         <Link
-          href="/history"
+          href="/archive?tab=sessions"
           className="rounded-full border border-line bg-panel px-4 py-2 text-[13px] text-ink2 transition-colors hover:border-linestrong"
         >
           看学习历史
@@ -25,3 +25,4 @@ export default function NotFound() {
     </div>
   );
 }
+

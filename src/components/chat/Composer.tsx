@@ -8,10 +8,7 @@ import type { AiModelPublic, AiStatus } from "@/lib/types";
 const QUICK = [
   { label: "换种讲法", prompt: "这个讲法我还没懂，换一种更直观的讲法，用我能想象的东西打比方。" },
   { label: "看个例子", prompt: "给我一个具体的例子，把上面的内容跑一遍。" },
-  { label: "用图表展示", prompt: "用图表或对比表把这个关系展示出来。" },
-  { label: "给点思路", prompt: "给我一点思路，但不要直接说答案。" },
-  { label: "降低难度", prompt: "太难了，退回到更基础的地方重新讲。" },
-  { label: "增加挑战", prompt: "我已经懂了，给我一个更难的变式题。" },
+  { label: "出几道题", prompt: "给我几道练习题，从易到难，先别给答案。" },
 ];
 
 export default function Composer({
@@ -152,24 +149,26 @@ export default function Composer({
                 onClick={() => onWebModeChange(webMode === "manual" ? "off" : "manual")}
                 disabled={!webConfigured || Boolean(pending)}
                 className={cx(
-                  "flex items-center gap-1 rounded-full px-2 py-1 text-[12px] transition-colors disabled:opacity-40",
+                  "rounded-full p-2 transition-colors disabled:opacity-40",
                   webMode === "manual" && webConfigured
                     ? "bg-accentsoft text-accentink"
                     : "text-ink3 hover:bg-panel2 hover:text-ink",
                 )}
                 title={
                   webConfigured
-                    ? "手动模式下，本轮问题会先查证网络来源；查询会发送到你配置的搜索服务。"
-                    : "尚未配置搜索服务：到「设置 → 联网检索」填 SearXNG 地址或 API Key"
+                    ? webMode === "manual"
+                      ? "联网：开（这一轮会先查证来源）"
+                      : "联网：关（点一下开启）"
+                    : "还没配置搜索服务：到「设置 → 联网检索」填写"
                 }
+                aria-label="联网检索"
                 aria-pressed={webMode === "manual"}
               >
                 {webMode === "manual" && webConfigured ? (
-                  <Globe className="size-3.5" />
+                  <Globe className="size-4" />
                 ) : (
-                  <Globe2 className="size-3.5" />
+                  <Globe2 className="size-4" />
                 )}
-                <span className="hidden sm:inline">联网：{webMode === "manual" ? "手动" : "关闭"}</span>
               </button>
             ) : null}
             {models && models.length > 0 && onModelChange ? (
@@ -257,7 +256,6 @@ export default function Composer({
             )}
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="hidden text-[12px] text-ink3 sm:inline">Enter 发送 · Shift+Enter 换行</span>
             {pending && onStop ? (
               <button
                 onClick={onStop}
@@ -282,3 +280,4 @@ export default function Composer({
     </div>
   );
 }
+

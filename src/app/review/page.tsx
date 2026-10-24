@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCheck, Clock, Repeat2, X } from "lucide-react";
 import { toast } from "sonner";
-import { Badge, Button, EmptyState, SectionHeader, Spinner, cx } from "@/components/ui/kit";
+import { Badge, Button, EmptyState, PageHeader, SectionHeader, Spinner, cx } from "@/components/ui/kit";
 import { PlanSelect, usePlans } from "@/components/PlanSelect";
 import type { ReviewItemDTO } from "@/lib/types";
 import { groupByPlan } from "@/lib/utils";
@@ -96,16 +96,8 @@ export default function ReviewPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
-      <div className="mb-5">
-        <div className="mb-1.5 flex items-center gap-2 text-[12px] uppercase tracking-[0.14em] text-ink3">
-          <Repeat2 className="size-3.5" /> 复习
-        </div>
-        <h1 className="font-serif text-[26px] tracking-tight text-ink">该回头看一眼的</h1>
-        <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-ink2">
-          按到期与薄弱程度排序；不想看的可以直接忽略。
-        </p>
-      </div>
+    <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-8 md:py-10">
+      <PageHeader title="该回头看一眼的" />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <label className="flex items-center gap-1.5 text-[12px] text-ink3">
@@ -148,7 +140,7 @@ export default function ReviewPage() {
         <div className="flex flex-col gap-6">
           {groups.map((g) => (
             <section key={g.planId ?? "ungrouped"}>
-              <SectionHeader title={g.planTitle} hint={`${g.items.length} 条复习`} />
+              <SectionHeader title={g.planTitle} />
               <div className="flex flex-col gap-2">
                 {g.items.map((it) => (
                   <div
@@ -213,3 +205,4 @@ export default function ReviewPage() {
     </div>
   );
 }
+

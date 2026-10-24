@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -14,7 +14,6 @@ import {
   Trash2,
   Wifi,
 } from "lucide-react";
-import Link from "next/link";
 import { toast } from "sonner";
 import {
   Badge,
@@ -23,6 +22,7 @@ import {
   Field,
   IconButton,
   Modal,
+  PageHeader,
   SectionHeader,
   Spinner,
   cx,
@@ -35,7 +35,6 @@ import {
   MAX_TEACHING_DIRECTIVE,
   MAX_TEACHING_STYLES,
   buildTeachingStyleBlock,
-  styleSummary,
   type TeachingStyle,
 } from "@/lib/teaching/profile";
 import { formatDay } from "@/lib/utils";
@@ -637,23 +636,12 @@ export default function SettingsPage() {
       : { tone: "warn" as const, text: "待配置" };
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
-      <div className="mb-6">
-        <h1 className="font-serif text-[26px] tracking-tight text-ink">设置</h1>
-        <p className="mt-1 text-[13px] text-ink2">模型、讲解风格、联网检索、用量与数据，都在这一页。</p>
-      </div>
+    <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-8 md:py-10">
+      <PageHeader title="设置" />
 
       <section className="mb-8">
         <SectionHeader
           title="模型服务"
-          hintBelow
-          hint={
-            models.length
-              ? `${models.length} 个配置 · 默认「${defaultModel?.label ?? "—"}」· 对话里可随时切换，切换会被记住`
-              : legacy?.source === "env"
-                ? "当前来自环境变量"
-                : "还没有添加模型"
-          }
           action={
             <div className="flex items-center gap-2">
               <Badge tone={healthBadge.tone}>
@@ -678,8 +666,8 @@ export default function SettingsPage() {
                 ? "当前正在使用环境变量里的模型配置（AI_BASE_URL / AI_MODEL / AI_API_KEY）。"
                 : "还没有添加任何模型。"}
             </p>
-            <p className="mt-1 max-w-[58ch] text-[13px] leading-relaxed text-ink3">
-              添加后可以在对话框左下角切换，不同会话可以各用一个。Ollama 不需要填 Key。
+            <p className="mt-1 text-[13px] leading-relaxed text-ink3">
+              添加后可以在对话框左下角切换。Ollama 不需要填 Key。
             </p>
             <Button className="mt-3" size="sm" icon={<Plus className="size-3.5" />} onClick={openAdd}>
               添加第一个模型
@@ -698,23 +686,11 @@ export default function SettingsPage() {
                           <Star className="size-2.5" /> 默认
                         </Badge>
                       ) : null}
-                      {m.configured ? (
-                        <Badge tone="ok">已配 Key</Badge>
-                      ) : (
-                        <Badge tone="warn">缺 Key</Badge>
-                      )}
-                      {m.lastOkAt ? (
-                        <Badge tone="neutral">上次正常 {formatLatency(m.lastTestMs ?? 0)}</Badge>
-                      ) : null}
+                      {m.configured ? null : <Badge tone="warn">缺 Key</Badge>}
                       {m.lastError ? <Badge tone="bad">上次失败</Badge> : null}
                     </div>
                     <p className="mt-1 truncate font-mono text-[12px] text-ink3" title={`${m.model} · ${m.baseUrl}`}>
                       {m.model} · {m.baseUrl}
-                    </p>
-                    <p className="mt-0.5 text-[12px] text-ink3">
-                      {m.provider === "anthropic" ? "Anthropic 协议" : "OpenAI 兼容"} · 温度{" "}
-                      {m.temperature.toFixed(1)}
-                      {m.keyMasked ? ` · ${m.keyMasked}` : " · 无 Key"}
                     </p>
                     {m.lastError ? (
                       <p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-bad">{m.lastError}</p>
@@ -755,17 +731,10 @@ export default function SettingsPage() {
         )}
 
         {legacy && !legacy.configured && models.length === 0 ? (
-          <p className="mt-2 max-w-[58ch] rounded-lg bg-warnsoft/60 px-3 py-2 text-[12px] leading-relaxed text-ink2">
-            {legacy.reason}。没有真实模型时，应用不会用固定文本冒充教学——对话页会明确提示未配置。
+          <p className="mt-2 rounded-lg bg-warnsoft/60 px-3 py-2 text-[12px] leading-relaxed text-ink2">
+            {legacy.reason}。
           </p>
         ) : null}
-
-        <p className="mt-2 max-w-[58ch] text-[12px] leading-relaxed text-ink3">
-          想删掉某个模型只是不想再用它？删配置不会删学习记录。
-          <Link href="/library" className="ml-1 underline">
-            去学习档案
-          </Link>
-        </p>
       </section>
 
       <Modal
@@ -809,7 +778,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="名称" hint="显示在对话里的名字">
+            <Field label="名称">
               <input
                 value={draft.label}
                 onChange={(e) => setDraft((d) => ({ ...d, label: e.target.value }))}
@@ -817,7 +786,7 @@ export default function SettingsPage() {
                 placeholder="例如：火山方舟 / 便宜模型"
               />
             </Field>
-            <Field label="模型名称" hint="服务商给的 model id">
+            <Field label="模型名称">
               <input
                 value={draft.model}
                 onChange={(e) => setDraft((d) => ({ ...d, model: e.target.value }))}
@@ -868,7 +837,7 @@ export default function SettingsPage() {
             </Field>
           </div>
 
-          <Field label={`温度 ${draft.temperature.toFixed(1)}`} hint="低=稳定，高=发散。教学建议 0.5–0.7">
+          <Field label={`温度 ${draft.temperature.toFixed(1)}`} hint={undefined}>
             <input
               type="range"
               min={0}
@@ -919,12 +888,6 @@ export default function SettingsPage() {
 <section className="mb-8">
         <SectionHeader
           title="讲解风格"
-          hintBelow
-          hint={
-            styles.length
-              ? `${styles.length} 个风格，只有一个生效（${activeStyleId ? "现在用其中一个" : "现在按默认讲法"}）`
-              : "还没有自定义风格；默认讲法不额外注入提示词"
-          }
           action={
             <Button
               size="sm"
@@ -947,7 +910,6 @@ export default function SettingsPage() {
                   <p className="text-[13px] font-medium text-ink">
                     {styleEditor.id ? "编辑风格" : "新风格"}
                   </p>
-                  <p className="mt-0.5 text-[12px] text-ink3">保存后只影响之后新发的消息</p>
                 </div>
                 <button
                   type="button"
@@ -959,7 +921,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="mt-3 flex flex-col gap-3">
-                <Field label="名字" hint={`最多 ${MAX_STYLE_NAME} 字`}>
+                <Field label="名字">
                   <input
                     className={inputClass}
                     maxLength={MAX_STYLE_NAME}
@@ -971,7 +933,7 @@ export default function SettingsPage() {
                   />
                 </Field>
 
-                <Field label="你希望我怎么讲" hint={`最多 ${MAX_TEACHING_DIRECTIVE} 字，留空也行`}>
+                <Field label="你希望我怎么讲">
                   <textarea
                     className={cx(inputClass, "min-h-[96px] resize-y leading-relaxed")}
                     maxLength={MAX_TEACHING_DIRECTIVE}
@@ -990,7 +952,7 @@ export default function SettingsPage() {
                   label="篇幅"
                   value={styleEditor.verbosity}
                   suffix=" / 5"
-                  hint="1=只讲关键点，5=完整展开并补边界情况"
+                  hint={undefined}
                   min={1}
                   max={5}
                   onChange={(v) => setStyleEditor((s) => (s ? { ...s, verbosity: v } : s))}
@@ -1025,7 +987,7 @@ export default function SettingsPage() {
 
                 <details className="border-t border-line pt-2.5">
                   <summary className="cursor-pointer select-none text-[12px] text-ink2">
-                    {stylePreview ? "保存后注入给模型的提示词（点开查看）" : "这份内容不会额外注入（全默认）"}
+                    注入给模型的提示词
                   </summary>
                   {stylePreview ? (
                     <pre className="mt-2 max-w-[58ch] whitespace-pre-wrap break-words font-mono text-[12px] leading-relaxed text-ink3">
@@ -1050,21 +1012,16 @@ export default function SettingsPage() {
                   <Button size="sm" variant="secondary" onClick={() => setStyleEditor(null)}>
                     取消
                   </Button>
-                  <span className="ml-auto text-[12px] text-ink3">同一时间只有一个风格生效</span>
+
                 </div>
               </div>
             </div>
           ) : null}
 
           {styles.length === 0 && !styleEditor ? (
-            <div className="px-4 py-3.5">
-              <p className="max-w-[58ch] text-[13px] leading-relaxed text-ink2">
-                点右上角「添加风格」，写下你希望我怎么讲，再调篇幅和两个选项。
-              </p>
-              <p className="mt-1 max-w-[58ch] text-[12px] leading-relaxed text-ink3">
-                可以存好几个风格（比如「平时」和「考前复习」）随时切换；都不设置时就是默认讲法。
-              </p>
-            </div>
+            <p className="px-4 py-3.5 text-[13px] leading-relaxed text-ink2">
+              默认讲法不注入提示词；想要固定讲法时再加一个。
+            </p>
           ) : null}
 
           {styles.map((s) => {
@@ -1082,7 +1039,6 @@ export default function SettingsPage() {
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <p className="text-[13.5px] font-medium text-ink">{s.name}</p>
                     {active ? <Badge tone="ok">使用中</Badge> : null}
-                    <span className="text-[12px] text-ink3">{styleSummary(s)}</span>
                   </div>
                   <p
                     className={cx(
@@ -1145,19 +1101,7 @@ export default function SettingsPage() {
         ) : null}
       </Modal>
       <section className="mb-8">
-        <SectionHeader
-          title="联网检索"
-          hintBelow
-          hint={
-            !web
-              ? "读取中…"
-              : !web.enabled
-                ? "关闭时不发任何请求；填任何返回 JSON 的搜索接口都能接"
-                : web.configured
-                  ? "已启用 · 需要时手动查证，关掉开关就完全不发请求"
-                  : "已启用，但还没填接口地址"
-          }
-        />
+        <SectionHeader title="联网检索" />
 
         <Card className="divide-y divide-line overflow-hidden">
           <div className="flex flex-col gap-2.5 p-4 sm:flex-row sm:gap-6">
@@ -1170,9 +1114,6 @@ export default function SettingsPage() {
               />
               <span>
                 启用联网检索
-                <span className="mt-0.5 block text-[12px] leading-relaxed text-ink3">
-                  关闭时一次请求都不发
-                </span>
               </span>
             </label>
             <label className="flex flex-1 items-start gap-2.5 text-[13px] text-ink">
@@ -1186,9 +1127,6 @@ export default function SettingsPage() {
               />
               <span>
                 对话里默认打开
-                <span className="mt-0.5 block text-[12px] leading-relaxed text-ink3">
-                  输入框旁的地球按钮可临时开关，不改这里的默认值
-                </span>
               </span>
             </label>
           </div>
@@ -1196,7 +1134,7 @@ export default function SettingsPage() {
           <div className="flex flex-col gap-3.5 p-4">
 
           <div className="grid gap-3 sm:grid-cols-[1.6fr_1fr]">
-            <Field label="接口地址" hint="完整 URL；GET 的固定参数可直接写进地址">
+            <Field label="接口地址" hint="完整 URL，GET 参数可写进地址">
               <input
                 value={webDraft.endpoint}
                 onChange={(e) => {
@@ -1227,7 +1165,7 @@ export default function SettingsPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <Field
               label="API Key"
-              hint={web?.keyMasked ? `已保存 ${web.keyMasked}，留空不修改` : "接口不需要就不填"}
+              hint={web?.keyMasked ? `已保存 ${web.keyMasked}，留空不修改` : undefined}
             >
               <input
                 type="password"
@@ -1292,7 +1230,7 @@ export default function SettingsPage() {
               测试当前设置
             </Button>
             <span className="ml-auto text-[12px] text-ink3">
-              {web && !web.configured ? "还没填接口地址" : (webStatsLine ?? "试一次就知道通不通")}
+              {web && !web.configured ? "还没填接口地址" : webStatsLine}
             </span>
           </div>
 
@@ -1343,15 +1281,15 @@ export default function SettingsPage() {
 
         <details className="p-4">
             <summary className="cursor-pointer select-none text-[12px] text-ink2">
-              高级设置（结果读不出来、或想调缓存时才用）
+              高级设置
             </summary>
-            <p className="mt-1 max-w-[58ch] text-[12px] leading-relaxed text-ink3">
-              路径与字段名都可以留空：留空时自动识别常见写法（results / data.items，title / url / snippet）。
+            <p className="mt-1 text-[12px] leading-relaxed text-ink3">
+              路径与字段名可留空，留空时自动识别常见写法。
             </p>
 
             <div className="mt-3 flex flex-col gap-3">
               {webDraft.method === "GET" ? (
-                <Field label="查询参数名" hint="多数接口是 q 或 query">
+                <Field label="查询参数名" hint={undefined}>
                   <input
                     value={webDraft.queryParam}
                     onChange={(e) => setWebDraft((d) => ({ ...d, queryParam: e.target.value }))}
@@ -1376,7 +1314,7 @@ export default function SettingsPage() {
               )}
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="结果数组路径" hint="如 results、data.items">
+                <Field label="结果数组路径" hint={undefined}>
                   <input
                     value={webDraft.resultsPath}
                     onChange={(e) => setWebDraft((d) => ({ ...d, resultsPath: e.target.value }))}
@@ -1432,7 +1370,6 @@ export default function SettingsPage() {
                   label="超时"
                   value={Number((webDraft.timeoutMs / 1000).toFixed(1))}
                   suffix="s"
-                  hint="超 2–10 秒按未核实处理"
                   min={2}
                   max={10}
                   step={0.5}
@@ -1442,7 +1379,6 @@ export default function SettingsPage() {
                   label="缓存"
                   value={webDraft.ttlDays}
                   suffix=" 天"
-                  hint="1–30 天内不重复请求"
                   min={1}
                   max={30}
                   onChange={(v) => setWebDraft((d) => ({ ...d, ttlDays: v }))}
@@ -1451,7 +1387,6 @@ export default function SettingsPage() {
                   label="每会话检索上限"
                   value={webDraft.maxSearchesPerSession}
                   suffix=" 次"
-                  hint="缓存命中不计数"
                   min={1}
                   max={30}
                   onChange={(v) => setWebDraft((d) => ({ ...d, maxSearchesPerSession: v }))}
@@ -1459,7 +1394,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="域名白名单" hint="每行一个，支持 *.gov.cn；留空表示不限制">
+                <Field label="域名白名单" hint="每行一个；留空不限制">
                   <textarea
                     value={webDraft.allowDomains}
                     onChange={(e) => setWebDraft((d) => ({ ...d, allowDomains: e.target.value }))}
@@ -1468,7 +1403,7 @@ export default function SettingsPage() {
                     placeholder={"gov.cn\nmoe.edu.cn"}
                   />
                 </Field>
-                <Field label="域名黑名单" hint="命中的直接丢弃">
+                <Field label="域名黑名单" hint={undefined}>
                   <textarea
                     value={webDraft.denyDomains}
                     onChange={(e) => setWebDraft((d) => ({ ...d, denyDomains: e.target.value }))}
@@ -1485,9 +1420,7 @@ export default function SettingsPage() {
               ) : null}
 
               <div className="flex flex-wrap items-center gap-2 border-t border-line pt-2.5">
-                <span className="text-[12px] text-ink3">
-                  检索缓存 {webCacheRows} 条（同一问题不重复请求）
-                </span>
+                <span className="text-[12px] text-ink3">检索缓存 {webCacheRows} 条</span>
                 <Button
                   size="sm"
                   variant="ghost"
@@ -1501,8 +1434,8 @@ export default function SettingsPage() {
             </div>
           </details>
 
-          <p className="max-w-[58ch] px-4 py-3.5 text-[12px] leading-relaxed text-ink3">
-            判题与解析不走检索；检索失败或超时时会明说「未能联网核实」，不会摆出来源卡片。
+          <p className="px-4 py-3.5 text-[12px] leading-relaxed text-ink3">
+            判题与解析不走检索；失败时会明说「未能联网核实」。
           </p>
         </Card>
       </section>
@@ -1510,11 +1443,6 @@ export default function SettingsPage() {
       <section className="mb-8">
         <SectionHeader
           title="用量"
-          hint={
-            usage && usage.all.calls > 0
-              ? `累计 ${usage.all.calls} 次调用 · 来自本机使用记录`
-              : "真实 token 消耗"
-          }
           action={
             <Button
               size="sm"
@@ -1543,9 +1471,7 @@ export default function SettingsPage() {
               </div>
             )
           ) : usage.all.calls === 0 ? (
-            <p className="text-[13px] leading-relaxed text-ink2">
-              还没有调用记录。发起一次对话后，这里会显示真实的 token 消耗、平均耗时和失败次数。
-            </p>
+            <p className="text-[13px] leading-relaxed text-ink2">还没有调用记录。</p>
           ) : (
             <>
               <div className="grid grid-cols-3 gap-3">
@@ -1575,13 +1501,9 @@ export default function SettingsPage() {
               <div className="mt-4 border-t border-line pt-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-[13px] font-medium text-ink">按模型</p>
-                  <p className="text-[12px] text-ink3">最近 {usage.days} 天 · 按调用次数排序</p>
+                  <p className="text-[12px] text-ink3">最近 {usage.days} 天</p>
                 </div>
-                {usage.byModel.length === 0 ? (
-                  <p className="mt-2 text-[12px] leading-relaxed text-ink3">
-                    最近 {usage.days} 天没有调用记录；累计数据仍可在上方查看。
-                  </p>
-                ) : (
+                {usage.byModel.length > 0 ? (
                   <div className="mt-1 divide-y divide-line">
                     {usage.byModel.map((m) => (
                       <div
@@ -1593,75 +1515,38 @@ export default function SettingsPage() {
                             {m.model || "未知模型"}
                           </p>
                           <p className="mt-0.5 text-[12px] leading-relaxed text-ink3">
-                            {m.calls} 次 · 失败 {m.failedCalls} 次 ·{" "}
+                            {m.calls} 次{m.failedCalls ? ` · 失败 ${m.failedCalls} 次` : ""} ·{" "}
                             {m.avgLatencyMs == null ? "平均 —" : `平均 ${formatLatency(m.avgLatencyMs)}`}
-                            {m.lastUsedAt ? ` · 最近 ${formatDay(m.lastUsedAt)}` : ""}
                           </p>
                         </div>
                         <div className="shrink-0 text-right">
                           <p className="tabular-nums text-[12px] text-ink">
                             {formatTokens(m.totalTokens)} tokens
                           </p>
-                          <p className="mt-0.5 tabular-nums text-[12px] text-ink3">
-                            入 {formatTokens(m.promptTokens)} · 出 {formatTokens(m.completionTokens)}
-                          </p>
+
                         </div>
                       </div>
                     ))}
                   </div>
-                )}
+                ) : null}
               </div>
             </>
           )}
         </Card>
       </section>
 
-      <section className="mb-8 mt-8">
-        <SectionHeader title="数据" hintBelow hint="SQLite 数据库" />
-        <Card className="p-4">
-          {system ? (
-            <>
-              <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-                {[
-                  ["会话", system.counts.sessions],
-                  ["消息", system.counts.messages],
-                  ["知识点", system.counts.concepts],
-                  ["练习", system.counts.exercises],
-                  ["作答", system.counts.attempts],
-                  ["证据", system.counts.evidence],
-                ].map(([label, v]) => (
-                  <div key={String(label)}>
-                    <p className="font-serif text-lg tabular-nums text-ink">{v as number}</p>
-                    <p className="text-[12px] text-ink3">{label as string}</p>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-3 break-all rounded-lg bg-panel2/60 px-2.5 py-2 font-mono text-[12px] text-ink3">
-                {system.dbPath} · {system.dbSizeKb} KB · Node {system.node}
-              </p>
-            </>
-          ) : (
-            <div className="flex items-center gap-2 text-[13px] text-ink3">
-              <Spinner /> 读取中…
-            </div>
-          )}
-          <p className="mt-2 text-[12px] leading-relaxed text-ink3">
-            删会话不删学习证据；要一起删，在删除对话框里勾选。
-          </p>
-        </Card>
-      </section>
+      {system ? (
+        <p className="mb-8 text-[12px] leading-relaxed text-ink3">
+          本地 SQLite · {system.dbSizeKb} KB · 删会话不删学习证据，要一起删在删除对话框里勾选。
+        </p>
+      ) : null}
 
       <section>
-        <SectionHeader
-          title="开源复用与许可"
-          hintBelow
-          hint="本项目自身以 MIT 发布；完整许可证见仓库 THIRD_PARTY_NOTICES.md"
-        />
+        <SectionHeader title="许可" />
         <details className="group">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl border border-line bg-panel px-4 py-3 transition-colors hover:border-linestrong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 [&::-webkit-details-marker]:hidden">
             <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <span className="text-[13px] text-ink2">第三方许可清单</span>
-              <span className="text-[12px] text-ink3">8 项 · 保留原始版权声明</span>
+              <span className="text-[13px] text-ink2">第三方许可（8 项）</span>
             </span>
             <ChevronDown className="size-4 shrink-0 text-ink3 transition-transform group-open:rotate-180" />
           </summary>
@@ -1715,7 +1600,7 @@ function SliderField({
   label: string;
   value: number;
   suffix?: string;
-  hint: string;
+  hint?: string;
   min: number;
   max: number;
   step?: number;
@@ -1739,7 +1624,7 @@ function SliderField({
         onChange={(e) => onChange(Number(e.target.value))}
         className="mt-2 w-full accent-[var(--accent)]"
       />
-      <span className="mt-1 block text-[12px] leading-relaxed text-ink3">{hint}</span>
+      {hint ? <span className="mt-1 block text-[12px] leading-relaxed text-ink3">{hint}</span> : null}
     </label>
   );
 }
@@ -1762,6 +1647,12 @@ function formatLatency(ms: number | null): string {
   const seconds = ms / 1000;
   return `${seconds >= 10 ? Math.round(seconds) : seconds.toFixed(1)}s`;
 }
+
+
+
+
+
+
 
 
 

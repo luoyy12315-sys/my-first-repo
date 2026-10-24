@@ -1,4 +1,4 @@
-# Lumina · AI 动态学习工作台
+﻿# Lumina · AI 动态学习工作台
 
 对话驱动的自适应导师：讲解、可交互教材、练习判题、可追溯的学习证据，全部跑在一个本地 Next.js + SQLite 应用里。
 
@@ -49,6 +49,11 @@ node tests/smoke.mjs           # 端到端：流式 → 组件 → 判题 → �
 DEMO_SESSION=<会话id> node tests/ui-check.mjs   # 真实浏览器交互验证（需本机 Edge/Chrome）
 ```
 
+## 界面
+
+- 对话优先：首页只有一个输入框（直接问，或切到「定目标」让它先排计划草稿）；侧栏是「新对话」+ 最近会话
+- 导航只有四项：学习 / 计划 / 复习 / 档案；档案里分「知识点 / 对话 / 材料」三个 tab，共用搜索与筛选
+- 只在会误解或不可逆的地方写解释（模型未配置、删除后果、联网边界、材料格式），其余状态用徽标和一句话空态表达
 ## 已实现
 
 **教学闭环**
@@ -163,3 +168,4 @@ zod · react-markdown + KaTeX · Recharts · lucide
 ## 许可
 
 本项目 MIT。第三方组件与移植代码见 `THIRD_PARTY_NOTICES.md`，调研过程与取舍见 `docs/OPEN_SOURCE_RESEARCH.md`。
+

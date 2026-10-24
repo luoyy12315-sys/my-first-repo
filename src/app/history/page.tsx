@@ -1,15 +1,15 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Badge, Button, EmptyState, Modal, SectionHeader, Spinner } from "@/components/ui/kit";
+import { Badge, Button, EmptyState, Modal, PageHeader, SectionHeader, Spinner } from "@/components/ui/kit";
 import { PlanSelect, usePlans } from "@/components/PlanSelect";
 import type { SessionSummary } from "@/lib/types";
 import { groupByPlan } from "@/lib/utils";
 
-export default function HistoryPage() {
+export default function HistoryPage({ embedded = false }: { embedded?: boolean }) {
   const { plans } = usePlans();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,13 +140,8 @@ export default function HistoryPage() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
-      <div className="mb-5">
-        <h1 className="font-serif text-[26px] tracking-tight text-ink">学习历史</h1>
-        <p className="mt-1 text-[13px] text-ink2">
-          无限学习与目标学习分开归类。
-        </p>
-      </div>
+    <div className={embedded ? "w-full" : "mx-auto w-full max-w-3xl px-4 py-6 md:px-8 md:py-10"}>
+      {embedded ? null : <PageHeader title="学习历史" />}
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="flex min-w-[180px] flex-1 items-center gap-2 rounded-full border border-line bg-panel px-3 py-1.5">
@@ -193,10 +188,7 @@ export default function HistoryPage() {
         <div className="flex flex-col gap-6">
           {infiniteSessions.length > 0 ? (
             <section>
-              <SectionHeader title="无限学习" hint={`${infiniteSessions.length} 个会话`} />
-              <p className="mb-2 text-[12px] leading-relaxed text-ink3">
-                没有计划，也不计课程进度。
-              </p>
+              <SectionHeader title="无限学习" />
               <div className="flex flex-col gap-1.5">
                 {infiniteSessions.map((s) => renderSession(s, false))}
               </div>
@@ -205,10 +197,7 @@ export default function HistoryPage() {
 
           {formalGroups.map((g) => (
             <section key={g.planId ?? "ungrouped"}>
-              <SectionHeader
-                title={g.planId ? g.planTitle : "目标学习 · 未归计划"}
-                hint={`${g.items.length} 个会话`}
-              />
+              <SectionHeader title={g.planId ? g.planTitle : "目标学习 · 未归计划"} />
               <div className="flex flex-col gap-1.5">
                 {g.items.map((s) => renderSession(s, true))}
               </div>
@@ -248,3 +237,5 @@ export default function HistoryPage() {
     </div>
   );
 }
+
+

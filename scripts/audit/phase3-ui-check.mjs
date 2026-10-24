@@ -1,13 +1,14 @@
-/**
+﻿/**
  * 阶段三 UI 验收（临时脚本，tests/_*.mjs 已被 .gitignore 忽略）
  *
- * 检查：各页面可打开、无控制台错误、390px 无横向溢出、设置页「用量」卡片有真实数字。
+ * 检查：各页面可打开、无控制台错误、390px 无横向溢出、设置页「用量」卡片有真实数字；
+ * 新首页是单输入框、档案页有三个 tab、/me 已下线、每页首屏文案量收敛。\n
  */
 import { chromium } from "playwright-core";
 
 const BASE = process.env.BASE_URL ?? "http://127.0.0.1:3221";
 const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const pages = ["/", "/settings", "/library", "/plan", "/review", "/history", "/materials"];
+const pages = ["/", "/settings", "/library", "/plan", "/review", "/history", "/materials", "/archive"];
 
 let pass = 0;
 let fail = 0;
@@ -67,8 +68,8 @@ for (const width of [1440, 390]) {
   check("用量卡片显示 tokens 明细", /tokens/i.test(usageText), usageText.slice(0, 80).replace(/\n/g, " "));
   check("用量卡片不再出现单价输入", !/单价|粗估|¥|\$/.test(usageText));
   const headings = await page.evaluate(() => [...document.querySelectorAll("h2")].map((x) => x.textContent?.trim()));
-  check("卡片顺序：模型服务 → 讲解风格 → 联网检索 → 用量 → 数据", (() => {
-    const want = ["模型服务", "讲解风格", "联网检索", "用量", "数据"];
+  check("卡片顺序：模型服务 → 讲解风格 → 联网检索 → 用量 → 许可", (() => {
+    const want = ["模型服务", "讲解风格", "联网检索", "用量", "许可"];
     const idx = want.map((w) => headings.findIndex((h) => h?.includes(w)));
     return idx.every((v, i) => v >= 0 && (i === 0 || v > idx[i - 1]));
   })(), JSON.stringify(headings));
@@ -76,6 +77,52 @@ for (const width of [1440, 390]) {
   await context.close();
 }
 
+
+// ── 简洁度：新首页 / 档案合并 / 页面文案量 ──
+{
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  const home = await page.evaluate(() => ({
+    textareas: document.querySelectorAll("textarea").length,
+    sections: document.querySelectorAll("main section").length,
+    chars: (document.querySelector("main")?.innerText ?? "").length,
+    height: document.documentElement.scrollHeight,
+    links: document.querySelectorAll("main a").length,
+  }));
+  check("首页只有一个输入框", home.textareas === 1, JSON.stringify(home));
+  check("首页不再有仪表盘区块", home.sections <= 1, JSON.stringify(home));
+  check("首页首屏一屏内", home.height <= 1000, `${home.height}px`);
+  check("首页文案 ≤ 120 字", home.chars <= 120, `${home.chars}`);
+
+  await page.goto(`${BASE}/archive`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+  const tabs = await page.evaluate(() =>
+    [...document.querySelectorAll("main button")].map((b) => b.textContent?.trim()).filter(Boolean),
+  );
+  check("档案页有知识点/对话/材料三个 tab", ["知识点", "对话", "材料"].every((t) => tabs.includes(t)), JSON.stringify(tabs.slice(0, 8)));
+
+  const meRes = await fetch(`${BASE}/me`);
+  check("/me 已下线（404）", meRes.status === 404, String(meRes.status));
+
+  const budgets = { "/plan": 130, "/review": 130, "/archive": 160 };
+  for (const [path, budget] of Object.entries(budgets)) {
+    await page.goto(`${BASE}${path}`, { waitUntil: "networkidle" });
+    await page.waitForTimeout(600);
+    const chars = await page.evaluate(() => (document.querySelector("main")?.innerText ?? "").length);
+    check(`${path} 文案 ≤ ${budget} 字`, chars <= budget, `${chars}`);
+  }
+
+  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  const settingsChars = await page.evaluate(() => (document.querySelector("main")?.innerText ?? "").length);
+  check("设置页文案 ≤ 1100 字", settingsChars <= 1100, `${settingsChars}`);
+  await context.close();
+}
 await browser.close();
 console.log(`\n汇总：${pass} 通过 / ${fail} 失败`);
 process.exit(fail ? 1 : 0);
+
+

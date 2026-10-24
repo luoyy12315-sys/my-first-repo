@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Compass, Repeat2, Route, Settings, Sparkles, User } from "lucide-react";
+import { Compass, Library, Plus, Repeat2, Route, Settings, Sparkles } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import { cx } from "@/components/ui/kit";
 import type { SessionSummary } from "@/lib/types";
@@ -12,7 +12,7 @@ const NAV = [
   { href: "/", label: "学习", icon: Compass },
   { href: "/plan", label: "计划", icon: Route },
   { href: "/review", label: "复习", icon: Repeat2 },
-  { href: "/me", label: "我的", icon: User },
+  { href: "/archive", label: "档案", icon: Library },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -50,10 +50,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/" || pathname.startsWith("/s/");
-    if (href === "/me") {
-      return ["/me", "/library", "/history", "/materials", "/settings"].some((p) =>
-        pathname.startsWith(p),
-      );
+    if (href === "/archive") {
+      return ["/archive", "/library", "/history", "/materials"].some((p) => pathname.startsWith(p));
     }
     return pathname.startsWith(href);
   };
@@ -69,16 +67,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </a>
       {/* ── 桌面侧边栏 ── */}
       <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 flex-col border-r border-line bg-panel/60 backdrop-blur-sm md:flex">
-        <div className="px-5 pt-6 pb-4">
-          <Link href="/" className="group flex items-baseline gap-2">
-            <span className="font-serif text-[21px] font-semibold tracking-tight text-ink">Lumina</span>
-            <span className="text-[12px] tracking-wide text-ink3 transition-colors group-hover:text-ink2">
-              ／学习工作台
-            </span>
+        <div className="px-5 pt-6 pb-3">
+          <Link
+            href="/"
+            className="font-serif text-[21px] font-semibold tracking-tight text-ink transition-opacity hover:opacity-70"
+          >
+            Lumina
           </Link>
         </div>
 
-        <nav className="mt-2 flex flex-col gap-0.5 px-3">
+        <div className="px-3 pb-2">
+          <Link
+            href="/"
+            className="flex items-center justify-center gap-1.5 rounded-full bg-accent px-3 py-2 text-[13px] font-medium text-white transition-all hover:brightness-110"
+          >
+            <Plus className="size-4" />
+            新对话
+          </Link>
+        </div>
+
+        <nav className="mt-1 flex flex-col gap-0.5 px-3">
           {NAV.map((item) => {
             const active = isActive(item.href);
             const Icon = item.icon;
@@ -105,9 +113,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <p className="px-3 pb-2 text-[12px] uppercase tracking-wide text-ink3">最近</p>
           <div className="flex flex-col gap-0.5">
             {sessions.length === 0 ? (
-              <p className="px-3 py-2 text-[12.5px] leading-relaxed text-ink3">
-                还没有学习记录。提第一个问题就会出现在这里。
-              </p>
+              <p className="px-3 py-2 text-[12px] text-ink3">还没有对话。</p>
             ) : (
               sessions.map((s) => (
                 <Link
@@ -191,3 +197,5 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,7 +11,7 @@ import BlockRenderer from "@/components/blocks/BlockRenderer";
 import Markdown from "@/components/Markdown";
 import SourceCards from "@/components/chat/SourceCards";
 import ErrorBoundary from "@/components/blocks/ErrorBoundary";
-import { Badge, Button, EmptyState, Modal, Spinner, cx } from "@/components/ui/kit";
+import { Badge, Button, EmptyState, MenuItem, Modal, OverflowMenu, Spinner, cx } from "@/components/ui/kit";
 import { usePlans } from "@/components/PlanSelect";
 import type { BlockWithExercise } from "@/lib/api/serialize";
 import type {
@@ -785,7 +785,7 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
     if (res.ok) {
       toast.success("会话已删除");
       window.dispatchEvent(new Event("sessions:changed"));
-      router.push("/history");
+      router.push("/archive?tab=sessions");
     } else {
       toast.error("删除失败");
     }
@@ -860,32 +860,18 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
               聚焦：{session.focusConceptName}
             </span>
           ) : null}
-          <div className="ml-auto flex items-center gap-1">
-            <button
-              onClick={generateSummary}
-              disabled={pending || messages.length === 0}
-              className="rounded-full p-2 text-ink3 transition-colors hover:bg-panel2 hover:text-ink disabled:opacity-30"
-              title="生成本次学习小结"
-              aria-label="生成本次学习小结"
-            >
-              <FileText className="size-4" />
-            </button>
-            <Link
-              href="/library"
-              className="rounded-full p-2 text-ink3 transition-colors hover:bg-panel2 hover:text-ink"
-              title="查看学习档案"
-              aria-label="查看学习档案"
-            >
-              <BookMarked className="size-4" />
-            </Link>
-            <button
-              onClick={() => setDeleteOpen(true)}
-              className="rounded-full p-2 text-ink3 transition-colors hover:bg-panel2 hover:text-bad"
-              title="删除会话"
-              aria-label="删除会话"
-            >
-              <Trash2 className="size-4" />
-            </button>
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            <OverflowMenu label="">
+              <MenuItem onClick={generateSummary} disabled={pending || messages.length === 0}>
+                <FileText className="size-3.5" /> 生成本次学习小结
+              </MenuItem>
+              <MenuItem onClick={() => router.push("/archive?tab=concepts")}>
+                <BookMarked className="size-3.5" /> 学习档案
+              </MenuItem>
+              <MenuItem onClick={() => setDeleteOpen(true)} tone="danger">
+                <Trash2 className="size-3.5" /> 删除会话
+              </MenuItem>
+            </OverflowMenu>
           </div>
         </div>
         {session?.mode === "goal" && session.planId ? (
@@ -930,10 +916,6 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
             {session.courseTitle ? <span>· {session.courseTitle}</span> : null}
             <span>· 只更新这个知识点的证据</span>
           </div>
-        ) : session?.mode === "infinite" ? (
-          <div className="mt-1 text-[12px] text-ink3">
-            对话式学习 · 不生成正式计划与课程进度
-          </div>
         ) : null}
         {/* 目标/复习会话的计划与课程已经在上一行给过了，再挂一条 #计划名 只是重复 */}
         {session?.topics?.length && session.mode === "infinite" ? (
@@ -952,15 +934,15 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
         {empty ? (
           <div className="flex flex-col gap-5 py-6">
             <div className="flex flex-col gap-2">
-              <h1 className="font-serif text-[26px] leading-tight tracking-tight text-ink">
-                {session?.mode === "goal" ? "先确定学习目标" : "想学点什么？"}
+              <h1 className="font-serif text-[22px] leading-tight tracking-tight text-ink">
+                {session?.mode === "goal" ? "先定一个目标" : session?.mode === "review" ? "复习一下" : "想学点什么？"}
               </h1>
               <p className="text-[13.5px] leading-relaxed text-ink2">
                 {session?.mode === "goal"
-                  ? "告诉我想系统掌握什么，我会先按「课程 → 知识点」生成一份待确认的计划草稿；不会直接开始教学。"
+                  ? "说说想系统学什么，我先给一份计划草稿，你确认后再开始。"
                   : session?.mode === "review"
-                    ? "这次只检验已有知识点，不新建计划或知识点。"
-                    : "直接问就行。我会根据你的回答调整讲法，必要时给练习或可调参数的模拟器；这些对话不会自动写入正式学习档案。"}
+                    ? "先答，再看这次作答怎么影响掌握度。"
+                    : "直接问，或贴一段看不懂的内容。"}
               </p>
               {session?.mode === "goal" ? (
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-ink3">
@@ -1496,3 +1478,5 @@ function AiWarning({ ai }: { ai: AiStatus }) {
     </div>
   );
 }
+
+

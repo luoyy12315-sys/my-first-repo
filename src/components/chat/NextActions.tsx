@@ -15,21 +15,15 @@ export interface NextAction {
 /** 教完知识点、答完题之后的上下文操作，避免用户只能自己输入“然后呢”。 */
 export default function NextActions({
   actions,
-  label = "下一步",
   busy = false,
 }: {
   actions: NextAction[];
-  label?: string;
   busy?: boolean;
 }) {
   if (!actions.length) return null;
   return (
-    <div className="mt-2.5 flex flex-wrap items-center gap-1.5 rounded-xl border border-dashed border-line bg-panel2/30 px-2.5 py-2">
-      <span className="mr-0.5 flex items-center gap-1 text-[12px] uppercase tracking-wide text-ink3">
-        <Sparkles className="size-3 text-accent" />
-        {label}
-      </span>
-      {actions.map((action) => (
+    <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+      {actions.slice(0, 4).map((action) => (
         <button
           key={action.label}
           type="button"
@@ -43,7 +37,7 @@ export default function NextActions({
               : "border-line bg-panel text-ink2 hover:border-accent/40 hover:text-ink",
           )}
         >
-          {action.icon ?? (action.primary ? <ArrowRight className="size-3" /> : null)}
+          {action.icon ?? (action.primary ? <ArrowRight className="size-3" /> : <Sparkles className="size-3 text-accent" />)}
           {action.label}
         </button>
       ))}

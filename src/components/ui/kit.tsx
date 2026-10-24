@@ -175,40 +175,40 @@ export function EmptyState({
   );
 }
 
-export function SectionHeader({
+/**
+ * 页面标题：一行动作导向的标题 + 右上一个主动作。
+ * 不再带"小标签 + 副标题"两行装饰——解释性文字只在真正会让人困惑的地方出现。
+ */
+export function PageHeader({
   title,
-  hint,
   action,
   className,
-  hintBelow = false,
 }: {
   title: string;
-  hint?: string;
   action?: ReactNode;
   className?: string;
-  /**
-   * 说明独占一行。窄屏上"标题 + 说明 + 动作"挤不下时，说明换行会把动作顶到下一行右端，
-   * 看起来像掉出来的孤岛；需要这种稳定排版时传 true（设置页在用）。
-   */
-  hintBelow?: boolean;
 }) {
-  if (hintBelow) {
-    return (
-      <div className={cx("mb-3 flex flex-col gap-1", className)}>
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="min-w-0 truncate font-serif text-[17px] tracking-tight text-ink">{title}</h2>
-          {action ? <div className="shrink-0">{action}</div> : null}
-        </div>
-        {hint ? <p className="text-xs text-ink3">{hint}</p> : null}
-      </div>
-    );
-  }
   return (
-    <div className={cx("mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1", className)}>
-      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-        <h2 className="shrink-0 font-serif text-[17px] tracking-tight text-ink">{title}</h2>
-        {hint ? <span className="min-w-0 text-xs text-ink3">{hint}</span> : null}
-      </div>
+    <div className={cx("mb-5 flex flex-wrap items-center justify-between gap-3", className)}>
+      <h1 className="min-w-0 font-serif text-[22px] leading-tight tracking-tight text-ink">{title}</h1>
+      {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
+    </div>
+  );
+}
+
+/** 区块标题：标题与动作同一行，不挂说明文字（状态信息交给 Badge 或直接省略） */
+export function SectionHeader({
+  title,
+  action,
+  className,
+}: {
+  title: string;
+  action?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cx("mb-3 flex items-center justify-between gap-3", className)}>
+      <h2 className="min-w-0 truncate font-serif text-[17px] tracking-tight text-ink">{title}</h2>
       {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   );

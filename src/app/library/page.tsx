@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, BookOpen, CircleDot, History as HistoryIcon, Network, Search, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
-import { Badge, Button, EmptyState, Modal, SectionHeader, Spinner, StatusPill, cx } from "@/components/ui/kit";
+import { Badge, Button, EmptyState, MenuItem, Modal, OverflowMenu, PageHeader, SectionHeader, Spinner, StatusPill, cx } from "@/components/ui/kit";
 import { PlanSelect, usePlans } from "@/components/PlanSelect";
 import {
   DISPLAY_STATUS_LABEL,
@@ -34,7 +34,7 @@ interface ConceptDetail {
   };
 }
 
-export default function LibraryPage() {
+export default function LibraryPage({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
   const { plans } = usePlans();
   const [concepts, setConcepts] = useState<ConceptDTO[]>([]);
@@ -214,7 +214,7 @@ export default function LibraryPage() {
     applyConceptList(data);
     setConfirmDeleteConcept(false);
     setOpenId(null);
-    window.history.replaceState({}, "", "/library");
+    window.history.replaceState({}, "", "/archive?tab=concepts");
     toast.success("知识点已删除");
   };
 
@@ -256,7 +256,7 @@ export default function LibraryPage() {
       applyConceptList(data);
       setPendingMerge(null);
       setOpenId(null);
-      window.history.replaceState({}, "", "/library");
+      window.history.replaceState({}, "", "/archive?tab=concepts");
       toast.success(`已合并到「${target.name}」，掌握度按全部证据重算`);
       await load();
     } catch (e) {
@@ -302,40 +302,28 @@ export default function LibraryPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="mb-1.5 flex items-center gap-2 text-[12px] uppercase tracking-[0.14em] text-ink3">
-            <Network className="size-3.5" /> 学习档案
-          </div>
-          <h1 className="font-serif text-[26px] tracking-tight text-ink">知识点与把握依据</h1>
-          <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-ink2">
-            状态由证据推导，不是模型自评；p 值等指标在详情里。
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {duplicateConcepts > 0 ? (
-            <Button
-              size="sm"
-              variant="secondary"
-              icon={<Network className="size-3.5" />}
-              onClick={() => setMergeOpen(true)}
-            >
-              合并重复（{duplicateConcepts}）
-            </Button>
-          ) : null}
-          {emptyCount > 0 ? (
-            <Button
-              size="sm"
-              variant="secondary"
-              icon={<Trash2 className="size-3.5" />}
-              onClick={() => setCleanupOpen(true)}
-            >
-              清理未学习（{emptyCount}）
-            </Button>
-          ) : null}
-        </div>
-      </div>
+    <div className={embedded ? "w-full" : "mx-auto w-full max-w-3xl px-4 py-6 md:px-8 md:py-10"}>
+      {embedded ? null : (
+        <PageHeader
+          title="知识点与把握依据"
+          action={
+            duplicateConcepts > 0 || emptyCount > 0 ? (
+              <OverflowMenu label="整理">
+                {duplicateConcepts > 0 ? (
+                  <MenuItem onClick={() => setMergeOpen(true)}>
+                    <Network className="size-3.5" /> 合并重复（{duplicateConcepts}）
+                  </MenuItem>
+                ) : null}
+                {emptyCount > 0 ? (
+                  <MenuItem onClick={() => setCleanupOpen(true)}>
+                    <Trash2 className="size-3.5" /> 清理未学习（{emptyCount}）
+                  </MenuItem>
+                ) : null}
+              </OverflowMenu>
+            ) : undefined
+          }
+        />
+      )}
 
       <div className="mb-3">
         <div className="relative">
@@ -399,7 +387,7 @@ export default function LibraryPage() {
           title={concepts.length === 0 ? "档案还是空的" : "没有符合条件的知识点"}
           description={
             concepts.length === 0
-              ? "目标学习中，计划确认后创建的知识点会出现在这里；无限学习的普通对话不会自动写入档案。"
+              ? "目标计划确认后，知识点会出现在这里。"
               : "换个筛选条件或搜索词试试。"
           }
           action={
@@ -414,24 +402,14 @@ export default function LibraryPage() {
         <div className="flex flex-col gap-6">
           {grouped.map((group) => (
             <section key={group.key}>
-              <SectionHeader
-                title={group.courseTitle ?? "未归属课程"}
-                hint={`${group.items.length} 个知识点${
-                  group.planTitle && planFilter === "all" ? ` · ${group.planTitle}` : ""
-                }`}
-              />
-              {group.key === "unassigned" ? (
-                <p className="mb-1.5 text-[12px] text-warn">
-                  这些知识点还没有明确课程归属，先保留原始记录，待整理。
-                </p>
-              ) : null}
+              <SectionHeader title={group.courseTitle ?? "未归属课程"} />
               <div className="flex flex-col gap-1.5">
                 {group.items.map((c) => (
                   <button
                     key={c.id}
                     onClick={() => {
                       setOpenId(c.id);
-                      window.history.replaceState({}, "", `/library?c=${c.id}`);
+                      window.history.replaceState({}, "", `/archive?tab=concepts&c=${c.id}`);
                     }}
                     className="group flex items-center gap-3 rounded-xl border border-line bg-panel px-3.5 py-2.5 text-left transition-all hover:border-accent/40"
                   >
@@ -459,7 +437,7 @@ export default function LibraryPage() {
         open={Boolean(openId)}
         onClose={() => {
           setOpenId(null);
-          window.history.replaceState({}, "", "/library");
+          window.history.replaceState({}, "", "/archive?tab=concepts");
         }}
         title={detail?.concept.name ?? "知识点"}
         wide
@@ -834,3 +812,6 @@ function Sparkline({ points }: { points: number[] }) {
     </svg>
   );
 }
+
+
+

@@ -1,15 +1,15 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ChevronDown, FileText, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
-import { Badge, Button, EmptyState, Modal, SectionHeader, Spinner, cx } from "@/components/ui/kit";
+import { Badge, Button, EmptyState, Modal, PageHeader, SectionHeader, Spinner, cx } from "@/components/ui/kit";
 import { PlanSelect, usePlans } from "@/components/PlanSelect";
 import type { MaterialDTO } from "@/lib/types";
 import { groupByPlan } from "@/lib/utils";
 
-export default function MaterialsPage() {
+export default function MaterialsPage({ embedded = false }: { embedded?: boolean }) {
   const { plans } = usePlans();
   const [materials, setMaterials] = useState<MaterialDTO[]>([]);
   const [planFilter, setPlanFilter] = useState("all");
@@ -158,7 +158,7 @@ export default function MaterialsPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
+    <div className={embedded ? "w-full" : "mx-auto w-full max-w-3xl px-4 py-6 md:px-8 md:py-10"}>
       {focusChunk ? (
         <div className="mb-4 rounded-xl border border-accent/30 bg-accentsoft/30 px-3.5 py-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -201,12 +201,7 @@ export default function MaterialsPage() {
         </div>
       ) : null}
 
-      <div className="mb-5">
-        <h1 className="font-serif text-[26px] tracking-tight text-ink">学习材料</h1>
-        <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-ink2">
-          按计划分组；回答引用时会标注来源文件。
-        </p>
-      </div>
+      {embedded ? null : <PageHeader title="学习材料" />}
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <label className="flex items-center gap-1.5 text-[12px] text-ink3">
@@ -249,10 +244,7 @@ export default function MaterialsPage() {
         {uploading ? <Spinner /> : <Upload className="size-5 text-ink3" />}
         <p className="text-[13.5px] text-ink">{uploading ? "正在解析…" : "拖入文件，或点击选择"}</p>
         <p className="text-[12px] text-ink3">
-          {selectedPlan ? `新上传将归入「${selectedPlan.title}」` : "新上传将归入：未归类"}
-        </p>
-        <p className="text-[12px] text-ink3">
-          支持 txt / md / csv / json / html / pdf / docx · 单个文件 ≤ {20}MB
+          {selectedPlan ? `将归入「${selectedPlan.title}」` : "将归入：未归类"}
         </p>
       </div>
 
@@ -270,15 +262,15 @@ export default function MaterialsPage() {
           }
           description={
             materials.length === 0
-              ? "不传也能学。传了会优先引用其中的说法，并指出冲突。"
-              : "换个计划筛选看看，或直接上传——新材料会归入当前筛选的计划。"
+              ? "不传也能学；传了回答会引用它们。"
+              : undefined
           }
         />
       ) : (
         <div className="flex flex-col gap-6">
           {groups.map((g) => (
             <section key={g.planId ?? "ungrouped"}>
-              <SectionHeader title={g.planTitle} hint={`${g.items.length} 份材料`} />
+              <SectionHeader title={g.planTitle} />
               <div className="flex flex-col gap-1.5">
                 {g.items.map((m) => (
                   <div
@@ -357,10 +349,11 @@ export default function MaterialsPage() {
 
       <details className="group mt-6 rounded-xl border border-line bg-panel2/40 px-3.5 py-2.5 text-[12px] leading-relaxed text-ink3">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-medium text-ink2 [&::-webkit-details-marker]:hidden">
-          支持哪些格式、有什么限制
+          支持格式与限制
           <ChevronDown className="size-3.5 shrink-0 text-ink3 transition-transform group-open:rotate-180" />
         </summary>
         <div className="mt-2 flex flex-col gap-1">
+          <p>· 支持 txt / md / csv / json / html / pdf / docx，单个 ≤ 20MB。</p>
           <p>· PDF 只提取文本层；扫描件需要 OCR，当前不支持，会明确报错。</p>
           <p>· 旧版 .doc 与 PPTX 暂未启用，请先另存为 .docx / PDF。</p>
           <p>· 材料中的内容会被当作"待分析的数据"，其中的任何指令都不会被执行。</p>
@@ -370,3 +363,6 @@ export default function MaterialsPage() {
     </div>
   );
 }
+
+
+
