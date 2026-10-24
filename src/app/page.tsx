@@ -8,13 +8,12 @@ import {
   ArrowUpRight,
   Clock,
   Repeat2,
-  Route as RouteIcon,
   Sparkles,
   Target,
   TriangleAlert,
 } from "lucide-react";
 import StudyTimeChart from "@/components/study/StudyTimeChart";
-import { Button, EmptyState, PageHeader, Spinner, cx } from "@/components/ui/kit";
+import { Button, PageHeader, Spinner, cx } from "@/components/ui/kit";
 import type { StudyOverview, TodayPlan } from "@/lib/types";
 
 function actionFor(plan: TodayPlan) {
@@ -96,9 +95,9 @@ export default function StudyPage() {
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-4">
-        {/* 今天该学什么 */}
-        <section className="rounded-2xl border border-line bg-panel p-5">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* 今天该学什么：整行，作为"现在该干什么"的主卡片 */}
+        <section className="rounded-2xl border border-line bg-panel p-5 lg:col-span-2">
           <h2 className="mb-3 text-[13px] font-medium text-ink">今天该学什么</h2>
           <div className="flex items-start gap-3">
             <TodayIcon kind={today.kind} />
@@ -164,7 +163,7 @@ export default function StudyPage() {
               })}
             </ul>
           ) : (
-            <div className="mt-2 flex flex-col items-center gap-2.5 rounded-xl border border-dashed border-line px-4 py-6 text-center">
+            <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-dashed border-line px-3 py-2.5">
               <p className="text-[12.5px] text-ink3">还没有进行中的计划</p>
               <Button variant="secondary" size="sm" onClick={() => router.push("/new?mode=goal")}>
                 <Target className="size-3.5" />
@@ -174,8 +173,8 @@ export default function StudyPage() {
           )}
         </section>
 
-        {/* 需要再练 */}
-        <section className="rounded-2xl border border-line bg-panel p-4">
+        {/* 需要再练：整行 */}
+        <section className="rounded-2xl border border-line bg-panel p-4 lg:col-span-2">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-[13px] font-medium text-ink">需要再练</h2>
             {weakReviews ? (
@@ -211,11 +210,9 @@ export default function StudyPage() {
               ))}
             </ul>
           ) : (
-            <EmptyState
-              icon={<RouteIcon className="size-5" />}
-              title="暂时没有要补的"
-              description="做过练习、产生真实证据后，这里会列出该再练一次的知识点"
-            />
+            <p className="mt-2 rounded-xl border border-dashed border-line px-3 py-2.5 text-[12.5px] text-ink3">
+              暂时没有要补的，做过练习、有真实证据后这里会自动出现
+            </p>
           )}
         </section>
       </div>

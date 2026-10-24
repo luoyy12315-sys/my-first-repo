@@ -18,7 +18,7 @@ const RANGES: { key: Range; label: string }[] = [
 function Bars({ buckets }: { buckets: StudyTimeBucket[] }) {
   const max = Math.max(1, ...buckets.map((b) => b.seconds));
   return (
-    <div className="flex h-28 items-end gap-1">
+    <div className="flex h-full min-h-24 items-end gap-1">
       {buckets.map((b) => {
         const h = b.seconds ? Math.max(4, Math.round((b.seconds / max) * 100)) : 2;
         return (
@@ -46,7 +46,7 @@ export default function StudyTimeChart({ time }: { time: StudyTimeSummary }) {
   const empty = !time.totalSeconds;
 
   return (
-    <section className="rounded-2xl border border-line bg-panel p-4">
+    <section className="flex h-full flex-col rounded-2xl border border-line bg-panel p-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-[13px] font-medium text-ink">学习时间</h2>
         <div className="flex items-center gap-0.5 rounded-full bg-panel2 p-0.5">
@@ -67,7 +67,7 @@ export default function StudyTimeChart({ time }: { time: StudyTimeSummary }) {
         </div>
       </div>
 
-      <div className="mt-3">
+      <div className="mt-3 flex flex-1 flex-col justify-end">
         {range === "total" ? (
           <div className="flex items-end justify-between gap-3">
             <div>

@@ -120,6 +120,30 @@ for (const width of [1440, 390]) {
     JSON.stringify(["今天该学什么", "学习时间", "目标进度", "需要再练"].filter((k) => !study.text.includes(k))),
   );
   check("学习页有日/周/月/总四档", ["日", "周", "月", "总"].every((r) => study.ranges.includes(r)), JSON.stringify(study.ranges.slice(0, 10)));
+  // 布局：宽屏两列（学习时间 / 目标进度并排），今天该学什么和需要再练占整行
+  const layout = await page.evaluate(() => {
+    const secs = [...document.querySelectorAll("main section")].map((s) => {
+      const r = s.getBoundingClientRect();
+      return {
+        title: s.querySelector("h2")?.textContent?.trim() ?? "",
+        y: Math.round(r.y),
+        w: Math.round(r.width),
+      };
+    });
+    return { secs, mainW: Math.round(document.querySelector("main")?.getBoundingClientRect().width ?? 0) };
+  });
+  const at = (k) => layout.secs.find((s) => s.title.includes(k));
+  check(
+    "学习时间与目标进度并排（两列）",
+    Boolean(at("学习时间") && at("目标进度")) && Math.abs((at("学习时间")?.y ?? 0) - (at("目标进度")?.y ?? 0)) <= 2,
+    JSON.stringify([at("学习时间")?.y, at("目标进度")?.y]),
+  );
+  check(
+    "今天该学什么与需要再练占整行",
+    (at("今天该学什么")?.w ?? 0) > (at("学习时间")?.w ?? 0) + 50 &&
+      (at("需要再练")?.w ?? 0) > (at("学习时间")?.w ?? 0) + 50,
+    JSON.stringify([at("今天该学什么")?.w, at("学习时间")?.w, at("需要再练")?.w]),
+  );
   check("学习页文案 ≤ 260 字", study.text.length <= 260, String(study.text.length));
 
   // 学习时长接口：结构与范围
