@@ -130,13 +130,24 @@ for (const width of [1440, 390]) {
         w: Math.round(r.width),
       };
     });
-    return { secs, mainW: Math.round(document.querySelector("main")?.getBoundingClientRect().width ?? 0) };
+    const wrap = document.querySelector("main > div")?.getBoundingClientRect();
+    return {
+      secs,
+      mainW: Math.round(document.querySelector("main")?.getBoundingClientRect().width ?? 0),
+      wrapW: wrap ? Math.round(wrap.width) : 0,
+    };
   });
   const at = (k) => layout.secs.find((s) => s.title.includes(k));
   check(
     "学习时间与目标进度并排（两列）",
     Boolean(at("学习时间") && at("目标进度")) && Math.abs((at("学习时间")?.y ?? 0) - (at("目标进度")?.y ?? 0)) <= 2,
     JSON.stringify([at("学习时间")?.y, at("目标进度")?.y]),
+  );
+  check("宽屏内容区 ≥ 900px", layout.wrapW >= 900, `${layout.wrapW}px`);
+  check(
+    "学习时间比目标进度宽（图表有横向空间）",
+    (at("学习时间")?.w ?? 0) > (at("目标进度")?.w ?? 0) + 100,
+    JSON.stringify([at("学习时间")?.w, at("目标进度")?.w]),
   );
   check(
     "今天该学什么与需要再练占整行",

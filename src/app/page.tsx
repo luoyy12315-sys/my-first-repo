@@ -72,7 +72,7 @@ export default function StudyPage() {
   const weakReviews = data.weak.filter((w) => w.kind === "review").length;
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-2 md:px-6">
+    <div className="mx-auto w-full max-w-5xl px-4 pb-16 pt-2 md:px-6 xl:px-8">
       <PageHeader
         title="学习"
         action={
@@ -95,9 +95,9 @@ export default function StudyPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
         {/* 今天该学什么：整行，作为"现在该干什么"的主卡片 */}
-        <section className="rounded-2xl border border-line bg-panel p-5 lg:col-span-2">
+        <section className="rounded-2xl border border-line bg-panel p-5 lg:col-span-2 xl:col-span-3">
           <h2 className="mb-3 text-[13px] font-medium text-ink">今天该学什么</h2>
           <div className="flex items-start gap-3">
             <TodayIcon kind={today.kind} />
@@ -122,10 +122,13 @@ export default function StudyPage() {
           </div>
         </section>
 
-        <StudyTimeChart time={data.time} />
+        {/* 学习时间：宽屏占两列，图表有足够横向空间 */}
+        <div className="h-full lg:col-span-1 xl:col-span-2">
+          <StudyTimeChart time={data.time} />
+        </div>
 
         {/* 目标进度 */}
-        <section className="rounded-2xl border border-line bg-panel p-4">
+        <section className="rounded-2xl border border-line bg-panel p-4 lg:col-span-1 xl:col-span-1">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-[13px] font-medium text-ink">目标进度</h2>
             <Link href="/plan" className="text-[12px] text-ink3 transition-colors hover:text-ink2">
@@ -174,7 +177,7 @@ export default function StudyPage() {
         </section>
 
         {/* 需要再练：整行 */}
-        <section className="rounded-2xl border border-line bg-panel p-4 lg:col-span-2">
+        <section className="rounded-2xl border border-line bg-panel p-4 lg:col-span-2 xl:col-span-3">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-[13px] font-medium text-ink">需要再练</h2>
             {weakReviews ? (
