@@ -14,20 +14,21 @@ const RANGES: { key: Range; label: string }[] = [
   { key: "total", label: "总" },
 ];
 
-/** 柱状图：不引图表库，用 flex + 高度百分比，14 根柱子也不会糊 */
+/** 不足一分钟不算"学过"：不画柱子，避免随便点两下就凭空冒出一条 */
+const MIN_VISIBLE_SECONDS = 60;
+
+/** 柱状图：不引图表库，用 flex + 高度百分比 */
 function Bars({ buckets }: { buckets: StudyTimeBucket[] }) {
-  const max = Math.max(1, ...buckets.map((b) => b.seconds));
+  const max = Math.max(MIN_VISIBLE_SECONDS, ...buckets.map((b) => b.seconds));
   return (
     <div className="flex h-full min-h-24 items-end gap-1">
       {buckets.map((b) => {
-        const h = b.seconds ? Math.max(4, Math.round((b.seconds / max) * 100)) : 2;
+        const active = b.seconds >= MIN_VISIBLE_SECONDS;
+        const h = active ? Math.max(4, Math.round((b.seconds / max) * 100)) : 0;
         return (
           <div key={b.key} className="flex h-full flex-1 flex-col items-center justify-end gap-1.5">
             <div
-              className={cx(
-                "w-full rounded-[3px] transition-colors",
-                b.seconds ? "bg-accent/75 hover:bg-accent" : "bg-line",
-              )}
+              className={cx("w-full rounded-[3px] transition-colors", active ? "bg-accent/75 hover:bg-accent" : "")}
               style={{ height: `${h}%` }}
               title={`${b.key} · ${formatStudyDuration(b.seconds)}`}
               aria-label={`${b.key} 学习 ${formatStudyDuration(b.seconds)}`}
@@ -42,7 +43,7 @@ function Bars({ buckets }: { buckets: StudyTimeBucket[] }) {
 
 export default function StudyTimeChart({ time }: { time: StudyTimeSummary }) {
   const [range, setRange] = useState<Range>("day");
-  const buckets = range === "week" ? time.weeks : range === "month" ? time.months : time.days;
+  const buckets = range === "week" ? time.week : range === "month" ? time.months : time.days;
   const empty = !time.totalSeconds;
 
   return (

@@ -1,20 +1,22 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import { dayKey, formatStudyDuration, monthKey, summarizeStudyTime, weekKey } from "@/lib/study/time";
 
 /** 本地时间构造：避免 UTC 偏移把"今天"算错 */
 const at = (y: number, m: number, d: number, h = 12) => new Date(y, m - 1, d, h, 0, 0).getTime();
 
 describe("学习时长聚合", () => {
-  it("空数据时不造假：总时长 0、连续 0 天、柱子全 0", () => {
+  it("空数据时不造假：总时长 0、连续 0 天、柱子全空", () => {
     const s = summarizeStudyTime([], at(2026, 10, 24));
     expect(s.totalSeconds).toBe(0);
     expect(s.studyDays).toBe(0);
     expect(s.streak).toBe(0);
     expect(s.todaySeconds).toBe(0);
     expect(s.days).toHaveLength(14);
+    expect(s.week).toHaveLength(7);
+    expect(s.months).toHaveLength(12);
     expect(s.days.every((b) => b.seconds === 0)).toBe(true);
-    expect(s.weeks).toHaveLength(8);
-    expect(s.months).toHaveLength(6);
+    expect(s.week.every((b) => b.seconds === 0)).toBe(true);
+    expect(s.months.every((b) => b.seconds === 0)).toBe(true);
   });
 
   it("日视图是最近 14 天，按天累加、标签是日期数字", () => {
@@ -38,24 +40,64 @@ describe("学习时长聚合", () => {
     expect(s.days.some((b) => b.key === "2026-10-01")).toBe(false);
   });
 
-  it("周视图按周一归档，月视图按自然月归档", () => {
-    // 2026-10-24 是周六；该周周一为 2026-10-19
+  it("周视图是本周七天，标签是星期几，从星期一开始", () => {
+    // 2026-10-24 是周六；本周周一 = 2026-10-19
     const now = at(2026, 10, 24);
     const s = summarizeStudyTime(
       [
         { day: "2026-10-19", seconds: 100 }, // 周一
-        { day: "2026-10-25", seconds: 200 }, // 周日
-        { day: "2026-09-30", seconds: 400 },
+        { day: "2026-10-24", seconds: 200 }, // 周六
+        { day: "2026-10-26", seconds: 400 }, // 下周一，不属于本周
       ],
       now,
     );
-    const week = s.weeks.find((b) => b.key === "2026-10-19");
-    expect(week?.seconds).toBe(300);
-    expect(s.weeks.at(-1)?.key).toBe("2026-10-19");
-    const oct = s.months.find((b) => b.key === "2026-10");
-    expect(oct?.seconds).toBe(300);
-    const sep = s.months.find((b) => b.key === "2026-09");
-    expect(sep?.seconds).toBe(400);
+    expect(s.week).toHaveLength(7);
+    expect(s.week.map((b) => b.label)).toEqual([
+      "星期一",
+      "星期二",
+      "星期三",
+      "星期四",
+      "星期五",
+      "星期六",
+      "星期日",
+    ]);
+    expect(s.week[0].key).toBe("2026-10-19");
+    expect(s.week[0].seconds).toBe(100);
+    expect(s.week[5].seconds).toBe(200);
+    expect(s.week[6].seconds).toBe(0);
+    // 下周一不计入本周
+    expect(s.week.reduce((a, b) => a + b.seconds, 0)).toBe(300);
+  });
+
+  it("月视图是今年 1–12 月，未来的月份为 0", () => {
+    const now = at(2026, 10, 24);
+    const s = summarizeStudyTime(
+      [
+        { day: "2026-01-05", seconds: 60 },
+        { day: "2026-10-24", seconds: 120 },
+        { day: "2025-12-31", seconds: 999 }, // 去年，不计入今年
+      ],
+      now,
+    );
+    expect(s.months).toHaveLength(12);
+    expect(s.months.map((b) => b.label)).toEqual([
+      "1 月",
+      "2 月",
+      "3 月",
+      "4 月",
+      "5 月",
+      "6 月",
+      "7 月",
+      "8 月",
+      "9 月",
+      "10 月",
+      "11 月",
+      "12 月",
+    ]);
+    expect(s.months[0].seconds).toBe(60);
+    expect(s.months[9].seconds).toBe(120);
+    expect(s.months[11].seconds).toBe(0);
+    expect(s.totalSeconds).toBe(1179);
   });
 
   it("连续天数：今天没学但从昨天往前连续，仍算连上", () => {

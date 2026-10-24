@@ -299,8 +299,11 @@ export interface StudyTimeSummary {
   studyDays: number;
   /** 连续学习天数（含今天或从昨天往前算） */
   streak: number;
+  /** 最近 14 天 */
   days: StudyTimeBucket[];
-  weeks: StudyTimeBucket[];
+  /** 本周七天（星期一 → 星期日） */
+  week: StudyTimeBucket[];
+  /** 今年 1–12 月 */
   months: StudyTimeBucket[];
   /** 今天已学秒数 */
   todaySeconds: number;

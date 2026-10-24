@@ -164,9 +164,22 @@ for (const width of [1440, 390]) {
     Boolean(studyApi?.time) &&
       Array.isArray(studyApi.time.days) &&
       studyApi.time.days.length === 14 &&
-      studyApi.time.weeks.length === 8 &&
-      studyApi.time.months.length === 6,
-    JSON.stringify(studyApi?.time && { d: studyApi.time.days.length, w: studyApi.time.weeks.length, m: studyApi.time.months.length }),
+      studyApi.time.week && studyApi.time.week.length === 7 &&
+      studyApi.time.months.length === 12,
+    JSON.stringify(studyApi?.time && { d: studyApi.time.days.length, w: studyApi.time.week.length, m: studyApi.time.months.length }),
+  );
+  check(
+    "周视图标签是星期几（周一到周日）",
+    JSON.stringify(studyApi?.time?.week?.map((b) => b.label)) ===
+      JSON.stringify(["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]),
+    JSON.stringify(studyApi?.time?.week?.map((b) => b.label)),
+  );
+  check(
+    "月视图是今年 1–12 月",
+    studyApi?.time?.months?.length === 12 &&
+      studyApi.time.months[0]?.label === "1 月" &&
+      studyApi.time.months[11]?.label === "12 月",
+    JSON.stringify(studyApi?.time?.months?.map((b) => b.label)),
   );
   check(
     "/api/study 返回今天该学什么 + 需要再练 + 计划进度",

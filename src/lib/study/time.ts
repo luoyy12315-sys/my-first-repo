@@ -22,14 +22,12 @@ export function monthKey(ms: number): string {
   return `${d.getFullYear()}-${`${d.getMonth() + 1}`.padStart(2, "0")}`;
 }
 
-/** 日 key → 显示用的短标签，比如 8；周 → 10/20；月 → 10 月 */
+/** 日 key → 显示用的短标签，比如 8；月 → 10 月 */
 function dayLabel(key: string): string {
   return String(Number(key.slice(8, 10)));
 }
 
-function weekLabel(key: string): string {
-  return `${Number(key.slice(5, 7))}/${Number(key.slice(8, 10))}`;
-}
+const WEEKDAY_LABELS = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"];
 
 function monthLabel(key: string): string {
   return `${Number(key.slice(5, 7))} 月`;
@@ -49,33 +47,25 @@ function lastDays(nowMs: number, n: number): { key: string; label: string }[] {
   return out;
 }
 
-function lastWeeks(nowMs: number, n: number): { key: string; label: string }[] {
-  const out: { key: string; label: string }[] = [];
-  const base = new Date(nowMs);
-  base.setHours(12, 0, 0, 0);
-  for (let i = n - 1; i >= 0; i -= 1) {
-    const d = new Date(base);
-    d.setDate(d.getDate() - i * 7);
-    const key = weekKey(d.getTime());
-    out.push({ key, label: weekLabel(key) });
-  }
-  // 去重（同一周只保留一次）
-  const seen = new Set<string>();
-  return out.filter((b) => (seen.has(b.key) ? false : (seen.add(b.key), true)));
+/** 本周七天：星期一 → 星期日 */
+function currentWeek(nowMs: number): { key: string; label: string }[] {
+  const monday = new Date(nowMs);
+  monday.setHours(12, 0, 0, 0);
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  return WEEKDAY_LABELS.map((label, i) => {
+    const d = new Date(monday);
+    d.setDate(d.getDate() + i);
+    return { key: dayKey(d.getTime()), label };
+  });
 }
 
-function lastMonths(nowMs: number, n: number): { key: string; label: string }[] {
-  const out: { key: string; label: string }[] = [];
-  const d = new Date(nowMs);
-  d.setDate(1);
-  d.setHours(12, 0, 0, 0);
-  for (let i = n - 1; i >= 0; i -= 1) {
-    const m = new Date(d);
-    m.setMonth(m.getMonth() - i);
-    const key = monthKey(m.getTime());
-    out.push({ key, label: monthLabel(key) });
-  }
-  return out;
+/** 今年 1–12 月（未来的月份先留空，图表里不会画出柱子） */
+function currentYearMonths(nowMs: number): { key: string; label: string }[] {
+  const year = new Date(nowMs).getFullYear();
+  return Array.from({ length: 12 }, (_, i) => {
+    const key = `${year}-${`${i + 1}`.padStart(2, "0")}`;
+    return { key, label: monthLabel(key) };
+  });
 }
 
 /** 把「日 → 秒」的行聚合成日/周/月三档，并算出总时长、学习天数、连续天数 */
@@ -99,27 +89,19 @@ export function summarizeStudyTime(
     seconds: byDay.get(key) ?? 0,
   });
 
-  // 周/月用日行汇总：按 key 前缀聚合，保证「周/月」和「日」口径一致
-  const weekSum = new Map<string, number>();
-  const monthSum = new Map<string, number>();
-  for (const [day, seconds] of byDay) {
-    const d = new Date(`${day}T12:00:00`);
-    const wk = weekKey(d.getTime());
-    weekSum.set(wk, (weekSum.get(wk) ?? 0) + seconds);
-    monthSum.set(monthKey(d.getTime()), (monthSum.get(monthKey(d.getTime())) ?? 0) + seconds);
-  }
-
   const today = dayKey(nowMs);
   const days = lastDays(nowMs, 14).map((b) => bucket(b.key, b.label));
-  const weeks = lastWeeks(nowMs, 8).map((b) => ({
+  const week = currentWeek(nowMs).map((b) => bucket(b.key, b.label));
+  // 月是按日期前缀汇总（1–12 月），不是按某一天的 key 取值
+  const monthTotals = new Map<string, number>();
+  for (const [day, seconds] of byDay) {
+    const mk = day.slice(0, 7);
+    monthTotals.set(mk, (monthTotals.get(mk) ?? 0) + seconds);
+  }
+  const months = currentYearMonths(nowMs).map((b) => ({
     key: b.key,
     label: b.label,
-    seconds: weekSum.get(b.key) ?? 0,
-  }));
-  const months = lastMonths(nowMs, 6).map((b) => ({
-    key: b.key,
-    label: b.label,
-    seconds: monthSum.get(b.key) ?? 0,
+    seconds: monthTotals.get(b.key) ?? 0,
   }));
 
   // 连续学习天数：从今天（或昨天，今天还没学也算连上）往前数
@@ -138,7 +120,7 @@ export function summarizeStudyTime(
     studyDays,
     streak,
     days,
-    weeks,
+    week,
     months,
     todaySeconds: byDay.get(today) ?? 0,
   };
