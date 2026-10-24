@@ -861,9 +861,9 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
             </span>
           ) : null}
           <div className="ml-auto flex shrink-0 items-center gap-1">
-            <OverflowMenu label="">
+            <OverflowMenu portal overhang narrow align="right" label="">
               <MenuItem onClick={generateSummary} disabled={pending || messages.length === 0}>
-                <FileText className="size-3.5" /> 生成本次学习小结
+                <FileText className="size-3.5" /> 生成小结
               </MenuItem>
               <MenuItem onClick={() => router.push("/archive?tab=concepts")}>
                 <BookMarked className="size-3.5" /> 学习档案

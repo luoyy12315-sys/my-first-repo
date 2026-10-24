@@ -263,24 +263,29 @@ for (const width of [1440, 390]) {
   if (sessions.sessions?.length) {
     await page.goto(`${BASE}/s/${sessions.sessions[0].id}`, { waitUntil: "networkidle" });
     await page.waitForTimeout(800);
-    await page.locator("main summary").first().click();
-    await page.waitForTimeout(250);
+    await page.locator('main [aria-label="更多操作"]').first().click();
+    await page.waitForTimeout(300);
     const menu = await page.evaluate(() => {
-      const el = document.querySelector("main details[open] > div");
+      const el = document.querySelector('body > div[role="menu"]');
+      const trigger = document.querySelector('main [aria-label="更多操作"]');
       if (!el) return null;
       const r = el.getBoundingClientRect();
+      const t = trigger?.getBoundingClientRect();
       return {
         inViewport: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth,
         radius: getComputedStyle(el).borderRadius,
-        below:
-          r.top >= (document.querySelector("main summary")?.getBoundingClientRect().top ?? 0),
+        below: t ? r.top >= t.top : false,
+        width: Math.round(r.width),
+        text: el.textContent ?? "",
       };
     });
-    check("会话页菜单向下展开且不越界", Boolean(menu?.inViewport && menu?.below), JSON.stringify(menu));
+    check("会话页菜单向下展开且不越界", Boolean(menu?.inViewport && menu?.below), JSON.stringify(menu?.width));
     check("下拉菜单是圆角面板", menu?.radius === "20px", String(menu?.radius));
+    check("会话页菜单更窄", Boolean(menu?.width) && menu.width <= 160, String(menu?.width));
+    check("会话页菜单文案是「生成小结」", Boolean(menu?.text?.includes("生成小结")), menu?.text?.slice(0, 40));
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(150);
-    check("Esc 能收起菜单", (await page.locator("details[open]").count()) === 0);
+    await page.waitForTimeout(200);
+    check("Esc 能收起菜单", (await page.locator('body > div[role="menu"]').count()) === 0);
   }
 
   await context.close();
