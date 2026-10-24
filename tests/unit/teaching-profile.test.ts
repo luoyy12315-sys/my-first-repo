@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_TEACHING_PROFILE,
+  MAX_TEACHING_DIRECTIVE,
   buildTeachingStyleBlock,
   isDefaultTeachingProfile,
   normalizeTeachingProfile,
@@ -13,10 +14,10 @@ import {
 
 describe("讲解风格配置", () => {
   it("非法输入回落到默认值", () => {
-    const p = normalizeTeachingProfile({ preset: "unknown", subject: 1, verbosity: "abc" });
-    expect(p.preset).toBe("balanced");
-    expect(p.subject).toBe("general");
+    const p = normalizeTeachingProfile({ directive: 1, verbosity: "abc" });
+    expect(p.directive).toBe("");
     expect(p.verbosity).toBe(3);
+    expect(isDefaultTeachingProfile(p)).toBe(true);
   });
 
   it("篇幅被限制在 1–5", () => {
@@ -24,33 +25,40 @@ describe("讲解风格配置", () => {
     expect(normalizeTeachingProfile({ verbosity: -3 }).verbosity).toBe(1);
   });
 
-  it("自定义偏好会裁剪到 500 字", () => {
-    const p = normalizeTeachingProfile({ customDirective: `  ${"字".repeat(600)}  ` });
-    expect(p.customDirective.length).toBe(500);
+  it("描述会去掉首尾空白并裁剪到上限", () => {
+    const p = normalizeTeachingProfile({ directive: `  ${"字".repeat(600)}  ` });
+    expect(p.directive.length).toBe(MAX_TEACHING_DIRECTIVE);
+    expect(p.directive.startsWith("字")).toBe(true);
+  });
+
+  it("旧的预设字段会迁移成一句话描述，不静默丢失", () => {
+    const p = normalizeTeachingProfile({ preset: "socratic", subject: "accounting", customDirective: "" });
+    expect(p.directive).toContain("提问");
+    const block = buildTeachingStyleBlock(p);
+    expect(block).toContain("学生希望的讲法");
+    // 学科已随预设一起下线，不再注入
+    expect(block).not.toContain("会计学");
   });
 
   it("默认风格不注入任何提示词", () => {
     expect(isDefaultTeachingProfile(DEFAULT_TEACHING_PROFILE)).toBe(true);
     expect(buildTeachingStyleBlock(DEFAULT_TEACHING_PROFILE)).toBeNull();
+    expect(buildTeachingStyleBlock(normalizeTeachingProfile({}))).toBeNull();
   });
 
-  it("非默认风格包含风格、学科、篇幅与自定义要求", () => {
+  it("非默认风格包含描述、篇幅与微调要求", () => {
     const block = buildTeachingStyleBlock(
       normalizeTeachingProfile({
-        preset: "socratic",
-        subject: "accounting",
+        directive: "先讲业务实质，再给借贷方向",
         verbosity: 2,
         requireExample: true,
         requireCheckQuestion: true,
-        customDirective: "先讲业务实质",
       }),
     );
-    expect(block).toContain("苏格拉底式");
-    expect(block).toContain("会计学");
+    expect(block).toContain("先讲业务实质");
     expect(block).toContain("2/5");
     expect(block).toContain("具体例子");
     expect(block).toContain("检验学生");
-    expect(block).toContain("先讲业务实质");
   });
 });
 

@@ -119,8 +119,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     }
 
     if (action === "deleteCourse") {
-      const plan = deletePlanCourse(id, body.itemId);
-      return plan ? ok({ plan }) : fail(404, "课程不存在");
+      const result = deletePlanCourse(id, body.itemId);
+      // concepts = 随课程一起删掉的知识点数（仍被其它课程使用的知识点不删，只解除归属）
+      return result ? ok({ plan: result.plan, concepts: result.concepts }) : fail(404, "课程不存在");
     }
 
     if (action === "moveCourse") {
@@ -144,8 +145,9 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   try {
     const { id } = await ctx.params;
     if (!getPlan(id)) return fail(404, "计划不存在");
-    deletePlan(id);
-    return ok({ deleted: true, plans: listPlans() });
+    const result = deletePlan(id);
+    // concepts = 随计划一起删掉的知识点数（仍被其它计划引用的知识点不删，只解除归属）
+    return ok({ deleted: true, concepts: result.concepts, plans: listPlans() });
   } catch (e) {
     return handleError(e);
   }

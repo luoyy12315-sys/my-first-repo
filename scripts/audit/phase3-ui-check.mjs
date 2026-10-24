@@ -64,7 +64,8 @@ for (const width of [1440, 390]) {
   check("设置页有用量卡片", usageText.length > 0);
   check("用量卡片显示调用次数", /调用|次/.test(usageText), usageText.slice(0, 80).replace(/\n/g, " "));
   check("用量卡片没有 NaN/undefined", !/NaN|undefined/.test(usageText));
-  check("未填单价时成本显示「—」", usageText.includes("—") || usageText.includes("单价"));
+  check("用量卡片显示 tokens 明细", /tokens/i.test(usageText), usageText.slice(0, 80).replace(/\n/g, " "));
+  check("用量卡片不再出现单价输入", !/单价|粗估|¥|\$/.test(usageText));
   const headings = await page.evaluate(() => [...document.querySelectorAll("h2")].map((x) => x.textContent?.trim()));
   check("卡片顺序：模型服务 → 讲解风格 → 联网检索 → 用量 → 数据", (() => {
     const want = ["模型服务", "讲解风格", "联网检索", "用量", "数据"];

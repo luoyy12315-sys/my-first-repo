@@ -796,9 +796,13 @@ describe("计划引用保护与手动合并", () => {
     expect(listConceptEvidence(survivor).length).toBeGreaterThanOrEqual(1);
 
     expect(removeConceptFromCourse(plan.id, survivor)?.items[0].concepts).toHaveLength(0);
-    expect(getConcept(survivor)?.courseId).toBeNull();
+    // 新语义：课程里移除会删掉知识点与证据；重新添加应建出新的知识点
+    expect(getConcept(survivor)).toBeNull();
+    expect(listConceptEvidence(survivor)).toHaveLength(0);
     const readded = addConceptToCourse(plan.id, plan.items[0].id, { name: "中心化记账" });
     expect(readded.conflict).toBe(false);
-    expect(readded.plan?.items[0].concepts[0].id).toBe(survivor);
+    const newId = readded.plan?.items[0].concepts[0].id;
+    expect(newId).toBeTruthy();
+    expect(newId).not.toBe(survivor);
   });
 });

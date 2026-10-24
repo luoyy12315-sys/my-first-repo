@@ -1,4 +1,4 @@
-import { getJsonSetting } from "@/lib/db/repo";
+﻿import { getJsonSetting } from "@/lib/db/repo";
 import type { WebConfigPublic } from "@/lib/types";
 
 export type WebProviderId = "searxng" | "tavily" | "brave";
@@ -15,7 +15,6 @@ export interface WebConfig {
   allowDomains: string[];
   denyDomains: string[];
   maxSearchesPerSession: number;
-  allowPrivateProvider: boolean;
 }
 
 const DEFAULTS: WebConfig = {
@@ -30,7 +29,6 @@ const DEFAULTS: WebConfig = {
   allowDomains: [],
   denyDomains: [],
   maxSearchesPerSession: 6,
-  allowPrivateProvider: true,
 };
 
 export const PROVIDER_DEFAULT_BASE: Record<WebProviderId, string> = {
@@ -69,7 +67,6 @@ export function resolveWebConfig(): WebConfig {
     allowDomains: Array.isArray(stored.allowDomains) ? stored.allowDomains.slice(0, 50) : [],
     denyDomains: Array.isArray(stored.denyDomains) ? stored.denyDomains.slice(0, 50) : [],
     maxSearchesPerSession: num(stored.maxSearchesPerSession, DEFAULTS.maxSearchesPerSession, 1, 30),
-    allowPrivateProvider: stored.allowPrivateProvider !== false,
   };
 }
 
@@ -100,6 +97,5 @@ export function webStatus(): WebConfigPublic {
     allowDomains: cfg.allowDomains,
     denyDomains: cfg.denyDomains,
     maxSearchesPerSession: cfg.maxSearchesPerSession,
-    allowPrivateProvider: cfg.allowPrivateProvider,
   };
 }

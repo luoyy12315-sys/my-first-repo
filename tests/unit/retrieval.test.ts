@@ -89,7 +89,6 @@ const baseCfg: WebConfig = {
   allowDomains: [],
   denyDomains: [],
   maxSearchesPerSession: 6,
-  allowPrivateProvider: true,
 };
 
 describe("检索门控（Phase 2 只有手动模式）", () => {

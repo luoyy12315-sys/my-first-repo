@@ -367,7 +367,6 @@ export interface WebConfigPublic {
   allowDomains: string[];
   denyDomains: string[];
   maxSearchesPerSession: number;
-  allowPrivateProvider: boolean;
 }
 
 export interface AiStatus {

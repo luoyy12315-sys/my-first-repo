@@ -29,14 +29,6 @@ export interface UsageModelRow extends UsageBucket {
   lastUsedAt: number | null;
 }
 
-export interface UsagePricing {
-  /** 输入 token 单价（每百万 token）；null = 用户没填 */
-  inputPerMTok: number | null;
-  /** 输出 token 单价（每百万 token）；null = 用户没填 */
-  outputPerMTok: number | null;
-  currency: "CNY" | "USD";
-}
-
 export interface UsageSummary {
   generatedAt: number;
   /** byModel 明细的统计窗口（天） */
@@ -45,17 +37,7 @@ export interface UsageSummary {
   month: UsageBucket;
   all: UsageBucket;
   byModel: UsageModelRow[];
-  pricing: UsagePricing;
 }
-
-/** settings 表里存单价配置的 key */
-export const USAGE_PRICING_KEY = "usage_pricing";
-
-export const DEFAULT_USAGE_PRICING: UsagePricing = {
-  inputPerMTok: null,
-  outputPerMTok: null,
-  currency: "CNY",
-};
 
 /** 每条 usage_log 汇总出来的原始列 */
 interface AggregateRow {
@@ -125,37 +107,6 @@ function startOfLocalMonth(at: number): number {
   return d.getTime();
 }
 
-function normalizePrice(value: unknown): number | null {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return null;
-  return value;
-}
-
-/**
- * 读取本地单价配置。只读 settings，不写库。
- * 单价只能由用户填：没填一律是 null，绝不用内置的"厂商价格"兜底。
- */
-export function getUsagePricing(): UsagePricing {
-  const row = getDb()
-    .prepare("select value from settings where key = ?")
-    .get(USAGE_PRICING_KEY) as { value: string } | undefined;
-  if (!row?.value) return { ...DEFAULT_USAGE_PRICING };
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(row.value);
-  } catch {
-    return { ...DEFAULT_USAGE_PRICING };
-  }
-  if (!parsed || typeof parsed !== "object") return { ...DEFAULT_USAGE_PRICING };
-
-  const raw = parsed as Record<string, unknown>;
-  return {
-    inputPerMTok: normalizePrice(raw.inputPerMTok),
-    outputPerMTok: normalizePrice(raw.outputPerMTok),
-    currency: raw.currency === "USD" ? "USD" : "CNY",
-  };
-}
-
 /**
  * 汇总今日 / 本月 / 全部用量，并按模型拆分最近 N 天明细。
  * 纯读：不写 usage_log，也不写 settings。
@@ -192,6 +143,5 @@ export function usageSummary(opts: { days?: number; now?: number } = {}): UsageS
     month,
     all,
     byModel,
-    pricing: getUsagePricing(),
   };
 }

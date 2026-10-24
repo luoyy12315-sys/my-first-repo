@@ -52,7 +52,10 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     if (!getConcept(id)) return fail(404, "知识点不存在");
     const refs = countPlanItemsForConcept(id);
     if (refs > 0) {
-      return fail(409, `该知识点被 ${refs} 个计划步骤引用，请先在计划里改绑或合并`);
+      return fail(
+        409,
+        `该知识点仍属于 ${refs} 个计划步骤，请先在计划里移除（在课程里移除会一并删除该知识点）`,
+      );
     }
     deleteConcept(id);
     return ok({ deleted: true, concepts: listConcepts({ limit: 500 }), topics: listTopics() });

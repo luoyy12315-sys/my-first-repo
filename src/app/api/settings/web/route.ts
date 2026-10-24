@@ -1,5 +1,5 @@
 import { isProviderConfigured, maskKey, resolveWebConfig, webStatus, type WebProviderId } from "@/lib/web/config";
-import { webStats } from "@/lib/web/cache";
+import { clearWebCache, webCacheRows, webStats } from "@/lib/web/cache";
 import { setJsonSetting } from "@/lib/db/repo";
 import { fail, handleError, ok, readJson } from "@/lib/api/helpers";
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    return ok({ ...webStatus(), stats: webStats(7) });
+    return ok({ ...webStatus(), stats: webStats(7), cacheRows: webCacheRows() });
   } catch (e) {
     return handleError(e);
   }
@@ -27,7 +27,6 @@ interface Body {
   allowDomains?: string[];
   denyDomains?: string[];
   maxSearchesPerSession?: number;
-  allowPrivateProvider?: boolean;
 }
 
 function cleanList(v: unknown): string[] | undefined {
@@ -77,10 +76,6 @@ export async function PUT(req: Request) {
         typeof body.maxSearchesPerSession === "number"
           ? body.maxSearchesPerSession
           : prev.maxSearchesPerSession,
-      allowPrivateProvider:
-        typeof body.allowPrivateProvider === "boolean"
-          ? body.allowPrivateProvider
-          : prev.allowPrivateProvider,
     };
 
     // 打开联网但没有可用 provider，等于给用户一个必然失败的开关
@@ -90,7 +85,24 @@ export async function PUT(req: Request) {
 
     setJsonSetting("web_config", next);
     const status = webStatus();
-    return ok({ ...status, keyMasked: maskKey(resolveWebConfig().apiKey), stats: webStats(7) });
+    return ok({
+      ...status,
+      keyMasked: maskKey(resolveWebConfig().apiKey),
+      stats: webStats(7),
+      cacheRows: webCacheRows(),
+    });
+  } catch (e) {
+    return handleError(e);
+  }
+}
+
+/** 维护动作：目前只有清空检索缓存 */
+export async function POST(req: Request) {
+  try {
+    const body = await readJson<{ action?: string }>(req);
+    if (body.action !== "clearCache") return fail(400, "未知操作");
+    const removed = clearWebCache();
+    return ok({ removed, cacheRows: webCacheRows(), stats: webStats(7) });
   } catch (e) {
     return handleError(e);
   }

@@ -430,7 +430,6 @@ async function main() {
         enabled: true,
         provider: "searxng",
         baseUrl: WEB,
-        allowPrivateProvider: true,
         maxSources: 3,
         maxSearchesPerSession: 20,
         defaultMode: "off",

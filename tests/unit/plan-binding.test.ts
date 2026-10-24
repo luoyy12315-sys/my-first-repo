@@ -132,7 +132,7 @@ describe("目标学习：计划草稿 → 课程 → 知识点", () => {
     expect(result.plan?.progress.unconfiguredCourses).toBe(0);
   });
 
-  it("一个知识点只能归属一门课程；移除后保留档案", () => {
+  it("一个知识点只能归属一门课程；课程里移除会连带删除该知识点", () => {
     const first = createPlan({
       title: "课程 A",
       status: "active",
@@ -149,11 +149,9 @@ describe("目标学习：计划草稿 → 课程 → 知识点", () => {
     const conceptId = first.items[0].concepts[0].id;
     const removed = removeConceptFromCourse(first.id, conceptId);
     expect(removed?.items[0].concepts).toHaveLength(0);
-    const concept = getConcept(conceptId);
-    expect(concept?.name).toBe("共享知识点");
-    expect(concept?.courseId).toBeNull();
-    // 没有课程归属的知识点会显示为待整理，而不是被删除
-    expect(listConcepts().some((c) => c.id === conceptId)).toBe(true);
+    // 新语义：在课程里移除 = 删除该知识点与其证据；只有被别的计划步骤共享时才仅解除归属
+    expect(getConcept(conceptId)).toBeNull();
+    expect(listConcepts().some((c) => c.id === conceptId)).toBe(false);
   });
 
   it("save_concepts 只关联课程已有知识点，不临场扩目录", async () => {

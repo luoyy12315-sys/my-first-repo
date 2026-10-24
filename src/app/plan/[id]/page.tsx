@@ -49,6 +49,7 @@ export default function PlanDetailPage() {
   const [conceptInputs, setConceptInputs] = useState<Record<string, string>>({});
   const [newCourse, setNewCourse] = useState({ title: "", description: "" });
   const [pendingCourse, setPendingCourse] = useState<PlanDTO["items"][number] | null>(null);
+  const [pendingConcept, setPendingConcept] = useState<{ id: string; name: string } | null>(null);
   const [metaOpen, setMetaOpen] = useState(false);
   const [metaDraft, setMetaDraft] = useState({ title: "", note: "" });
   // 课程默认只展开"当前这门"：30 个知识点全摊开等于让用户自己找重点
@@ -485,10 +486,12 @@ export default function PlanDetailPage() {
                         />
                         {editMode ? (
                           <button
-                            onClick={() => void patch({ action: "removeConcept", conceptId: concept.id })}
+                            onClick={() =>
+                              setPendingConcept({ id: concept.id, name: concept.name })
+                            }
                             className="rounded p-1 text-ink3 hover:bg-badsoft hover:text-bad"
-                            title="从课程移除知识点（保留档案）"
-                            aria-label={`从课程移除 ${concept.name}`}
+                            title="删除这个知识点（连同作答证据）"
+                            aria-label={`删除知识点 ${concept.name}`}
                           >
                             <Trash2 className="size-3" />
                           </button>
@@ -616,11 +619,19 @@ export default function PlanDetailPage() {
               size="sm"
               onClick={async () => {
                 if (!pendingCourse) return;
+                const removed = pendingCourse.concepts.length;
                 const next = await patch(
                   { action: "deleteCourse", itemId: pendingCourse.id },
                   "deletecourse",
                 );
-                if (next) setPendingCourse(null);
+                if (next) {
+                  setPendingCourse(null);
+                  toast.success(
+                    removed > 0
+                      ? `课程已删除，同时移除 ${removed} 个知识点`
+                      : "课程已删除",
+                  );
+                }
               }}
             >
               确认删除
@@ -630,7 +641,54 @@ export default function PlanDetailPage() {
       >
         <p className="text-[13px] leading-relaxed text-ink2">
           「{pendingCourse?.title}」会从计划中移除，课程里的 {pendingCourse?.concepts.length ?? 0}{" "}
-          个知识点会回到「待整理」，不会被删除。
+          个知识点会
+          <span className="font-medium text-bad">一起删除</span>，无法撤销。
+        </p>
+        <p className="mt-2 rounded-xl border border-line bg-panel2/50 px-3 py-2.5 text-[12.5px] leading-relaxed text-ink2">
+          这些知识点上的作答记录与掌握度证据会一起清空；对话历史保留。
+          仍被其它课程使用的知识点只会解除本课程的归属，不会被删除。
+        </p>
+      </Modal>
+
+      <Modal
+        open={Boolean(pendingConcept)}
+        onClose={() => setPendingConcept(null)}
+        title="删除这个知识点？"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setPendingConcept(null)}>
+              取消
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              loading={busy === "removeconcept"}
+              onClick={async () => {
+                if (!pendingConcept) return;
+                const name = pendingConcept.name;
+                const next = await patch(
+                  { action: "removeConcept", conceptId: pendingConcept.id },
+                  "removeconcept",
+                );
+                if (next) {
+                  setPendingConcept(null);
+                  toast.success(`已删除知识点「${name}」`);
+                }
+              }}
+            >
+              删除
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-[13px] leading-relaxed text-ink2">
+          「{pendingConcept?.name}」会从课程里移除并
+          <span className="font-medium text-bad">删除</span>
+          ，无法撤销。
+        </p>
+        <p className="mt-2 rounded-xl border border-line bg-panel2/50 px-3 py-2.5 text-[12.5px] leading-relaxed text-ink2">
+          它上面的作答记录与掌握度证据会一起清空；对话历史保留。
+          仍被其它课程使用的知识点只会解除本课程的归属，不会被删除。
         </p>
       </Modal>
 

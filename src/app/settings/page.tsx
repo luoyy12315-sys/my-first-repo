@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -31,15 +31,77 @@ import {
 import type { AiModelPublic, WebConfigPublic } from "@/lib/types";
 import {
   DEFAULT_TEACHING_PROFILE,
-  PRESET_HINT,
-  PRESET_LABEL,
-  SUBJECT_LABEL,
-  TEACHING_PRESETS,
-  TEACHING_SUBJECTS,
+  MAX_TEACHING_DIRECTIVE,
+  buildTeachingStyleBlock,
   isDefaultTeachingProfile,
   type TeachingProfile,
 } from "@/lib/teaching/profile";
 import { formatDay } from "@/lib/utils";
+
+type WebProvider = "searxng" | "tavily" | "brave";
+
+const WEB_PROVIDER_LABEL: Record<WebProvider, string> = {
+  searxng: "SearXNG（自建，免 Key）",
+  tavily: "Tavily（需要 Key）",
+  brave: "Brave Search API（需要 Key）",
+};
+
+/** 切换服务商时自动带出的官方地址，用户可以改 */
+const WEB_PROVIDER_DEFAULT_BASE: Record<WebProvider, string> = {
+  searxng: "",
+  tavily: "https://api.tavily.com",
+  brave: "https://api.search.brave.com",
+};
+
+const WEB_PROVIDER_KEY_URL: Record<WebProvider, string> = {
+  searxng: "https://docs.searxng.org/admin/installation-docker.html",
+  tavily: "https://tavily.com",
+  brave: "https://brave.com/search/api/",
+};
+
+/** 测试失败时按错误码给"该改什么"，只报错不给方向等于没说 */
+const WEB_TEST_ADVICE: Record<string, string> = {
+  WEB_NOT_CONFIGURED: "先把地址或 Key 填上",
+  WEB_UNAUTHORIZED: "Key 无效或没权限，去服务商后台确认后重填",
+  WEB_RATE_LIMIT: "服务商限流了，等一会儿再试，或把超时调大",
+  WEB_TIMEOUT: "搜索服务没在超时内返回：自建服务可能没起来，或把超时调大一点",
+  WEB_NETWORK: "连不上服务地址：检查地址是否正确、服务是否在运行、本机网络是否可达",
+  WEB_BAD_RESPONSE: "服务返回了非预期内容：确认 SearXNG 已在 settings.yml 里打开 json 格式",
+};
+
+interface WebStatus extends WebConfigPublic {
+  stats?: {
+    days: number;
+    searches: number;
+    cacheHits: number;
+    failures: number;
+    avgLatencyMs: number | null;
+  };
+  cacheRows?: number;
+}
+
+/** 域名名单里明显不是域名的行；返回空串表示没问题 */
+function invalidDomainLines(allow: string, deny: string): string {
+  return `${allow}\n${deny}`
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .filter(
+      (x) =>
+        !/^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(x),
+    )
+    .slice(0, 5)
+    .join("、");
+}
+
+interface WebTestResult {
+  ok: boolean;
+  code?: string;
+  message?: string;
+  count?: number;
+  latencyMs?: number;
+  results?: { title: string; url: string }[];
+}
 
 interface AiLegacyStatus {
   configured: boolean;
@@ -102,12 +164,6 @@ interface UsageModelRow extends UsageBucket {
   lastUsedAt: number | null;
 }
 
-interface UsagePricing {
-  inputPerMTok: number | null;
-  outputPerMTok: number | null;
-  currency: "CNY" | "USD";
-}
-
 interface UsageSummary {
   generatedAt: number;
   days: number;
@@ -115,13 +171,6 @@ interface UsageSummary {
   month: UsageBucket;
   all: UsageBucket;
   byModel: UsageModelRow[];
-  pricing: UsagePricing;
-}
-
-interface PricingDraft {
-  input: string;
-  output: string;
-  currency: "CNY" | "USD";
 }
 
 export default function SettingsPage() {
@@ -134,12 +183,6 @@ export default function SettingsPage() {
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [usageLoading, setUsageLoading] = useState(false);
   const [usageError, setUsageError] = useState(false);
-  const [priceDraft, setPriceDraft] = useState<PricingDraft>({
-    input: "",
-    output: "",
-    currency: "CNY",
-  });
-  const [priceSaving, setPriceSaving] = useState(false);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<AiModelPublic | null>(null);
@@ -150,10 +193,12 @@ export default function SettingsPage() {
   const [testingId, setTestingId] = useState<string | null>(null);
 
   // ── 联网检索 ──
-  const [web, setWeb] = useState<WebConfigPublic | null>(null);
+  const [web, setWeb] = useState<WebStatus | null>(null);
+  const [webOpen, setWebOpen] = useState(false);
+  const [webCacheRows, setWebCacheRows] = useState(0);
   const [webDraft, setWebDraft] = useState({
     enabled: false,
-    provider: "searxng" as "searxng" | "tavily" | "brave",
+    provider: "searxng" as WebProvider,
     baseUrl: "",
     apiKey: "",
     maxSources: 3,
@@ -163,26 +208,25 @@ export default function SettingsPage() {
     allowDomains: "",
     denyDomains: "",
     maxSearchesPerSession: 6,
-    allowPrivateProvider: true,
   });
   const [webSaving, setWebSaving] = useState(false);
   const [webTesting, setWebTesting] = useState(false);
-  const [webTestResult, setWebTestResult] = useState<{ ok: boolean; message?: string; count?: number; latencyMs?: number } | null>(
-    null,
-  );
+  const [webTestResult, setWebTestResult] = useState<WebTestResult | null>(null);
 
   // ── 讲解风格 ──
   const [teaching, setTeaching] = useState<TeachingProfile>(DEFAULT_TEACHING_PROFILE);
+  const [teachingOpen, setTeachingOpen] = useState(false);
   const [teachingSaving, setTeachingSaving] = useState(false);
   const teachingIsDefault = isDefaultTeachingProfile(teaching);
+  const teachingPreview = buildTeachingStyleBlock(teaching);
 
-  const saveTeaching = useCallback(async () => {
+  const persistTeaching = useCallback(async (next: TeachingProfile, message: string) => {
     setTeachingSaving(true);
     try {
       const res = await fetch("/api/settings/teaching", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(teaching),
+        body: JSON.stringify(next),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -190,13 +234,17 @@ export default function SettingsPage() {
       }
       const data = (await res.json()) as { profile?: TeachingProfile };
       if (data.profile) setTeaching(data.profile);
-      toast.success("讲解风格已保存");
+      toast.success(message);
     } catch (e) {
       toast.error((e as Error).message || "保存失败");
     } finally {
       setTeachingSaving(false);
     }
-  }, [teaching]);
+  }, []);
+
+  const saveTeaching = () => void persistTeaching(teaching, "讲解风格已保存");
+  const resetTeaching = () =>
+    void persistTeaching(DEFAULT_TEACHING_PROFILE, "已恢复默认讲法：不再额外注入风格要求");
 
   const load = useCallback(async () => {
     const [mRes, aRes, sRes, wRes, tRes] = await Promise.all([
@@ -213,8 +261,9 @@ export default function SettingsPage() {
     if (aRes.ok) setLegacy((await aRes.json()) as AiLegacyStatus);
     if (sRes.ok) setSystem((await sRes.json()) as SystemInfo);
     if (wRes.ok) {
-      const w = (await wRes.json()) as WebConfigPublic;
+      const w = (await wRes.json()) as WebStatus;
       setWeb(w);
+      setWebCacheRows(Number(w.cacheRows ?? 0));
       setWebDraft({
         enabled: w.enabled,
         provider: w.provider,
@@ -227,7 +276,6 @@ export default function SettingsPage() {
         allowDomains: w.allowDomains.join("\n"),
         denyDomains: w.denyDomains.join("\n"),
         maxSearchesPerSession: w.maxSearchesPerSession,
-        allowPrivateProvider: w.allowPrivateProvider,
       });
     }
     if (tRes.ok) {
@@ -252,11 +300,6 @@ export default function SettingsPage() {
       }
       const data = (await res.json()) as UsageSummary;
       setUsage(data);
-      setPriceDraft({
-        input: data.pricing.inputPerMTok == null ? "" : String(data.pricing.inputPerMTok),
-        output: data.pricing.outputPerMTok == null ? "" : String(data.pricing.outputPerMTok),
-        currency: data.pricing.currency,
-      });
     } catch {
       // 用量只是辅助信息：读不到就给可重试的提示，不影响设置页其它功能
       setUsageError(true);
@@ -268,32 +311,6 @@ export default function SettingsPage() {
   useEffect(() => {
     void loadUsage();
   }, [loadUsage]);
-
-  const savePricing = async () => {
-    const input = parsePriceInput(priceDraft.input);
-    const output = parsePriceInput(priceDraft.output);
-    if (input === undefined || output === undefined) {
-      toast.error("单价需为 0 到 1000000 之间的数字，留空表示未填写");
-      return;
-    }
-    setPriceSaving(true);
-    try {
-      const res = await fetch("/api/usage", {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ inputPerMTok: input, outputPerMTok: output, currency: priceDraft.currency }),
-      });
-      const data = (await res.json().catch(() => ({}))) as { pricing?: UsagePricing; error?: string };
-      const pricing = data.pricing;
-      if (!res.ok || !pricing) throw new Error(data.error ?? "保存失败");
-      setUsage((u) => (u ? { ...u, pricing } : u));
-      toast.success(input === null && output === null ? "已清除单价，成本估算已关闭" : "单价已保存");
-    } catch (e) {
-      toast.error((e as Error).message || "保存失败");
-    } finally {
-      setPriceSaving(false);
-    }
-  };
 
   const openAdd = () => {
     setEditing(null);
@@ -427,6 +444,21 @@ export default function SettingsPage() {
     }
   };
 
+  /** 当前表单值：保存与测试共用，避免"测的是旧配置" */
+  const webPayload = () => ({
+    enabled: webDraft.enabled,
+    provider: webDraft.provider,
+    baseUrl: webDraft.baseUrl,
+    apiKey: webDraft.apiKey || undefined,
+    maxSources: webDraft.maxSources,
+    timeoutMs: webDraft.timeoutMs,
+    ttlDays: webDraft.ttlDays,
+    defaultMode: webDraft.defaultMode,
+    allowDomains: webDraft.allowDomains.split("\n").map((x) => x.trim()).filter(Boolean),
+    denyDomains: webDraft.denyDomains.split("\n").map((x) => x.trim()).filter(Boolean),
+    maxSearchesPerSession: webDraft.maxSearchesPerSession,
+  });
+
   const saveWeb = async () => {
     setWebSaving(true);
     setWebTestResult(null);
@@ -434,67 +466,112 @@ export default function SettingsPage() {
       const res = await fetch("/api/settings/web", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          enabled: webDraft.enabled,
-          provider: webDraft.provider,
-          baseUrl: webDraft.baseUrl,
-          apiKey: webDraft.apiKey || undefined,
-          maxSources: webDraft.maxSources,
-          timeoutMs: webDraft.timeoutMs,
-          ttlDays: webDraft.ttlDays,
-          defaultMode: webDraft.defaultMode,
-          allowDomains: webDraft.allowDomains.split("\n").map((x) => x.trim()).filter(Boolean),
-          denyDomains: webDraft.denyDomains.split("\n").map((x) => x.trim()).filter(Boolean),
-          maxSearchesPerSession: webDraft.maxSearchesPerSession,
-          allowPrivateProvider: webDraft.allowPrivateProvider,
-        }),
+        body: JSON.stringify(webPayload()),
       });
-      const data = (await res.json()) as WebConfigPublic & { error?: string };
+      const data = (await res.json()) as WebStatus & { error?: string };
       if (!res.ok || data.error) {
         toast.error(data.error ?? "保存失败");
         // 保存失败时把开关退回服务端状态：否则页面上会出现"已勾选 + 徽标写关闭"的自相矛盾
         setWebDraft((d) => ({ ...d, enabled: web?.enabled ?? false }));
-        return;
+        return false;
       }
       setWeb(data);
+      setWebCacheRows(Number(data.cacheRows ?? 0));
       setWebDraft((d) => ({ ...d, apiKey: "" }));
       toast.success("联网检索配置已保存");
       await load();
+      return true;
     } catch (e) {
       toast.error((e as Error).message);
+      return false;
     } finally {
       setWebSaving(false);
     }
   };
 
+  /** 测试**当前表单**：改了地址/Key 不用先保存也能验证 */
   const testWeb = async () => {
     setWebTesting(true);
     setWebTestResult(null);
     try {
-      const res = await fetch("/api/settings/web/test", { method: "POST" });
-      const data = (await res.json().catch(() => ({}))) as {
-        ok?: boolean;
-        message?: string;
-        count?: number;
-        latencyMs?: number;
-        error?: string;
-      };
+      const res = await fetch("/api/settings/web/test", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          provider: webDraft.provider,
+          baseUrl: webDraft.baseUrl,
+          apiKey: webDraft.apiKey || undefined,
+          timeoutMs: webDraft.timeoutMs,
+          maxSources: webDraft.maxSources,
+          allowDomains: webDraft.allowDomains.split("\n").map((x) => x.trim()).filter(Boolean),
+          denyDomains: webDraft.denyDomains.split("\n").map((x) => x.trim()).filter(Boolean),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as WebTestResult & { error?: string };
       // 未配置时接口返回 400 + 可读原因，不能把它吞成一句“测试失败”。
       if (!res.ok) {
         const message = data.message ?? data.error ?? "测试失败";
-        setWebTestResult({ ok: false, message });
+        setWebTestResult({ ok: false, code: data.code, message });
         toast.error(message);
         return;
       }
-      setWebTestResult({ ok: Boolean(data.ok), message: data.message, count: data.count, latencyMs: data.latencyMs });
-      if (data.ok) toast.success(`搜索可用 · ${data.latencyMs}ms · ${data.count} 条结果`);
-      else toast.error(data.message ?? "搜索失败");
+      setWebTestResult(data);
+      if (data.ok) {
+        toast.success(`搜索可用 · ${data.latencyMs}ms · ${data.count} 条结果`);
+      } else {
+        toast.error(data.message ?? "搜索失败");
+      }
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
       setWebTesting(false);
     }
   };
+
+  /** 保存并测试：先落库（失败就不测），再测刚保存的这套 */
+  const saveAndTestWeb = async () => {
+    const okSaved = await saveWeb();
+    if (okSaved) await testWeb();
+  };
+
+  const clearWebCache = async () => {
+    try {
+      const res = await fetch("/api/settings/web", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "clearCache" }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { removed?: number; cacheRows?: number; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "清空失败");
+      setWebCacheRows(Number(data.cacheRows ?? 0));
+      toast.success(`已清空 ${data.removed ?? 0} 条检索缓存`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  /** 换服务商时把地址重置成该服务商的官方地址：两家的地址互不相通，留着旧值只会让人以为配好了 */
+  const changeWebProvider = (provider: WebProvider) => {
+    setWebDraft((d) =>
+      d.provider === provider ? d : { ...d, provider, baseUrl: WEB_PROVIDER_DEFAULT_BASE[provider] },
+    );
+    setWebTestResult(null);
+  };
+
+  /** 通俗摘要：折叠状态下也要一眼看出现在是什么状态 */
+  const webSummary = !web
+    ? "未配置"
+    : web.enabled
+      ? web.configured
+        ? `已启用 · ${web.provider === "searxng" ? "SearXNG" : web.provider === "tavily" ? "Tavily" : "Brave"}${web.defaultMode === "manual" ? " · 对话里默认打开" : ""}`
+        : "已启用但还不能用（缺地址或 Key）"
+      : "未启用";
+
+  const teachingSummary = teachingIsDefault
+    ? "未设置 · 使用默认讲法"
+    : `${teaching.directive.trim() ? "自定义讲法" : "默认讲法"} · 篇幅 ${teaching.verbosity}/5${
+        teaching.requireExample ? " · 必须举例" : ""
+      }${teaching.requireCheckQuestion ? " · 讲完提问" : ""}`;
 
   const defaultModel = models.find((m) => m.isDefault) ?? models[0];
   const healthBadge = defaultModel?.configured
@@ -506,12 +583,6 @@ export default function SettingsPage() {
     : legacy?.configured && legacy.source === "env"
       ? { tone: "ok" as const, text: "可用" }
       : { tone: "warn" as const, text: "待配置" };
-
-  const usagePricing = usage?.pricing;
-  const hasAnyPrice =
-    usagePricing != null && (usagePricing.inputPerMTok != null || usagePricing.outputPerMTok != null);
-  const hasBothPrices =
-    usagePricing != null && usagePricing.inputPerMTok != null && usagePricing.outputPerMTok != null;
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
@@ -805,59 +876,41 @@ export default function SettingsPage() {
       <section className="mb-8">
         <SectionHeader
           title="讲解风格"
-          hint={teachingIsDefault ? "未设置 · 使用默认均衡风格" : "保存后，新消息会按这个风格讲解"}
+          hint={teachingOpen ? "只影响讲解方式，不改事实准确性与安全约束" : teachingSummary}
           action={
-            <Button size="sm" icon={<Save className="size-3.5" />} loading={teachingSaving} onClick={saveTeaching}>
-              保存
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setTeachingOpen((v) => !v)}
+              icon={
+                <ChevronDown
+                  className={cx("size-3.5 transition-transform", teachingOpen ? "rotate-180" : "")}
+                />
+              }
+            >
+              {teachingOpen ? "收起" : "展开"}
             </Button>
           }
         />
-        <Card className="p-4">
-          <div>
-            <span className="mb-1.5 block text-[13px] font-medium text-ink">整体风格</span>
-            <div className="flex flex-wrap gap-1.5">
-              {TEACHING_PRESETS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setTeaching((t) => ({ ...t, preset: p }))}
-                  className={cx(
-                    "rounded-full border px-3 py-1.5 text-[12.5px] transition-colors",
-                    teaching.preset === p
-                      ? "border-accent bg-accentsoft text-accentink"
-                      : "border-line bg-panel text-ink2 hover:border-linestrong",
-                  )}
-                >
-                  {PRESET_LABEL[p]}
-                </button>
-              ))}
-            </div>
-            <p className="mt-1.5 text-[12px] text-ink3">{PRESET_HINT[teaching.preset]}</p>
-          </div>
+        {teachingOpen ? (
+          <Card className="flex flex-col gap-4 p-4">
+            <Field
+              label="你希望我怎么讲"
+              hint={`最多 ${MAX_TEACHING_DIRECTIVE} 字；留空就是默认讲法，不额外注入`}
+            >
+              <textarea
+                className={cx(inputClass, "min-h-[92px] resize-y")}
+                maxLength={MAX_TEACHING_DIRECTIVE}
+                value={teaching.directive}
+                onChange={(e) => setTeaching((t) => ({ ...t, directive: e.target.value }))}
+                placeholder="例如：先给结论再解释原因；多用真实数字；不要用「显然」这类词。"
+              />
+            </Field>
 
-          <div className="mt-4">
-            <span className="mb-1.5 block text-[13px] font-medium text-ink">学科</span>
-            <div className="flex flex-wrap gap-1.5">
-              {TEACHING_SUBJECTS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setTeaching((t) => ({ ...t, subject: s }))}
-                  className={cx(
-                    "rounded-full border px-3 py-1.5 text-[12.5px] transition-colors",
-                    teaching.subject === s
-                      ? "border-accent bg-accentsoft text-accentink"
-                      : "border-line bg-panel text-ink2 hover:border-linestrong",
-                  )}
-                >
-                  {SUBJECT_LABEL[s]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <Field label={`篇幅 ${teaching.verbosity}/5`} hint="1=只讲关键点，5=完整展开">
+            <Field
+              label={`篇幅 ${teaching.verbosity}/5`}
+              hint="1=只讲关键点，3=讲清思路，5=完整展开并补边界情况"
+            >
               <input
                 type="range"
                 min={1}
@@ -866,244 +919,350 @@ export default function SettingsPage() {
                 value={teaching.verbosity}
                 onChange={(e) => setTeaching((t) => ({ ...t, verbosity: Number(e.target.value) }))}
                 className="w-full accent-[var(--accent)]"
+                aria-label="篇幅 1 到 5"
               />
             </Field>
-          </div>
 
-          <div className="mt-4 flex flex-col gap-2">
-            <label className="flex items-center gap-2 text-[13px] text-ink2">
-              <input
-                type="checkbox"
-                checked={teaching.requireExample}
-                onChange={(e) => setTeaching((t) => ({ ...t, requireExample: e.target.checked }))}
-                className="size-3.5 accent-[var(--accent)]"
-              />
-              每次讲解至少给一个具体例子或数字
-            </label>
-            <label className="flex items-center gap-2 text-[13px] text-ink2">
-              <input
-                type="checkbox"
-                checked={teaching.requireCheckQuestion}
-                onChange={(e) => setTeaching((t) => ({ ...t, requireCheckQuestion: e.target.checked }))}
-                className="size-3.5 accent-[var(--accent)]"
-              />
-              讲完后用一个具体问题检验我是否跟上
-            </label>
-          </div>
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 text-[13px] text-ink2">
+                <input
+                  type="checkbox"
+                  checked={teaching.requireExample}
+                  onChange={(e) => setTeaching((t) => ({ ...t, requireExample: e.target.checked }))}
+                  className="size-3.5 accent-[var(--accent)]"
+                />
+                每次讲解至少给一个具体例子或数字
+              </label>
+              <label className="flex items-center gap-2 text-[13px] text-ink2">
+                <input
+                  type="checkbox"
+                  checked={teaching.requireCheckQuestion}
+                  onChange={(e) => setTeaching((t) => ({ ...t, requireCheckQuestion: e.target.checked }))}
+                  className="size-3.5 accent-[var(--accent)]"
+                />
+                讲完后用一个具体问题检验我是否跟上
+              </label>
+            </div>
 
-          <div className="mt-4">
-            <Field label="自定义偏好" hint="最多 500 字，会优先于预设生效">
-              <textarea
-                className={cx(inputClass, "min-h-[84px] resize-y")}
-                maxLength={500}
-                value={teaching.customDirective}
-                onChange={(e) => setTeaching((t) => ({ ...t, customDirective: e.target.value }))}
-                placeholder="例如：先用中文讲一遍，再给英文术语；不要用「显然」这类词。"
-              />
-            </Field>
-          </div>
+            <details className="rounded-xl border border-line bg-panel2/40 px-3 py-2.5">
+              <summary className="cursor-pointer select-none text-[12.5px] text-ink2">
+                {teachingPreview
+                  ? "保存后注入给模型的提示词（点开查看）"
+                  : "当前为默认讲法：不会额外注入任何提示词"}
+              </summary>
+              {teachingPreview ? (
+                <pre className="mt-2 whitespace-pre-wrap break-words font-mono text-[11.5px] leading-relaxed text-ink3">
+                  {teachingPreview}
+                </pre>
+              ) : null}
+            </details>
 
-          <p className="mt-3 text-[12px] leading-relaxed text-ink3">
-            风格只影响讲解方式，不会覆盖事实准确性与安全约束。留空并保持默认即不额外注入。
-          </p>
-        </Card>
+            <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
+              <Button
+                size="sm"
+                icon={<Save className="size-3.5" />}
+                loading={teachingSaving}
+                onClick={saveTeaching}
+              >
+                保存
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={teachingIsDefault || teachingSaving}
+                onClick={resetTeaching}
+              >
+                恢复默认
+              </Button>
+              <span className="ml-auto text-[12px] text-ink3">
+                {teachingIsDefault ? "当前：默认讲法" : "保存后只影响新消息"}
+              </span>
+            </div>
+          </Card>
+        ) : null}
       </section>
 
       <section className="mb-8">
         <SectionHeader
           title="联网检索"
-          hint={
-            web?.enabled
-              ? web.configured
-                ? "已启用 · 需要时手动查证"
-                : "已启用但未配置搜索服务"
-              : "默认关闭"
-          }
+          hint={webOpen ? "需要时手动查证；关闭时完全不发请求" : webSummary}
           action={
-            web?.enabled ? (
-              <Badge tone="ok">
-                <Globe className="size-3" /> 已启用
-              </Badge>
-            ) : (
-              <Badge tone="neutral">关闭</Badge>
-            )
+            <div className="flex items-center gap-2">
+              {web?.enabled ? (
+                <Badge tone={web.configured ? "ok" : "warn"}>
+                  <Globe className="size-3" /> {web.configured ? "已启用" : "待配置"}
+                </Badge>
+              ) : (
+                <Badge tone="neutral">关闭</Badge>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setWebOpen((v) => !v)}
+                icon={
+                  <ChevronDown
+                    className={cx("size-3.5 transition-transform", webOpen ? "rotate-180" : "")}
+                  />
+                }
+              >
+                {webOpen ? "收起" : "展开"}
+              </Button>
+            </div>
           }
         />
 
-        <Card className="flex flex-col gap-4 p-4">
-          <label className="flex items-start gap-2.5 text-[13px] text-ink">
-            <input
-              type="checkbox"
-              checked={webDraft.enabled}
-              onChange={(e) => setWebDraft((d) => ({ ...d, enabled: e.target.checked }))}
-              className="mt-0.5 size-4 accent-[var(--accent)]"
-            />
-            <span>
-              启用联网检索
-              <span className="mt-0.5 block text-[12px] leading-relaxed text-ink3">
-                关闭时不发请求；手动模式只发本轮问题，不发材料、历史与作答记录。
-              </span>
-            </span>
-          </label>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="搜索服务" hint="选一个可用的后端">
-              <select
-                value={webDraft.provider}
-                onChange={(e) =>
-                  setWebDraft((d) => ({ ...d, provider: e.target.value as typeof d.provider }))
-                }
-                className={inputClass}
-              >
-                <option value="searxng">SearXNG（自建，免 Key）</option>
-                <option value="tavily">Tavily（有 Key，含费用）</option>
-                <option value="brave">Brave Search API</option>
-              </select>
-            </Field>
-            <Field
-              label="Base URL"
-              hint={webDraft.provider === "searxng" ? "必填，例如 http://127.0.0.1:8888" : "可留空"}
-            >
-              <input
-                value={webDraft.baseUrl}
-                onChange={(e) => setWebDraft((d) => ({ ...d, baseUrl: e.target.value }))}
-                className={cx(inputClass, "font-mono text-[12.5px]")}
-                placeholder="http://127.0.0.1:8888"
-              />
-            </Field>
-          </div>
-
-          <Field label="API Key" hint={web?.keyMasked ? `当前：${web.keyMasked}（留空不修改）` : "SearXNG 可留空"}>
-            <input
-              type="password"
-              value={webDraft.apiKey}
-              onChange={(e) => setWebDraft((d) => ({ ...d, apiKey: e.target.value }))}
-              className={cx(inputClass, "font-mono text-[12.5px]")}
-              placeholder="可留空"
-              autoComplete="off"
-            />
-          </Field>
-
-          <div className="grid gap-4 sm:grid-cols-4">
-            <SliderField
-              label="最大来源"
-              value={webDraft.maxSources}
-              hint="每次最多采信 1–5 条"
-              min={1}
-              max={5}
-              onChange={(v) => setWebDraft((d) => ({ ...d, maxSources: v }))}
-            />
-            <SliderField
-              label="超时"
-              value={Number((webDraft.timeoutMs / 1000).toFixed(1))}
-              suffix="s"
-              hint="超 2–10 秒按未核实处理"
-              min={2}
-              max={10}
-              step={0.5}
-              onChange={(v) => setWebDraft((d) => ({ ...d, timeoutMs: Math.round(v * 1000) }))}
-            />
-            <SliderField
-              label="缓存"
-              value={webDraft.ttlDays}
-              suffix=" 天"
-              hint="1–30 天内不重复请求"
-              min={1}
-              max={30}
-              onChange={(v) => setWebDraft((d) => ({ ...d, ttlDays: v }))}
-            />
-            <SliderField
-              label="每会话检索上限"
-              value={webDraft.maxSearchesPerSession}
-              suffix=" 次"
-              hint="缓存命中不计数"
-              min={1}
-              max={30}
-              onChange={(v) => setWebDraft((d) => ({ ...d, maxSearchesPerSession: v }))}
-            />
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="域名白名单" hint="每行一个，支持 *.gov.cn；留空表示不限制">
-              <textarea
-                value={webDraft.allowDomains}
-                onChange={(e) => setWebDraft((d) => ({ ...d, allowDomains: e.target.value }))}
-                rows={3}
-                className={cx(inputClass, "font-mono text-[12px]")}
-                placeholder={"gov.cn\nmoe.gov.cn"}
-              />
-            </Field>
-            <Field label="域名黑名单" hint="命中的直接丢弃">
-              <textarea
-                value={webDraft.denyDomains}
-                onChange={(e) => setWebDraft((d) => ({ ...d, denyDomains: e.target.value }))}
-                rows={3}
-                className={cx(inputClass, "font-mono text-[12px]")}
-              />
-            </Field>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="默认模式" hint="决定对话里开关的初始状态">
-              <select
-                value={webDraft.defaultMode}
-                onChange={(e) =>
-                  setWebDraft((d) => ({ ...d, defaultMode: e.target.value as "off" | "manual" }))
-                }
-                className={inputClass}
-              >
-                <option value="off">关闭</option>
-                <option value="manual">手动（对话里可临时打开）</option>
-              </select>
-            </Field>
-            <label className="flex items-start gap-2.5 pt-6">
+        {webOpen ? (
+          <Card className="flex flex-col gap-4 p-4">
+            <label className="flex items-start gap-2.5 text-[13px] text-ink">
               <input
                 type="checkbox"
-                checked={webDraft.allowPrivateProvider}
-                onChange={(e) => setWebDraft((d) => ({ ...d, allowPrivateProvider: e.target.checked }))}
-                className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
+                checked={webDraft.enabled}
+                onChange={(e) => setWebDraft((d) => ({ ...d, enabled: e.target.checked }))}
+                className="mt-0.5 size-4 accent-[var(--accent)]"
               />
-              <span className="min-w-0">
-                <span className="block text-[12.5px] text-ink2">允许自建服务地址（127.0.0.1 / 内网）</span>
+              <span>
+                启用联网检索
                 <span className="mt-0.5 block text-[12px] leading-relaxed text-ink3">
-                  只影响你自己配置的搜索服务地址；网页正文抓取始终阻断内网。
+                  只发本轮问题（手机号 / 邮箱 / 身份证 / 长数字会先脱敏），不发材料、历史与作答记录。
                 </span>
               </span>
             </label>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
-            <Button size="sm" loading={webSaving} onClick={saveWeb} icon={<Save className="size-3.5" />}>
-              保存
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              loading={webTesting}
-              onClick={testWeb}
-              icon={<Search className="size-3.5" />}
-            >
-              测试搜索
-            </Button>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="搜索服务" hint="选一个可用的后端">
+                <select
+                  value={webDraft.provider}
+                  onChange={(e) => changeWebProvider(e.target.value as WebProvider)}
+                  className={inputClass}
+                >
+                  {(["searxng", "tavily", "brave"] as const).map((p) => (
+                    <option key={p} value={p}>
+                      {WEB_PROVIDER_LABEL[p]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {webDraft.provider === "searxng" ? (
+                <Field label="SearXNG 地址" hint="必填，例如 http://127.0.0.1:8888">
+                  <input
+                    value={webDraft.baseUrl}
+                    onChange={(e) => setWebDraft((d) => ({ ...d, baseUrl: e.target.value }))}
+                    className={cx(inputClass, "font-mono text-[12.5px]")}
+                    placeholder="http://127.0.0.1:8888"
+                  />
+                </Field>
+              ) : (
+                <Field
+                  label="API Key"
+                  hint={web?.keyMasked ? `当前：${web.keyMasked}（留空不修改）` : "必填"}
+                >
+                  <input
+                    type="password"
+                    value={webDraft.apiKey}
+                    onChange={(e) => setWebDraft((d) => ({ ...d, apiKey: e.target.value }))}
+                    className={cx(inputClass, "font-mono text-[12.5px]")}
+                    placeholder="粘贴 Key"
+                    autoComplete="off"
+                  />
+                </Field>
+              )}
+            </div>
+
+            <p className="text-[12px] leading-relaxed text-ink3">
+              {webDraft.provider === "searxng" ? (
+                <>
+                  自建示例：<code className="font-mono">docker run -d -p 8888:8080 searxng/searxng</code>
+                  ，并在 settings.yml 里打开 json 格式。本机 / 内网地址会自动放行。
+                </>
+              ) : (
+                <>
+                  在
+                  <a
+                    href={WEB_PROVIDER_KEY_URL[webDraft.provider]}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mx-1 text-accentink underline underline-offset-2"
+                  >
+                    {webDraft.provider === "tavily" ? "tavily.com" : "brave.com/search/api"}
+                  </a>
+                  申请 Key；Key 只存在本机数据库，不回显完整内容。
+                </>
+              )}
+            </p>
+
+            <label className="flex items-start gap-2.5 text-[13px] text-ink">
+              <input
+                type="checkbox"
+                checked={webDraft.defaultMode === "manual"}
+                onChange={(e) =>
+                  setWebDraft((d) => ({ ...d, defaultMode: e.target.checked ? "manual" : "off" }))
+                }
+                className="mt-0.5 size-4 accent-[var(--accent)]"
+              />
+              <span>
+                在对话里默认打开联网
+                <span className="mt-0.5 block text-[12px] leading-relaxed text-ink3">
+                  对话输入框旁的地球按钮随时可以临时开关，不会改这里的默认值。
+                </span>
+              </span>
+            </label>
+
+            <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
+              <Button
+                size="sm"
+                loading={webSaving || webTesting}
+                disabled={webTesting}
+                onClick={saveAndTestWeb}
+                icon={<Wifi className="size-3.5" />}
+              >
+                保存并测试
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                loading={webTesting}
+                onClick={testWeb}
+                icon={<Search className="size-3.5" />}
+              >
+                测试当前设置
+              </Button>
+              {web?.stats ? (
+                <span className="ml-auto text-[12px] text-ink3">
+                  近 7 天：{web.stats.searches} 次检索 · 缓存命中 {web.stats.cacheHits} · 失败{" "}
+                  {web.stats.failures}
+                </span>
+              ) : null}
+            </div>
+
             {webTestResult ? (
-              <span className={cx("text-[12px]", webTestResult.ok ? "text-ok" : "text-bad")}>
-                {webTestResult.ok
-                  ? `正常 · ${webTestResult.latencyMs}ms · ${webTestResult.count} 条`
-                  : webTestResult.message}
-              </span>
+              <div
+                className={cx(
+                  "rounded-xl border px-3 py-2.5 text-[12.5px] leading-relaxed",
+                  webTestResult.ok ? "border-ok/40 bg-oksoft/40" : "border-bad/40 bg-badsoft/40",
+                )}
+              >
+                {webTestResult.ok ? (
+                  <>
+                    <p className="text-ink">
+                      搜索可用 · {webTestResult.latencyMs}ms · 返回 {webTestResult.count} 条
+                      {webTestResult.results?.length ? "，前几条：" : ""}
+                    </p>
+                    {webTestResult.results?.length ? (
+                      <ul className="mt-1.5 space-y-1">
+                        {webTestResult.results.map((r) => (
+                          <li key={`${r.url}-${r.title}`} className="truncate text-ink2">
+                            · {r.title} <span className="text-ink3">（{r.url}）</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-ink">
+                      测试失败：{webTestResult.message ?? "未知原因"}
+                      {webTestResult.code ? (
+                        <span className="ml-1 font-mono text-[11.5px] text-ink3">{webTestResult.code}</span>
+                      ) : null}
+                    </p>
+                    {webTestResult.code && WEB_TEST_ADVICE[webTestResult.code] ? (
+                      <p className="mt-1 text-ink2">建议：{WEB_TEST_ADVICE[webTestResult.code]}</p>
+                    ) : null}
+                  </>
+                )}
+              </div>
             ) : null}
-            {web && (web as unknown as { stats?: { searches?: number; cacheHits?: number } }).stats ? (
-              <span className="ml-auto text-[12px] text-ink3">
-                近 7 天：{(web as unknown as { stats: { searches: number; cacheHits: number } }).stats.searches} 次检索 · 缓存命中{" "}
-                {(web as unknown as { stats: { searches: number; cacheHits: number } }).stats.cacheHits}
-              </span>
-            ) : null}
-          </div>
 
-          <p className="rounded-lg bg-panel2/50 px-3 py-2 text-[12px] leading-relaxed text-ink3">
-            判题与解析不走检索；失败或超时时会明说「未能联网核实」，不摆来源卡片。
-          </p>
-        </Card>
+            <details className="rounded-xl border border-line bg-panel2/40 px-3 py-2.5">
+              <summary className="cursor-pointer select-none text-[12.5px] text-ink2">
+                高级设置（一般不用改）
+              </summary>
+              <div className="mt-3 grid gap-4 sm:grid-cols-4">
+                <SliderField
+                  label="最大来源"
+                  value={webDraft.maxSources}
+                  hint="每次最多采信 1–5 条"
+                  min={1}
+                  max={5}
+                  onChange={(v) => setWebDraft((d) => ({ ...d, maxSources: v }))}
+                />
+                <SliderField
+                  label="超时"
+                  value={Number((webDraft.timeoutMs / 1000).toFixed(1))}
+                  suffix="s"
+                  hint="超 2–10 秒按未核实处理"
+                  min={2}
+                  max={10}
+                  step={0.5}
+                  onChange={(v) => setWebDraft((d) => ({ ...d, timeoutMs: Math.round(v * 1000) }))}
+                />
+                <SliderField
+                  label="缓存"
+                  value={webDraft.ttlDays}
+                  suffix=" 天"
+                  hint="1–30 天内不重复请求"
+                  min={1}
+                  max={30}
+                  onChange={(v) => setWebDraft((d) => ({ ...d, ttlDays: v }))}
+                />
+                <SliderField
+                  label="每会话检索上限"
+                  value={webDraft.maxSearchesPerSession}
+                  suffix=" 次"
+                  hint="缓存命中不计数"
+                  min={1}
+                  max={30}
+                  onChange={(v) => setWebDraft((d) => ({ ...d, maxSearchesPerSession: v }))}
+                />
+              </div>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <Field label="域名白名单" hint="每行一个，支持 *.gov.cn；留空表示不限制">
+                  <textarea
+                    value={webDraft.allowDomains}
+                    onChange={(e) => setWebDraft((d) => ({ ...d, allowDomains: e.target.value }))}
+                    rows={3}
+                    className={cx(inputClass, "font-mono text-[12px]")}
+                    placeholder={"gov.cn\nmoe.edu.cn"}
+                  />
+                </Field>
+                <Field label="域名黑名单" hint="命中的直接丢弃">
+                  <textarea
+                    value={webDraft.denyDomains}
+                    onChange={(e) => setWebDraft((d) => ({ ...d, denyDomains: e.target.value }))}
+                    rows={3}
+                    className={cx(inputClass, "font-mono text-[12px]")}
+                  />
+                </Field>
+              </div>
+
+              {invalidDomainLines(webDraft.allowDomains, webDraft.denyDomains) ? (
+                <p className="mt-1.5 text-[12px] text-bad">
+                  这些行看起来不是域名：{invalidDomainLines(webDraft.allowDomains, webDraft.denyDomains)}
+                </p>
+              ) : null}
+
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-2.5">
+                <span className="text-[12px] text-ink3">
+                  检索缓存 {webCacheRows} 条（同一问题不重复请求）
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={clearWebCache}
+                  disabled={webCacheRows === 0}
+                  icon={<Trash2 className="size-3.5" />}
+                >
+                  清空缓存
+                </Button>
+              </div>
+            </details>
+
+            <p className="rounded-lg bg-panel2/50 px-3 py-2 text-[12px] leading-relaxed text-ink3">
+              判题与解析不走检索；失败或超时时会明说「未能联网核实」，不摆来源卡片。
+            </p>
+          </Card>
+        ) : null}
       </section>
 
       <section className="mb-8">
@@ -1171,24 +1330,6 @@ export default function SettingsPage() {
                 ))}
               </div>
 
-              <p className="mt-3 text-[12px] leading-relaxed text-ink3">
-                {hasAnyPrice && usagePricing ? (
-                  <>
-                    按你填的单价粗估：
-                    {(["今日", "本月", "累计"] as const)
-                      .map((label, i) => {
-                        const bucket = i === 0 ? usage.today : i === 1 ? usage.month : usage.all;
-                        const cost = estimateCost(bucket, usagePricing);
-                        return `${label} ${cost == null ? "—" : formatMoney(cost, usagePricing.currency)}`;
-                      })
-                      .join(" · ")}
-                    {hasBothPrices ? "（实际以服务商账单为准）" : "（只按已填的一项计，未填项按 0 计）"}
-                  </>
-                ) : (
-                  <>粗估成本：— · 填写单价后可估算</>
-                )}
-              </p>
-
               <div className="mt-4 border-t border-line pt-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-[13px] font-medium text-ink">按模型</p>
@@ -1200,93 +1341,36 @@ export default function SettingsPage() {
                   </p>
                 ) : (
                   <div className="mt-1 divide-y divide-line">
-                    {usage.byModel.map((m) => {
-                      const cost = estimateCost(m, usage.pricing);
-                      return (
-                        <div
-                          key={m.model || "unknown"}
-                          className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate font-mono text-[12.5px] text-ink">
-                              {m.model || "未知模型"}
-                            </p>
-                            <p className="mt-0.5 text-[12px] leading-relaxed text-ink3">
-                              {m.calls} 次 · 失败 {m.failedCalls} 次 ·{" "}
-                              {m.avgLatencyMs == null ? "平均 —" : `平均 ${formatLatency(m.avgLatencyMs)}`}
-                              {m.lastUsedAt ? ` · 最近 ${formatDay(m.lastUsedAt)}` : ""}
-                            </p>
-                          </div>
-                          <div className="shrink-0 text-right">
-                            <p className="tabular-nums text-[12.5px] text-ink">
-                              {formatTokens(m.totalTokens)} tokens
-                            </p>
-                            <p className="mt-0.5 tabular-nums text-[12px] text-ink3">
-                              入 {formatTokens(m.promptTokens)} · 出 {formatTokens(m.completionTokens)}
-                              {cost == null ? "" : ` · ≈ ${formatMoney(cost, usage.pricing.currency)}`}
-                            </p>
-                          </div>
+                    {usage.byModel.map((m) => (
+                      <div
+                        key={m.model || "unknown"}
+                        className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-mono text-[12.5px] text-ink">
+                            {m.model || "未知模型"}
+                          </p>
+                          <p className="mt-0.5 text-[12px] leading-relaxed text-ink3">
+                            {m.calls} 次 · 失败 {m.failedCalls} 次 ·{" "}
+                            {m.avgLatencyMs == null ? "平均 —" : `平均 ${formatLatency(m.avgLatencyMs)}`}
+                            {m.lastUsedAt ? ` · 最近 ${formatDay(m.lastUsedAt)}` : ""}
+                          </p>
                         </div>
-                      );
-                    })}
+                        <div className="shrink-0 text-right">
+                          <p className="tabular-nums text-[12.5px] text-ink">
+                            {formatTokens(m.totalTokens)} tokens
+                          </p>
+                          <p className="mt-0.5 tabular-nums text-[12px] text-ink3">
+                            入 {formatTokens(m.promptTokens)} · 出 {formatTokens(m.completionTokens)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
             </>
           )}
-
-          <div className="mt-4 border-t border-line pt-3">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <p className="text-[13px] font-medium text-ink">单价（可选）</p>
-              <p className="text-[12px] text-ink3">只存本机 · 不填不估成本</p>
-            </div>
-            <div className="mt-2 grid gap-3 sm:grid-cols-3">
-              <Field label="输入单价" hint={`${priceCurrencySymbol(priceDraft.currency)}/百万 token`}>
-                <input
-                  inputMode="decimal"
-                  value={priceDraft.input}
-                  onChange={(e) => setPriceDraft((d) => ({ ...d, input: e.target.value }))}
-                  className={cx(inputClass, "font-mono text-[12.5px]")}
-                  placeholder="留空表示未填写"
-                />
-              </Field>
-              <Field label="输出单价" hint={`${priceCurrencySymbol(priceDraft.currency)}/百万 token`}>
-                <input
-                  inputMode="decimal"
-                  value={priceDraft.output}
-                  onChange={(e) => setPriceDraft((d) => ({ ...d, output: e.target.value }))}
-                  className={cx(inputClass, "font-mono text-[12.5px]")}
-                  placeholder="留空表示未填写"
-                />
-              </Field>
-              <Field label="币种" hint="只影响显示的货币符号">
-                <select
-                  value={priceDraft.currency}
-                  onChange={(e) =>
-                    setPriceDraft((d) => ({ ...d, currency: e.target.value as PricingDraft["currency"] }))
-                  }
-                  className={inputClass}
-                >
-                  <option value="CNY">人民币（¥）</option>
-                  <option value="USD">美元（$）</option>
-                </select>
-              </Field>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                loading={priceSaving}
-                onClick={savePricing}
-                icon={<Save className="size-3.5" />}
-              >
-                保存单价
-              </Button>
-              <span className="text-[12px] leading-relaxed text-ink3">
-                没有内置任何厂商价格；填了才粗估，没填一律显示 "—"。
-              </span>
-            </div>
-          </div>
         </Card>
       </section>
 
@@ -1439,37 +1523,4 @@ function formatLatency(ms: number | null): string {
   if (ms < 1000) return `${Math.round(ms)}ms`;
   const seconds = ms / 1000;
   return `${seconds >= 10 ? Math.round(seconds) : seconds.toFixed(1)}s`;
-}
-
-function priceCurrencySymbol(currency: "CNY" | "USD"): string {
-  return currency === "USD" ? "$" : "¥";
-}
-
-function formatMoney(value: number, currency: "CNY" | "USD"): string {
-  const symbol = priceCurrencySymbol(currency);
-  if (!Number.isFinite(value) || value <= 0) return `${symbol}0`;
-  if (value < 0.0001) return `<${symbol}0.0001`;
-  if (value < 1) return `${symbol}${value.toFixed(4)}`;
-  if (value < 100) return `${symbol}${value.toFixed(2)}`;
-  return `${symbol}${value.toFixed(0)}`;
-}
-
-/** 用用户自己填的单价粗估成本；一项都没填时返回 null（UI 显示 "—"） */
-function estimateCost(
-  bucket: Pick<UsageBucket, "promptTokens" | "completionTokens">,
-  pricing: UsagePricing,
-): number | null {
-  if (pricing.inputPerMTok == null && pricing.outputPerMTok == null) return null;
-  const inputCost = ((bucket.promptTokens ?? 0) * (pricing.inputPerMTok ?? 0)) / 1_000_000;
-  const outputCost = ((bucket.completionTokens ?? 0) * (pricing.outputPerMTok ?? 0)) / 1_000_000;
-  return inputCost + outputCost;
-}
-
-/** 单价输入框 → 数字：空 = null（未填写），非法 = undefined */
-function parsePriceInput(raw: string): number | null | undefined {
-  const text = raw.trim();
-  if (!text) return null;
-  const value = Number(text);
-  if (!Number.isFinite(value) || value < 0 || value > 1_000_000) return undefined;
-  return value;
 }

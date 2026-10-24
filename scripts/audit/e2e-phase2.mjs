@@ -199,19 +199,17 @@ for (const c of CASES) {
   }
 }
 
-// ── 讲解风格：苏格拉底式 + 会计学 + 必须提问 ──
+// ── 讲解风格：一句话描述（先提问，不直接给定义）+ 必须提问 ──
 try {
   process.stdout.write("[style] ");
   const put = await fetch(`${BASE}/api/settings/teaching`, {
     method: "PUT",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      preset: "socratic",
-      subject: "accounting",
+      directive: "先提问引导我自己想，不要一上来就给定义",
       verbosity: 4,
       requireExample: true,
       requireCheckQuestion: true,
-      customDirective: "不要一上来就给定义",
     }),
   });
   const profile = put.ok ? (await put.json()).profile : null;

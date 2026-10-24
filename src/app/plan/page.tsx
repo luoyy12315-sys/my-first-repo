@@ -34,6 +34,11 @@ export default function PlanPage() {
 
   const drafts = plans.filter((p) => p.status === "draft");
   const formal = plans.filter((p) => p.status !== "draft");
+  // 确认框里要写清楚会连带删掉多少知识点（课程里已归入的知识点）
+  const conceptsToDelete = (pendingDelete?.items ?? []).reduce(
+    (n, item) => n + item.concepts.length,
+    0,
+  );
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
@@ -134,13 +139,21 @@ export default function PlanPage() {
                 setDeleting(true);
                 try {
                   const res = await fetch(`/api/plans/${pendingDelete.id}`, { method: "DELETE" });
-                  const data = (await res.json()) as { plans?: PlanDTO[]; error?: string };
+                  const data = (await res.json()) as {
+                    plans?: PlanDTO[];
+                    error?: string;
+                    concepts?: number;
+                  };
                   if (!res.ok) throw new Error(data.error ?? "删除失败");
                   setPlans(data.plans ?? []);
                   setPendingDelete(null);
                   window.dispatchEvent(new Event("sessions:changed"));
                   window.dispatchEvent(new Event("plans:changed"));
-                  toast.success("计划已删除");
+                  toast.success(
+                    data.concepts
+                      ? `计划已删除，同时移除 ${data.concepts} 个知识点`
+                      : "计划已删除",
+                  );
                 } catch (e) {
                   toast.error((e as Error).message);
                 } finally {
@@ -156,9 +169,15 @@ export default function PlanPage() {
         <p className="text-[13px] leading-relaxed text-ink2">
           「{pendingDelete?.title}」的 {pendingDelete?.items.length ?? 0} 门课程会一起删除。
         </p>
+        {conceptsToDelete > 0 ? (
+          <p className="mt-2 rounded-xl border border-line bg-badsoft/40 px-3 py-2.5 text-[12.5px] leading-relaxed text-ink2">
+            这 {conceptsToDelete} 个知识点、以及它们上面的作答记录与掌握度证据会
+            <span className="font-medium text-bad">一起删除</span>，无法撤销。
+          </p>
+        ) : null}
         <p className="mt-2 rounded-xl border border-line bg-panel2/50 px-3 py-2.5 text-[12.5px] leading-relaxed text-ink2">
-          知识点、作答记录和掌握度证据<span className="font-medium text-ink">不会</span>被删除；
-          知识点会回到「待整理」，可以在学习档案里重新归入其他课程。
+          对话历史会保留（不再计入这个计划）；仍被其它计划使用的知识点只会解除本计划的归属，
+          不会被删除。
         </p>
       </Modal>
     </div>

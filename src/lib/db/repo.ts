@@ -2344,21 +2344,76 @@ export function getPlan(id: string): PlanDTO | null {
 
 /**
  * 删除一条学习路线。
- * 只删路线本身（plans + plan_items），不触碰知识点、作答记录、掌握度证据——
- * 路线是"打算怎么学"，档案是"实际学成了什么"，两者不能互相牵连。
+ *
+ * 计划即"这一组课与知识点"的容器：删计划时，它名下的课程（plan_items）和这些课程
+ * 拥有的知识点（concepts.course_id 指向本计划的课程，或 plan_items.concept_id 指向
+ * 本计划的条目）一起删除，知识点上的作答证据（evidence / review_items）随知识点
+ * 一起消失——档案里不会再留下"待整理"的空壳。
+ *
+ * 以下内容不跟着删：
+ * - 对话与会话：只解除 plan_id / plan_item_id / focus_concept_id 关联，历史可回看；
+ * - 练习题与作答记录本身：保留在会话里，只解除 concept_id，避免指向已删除的知识点；
+ * - 材料：只解除 plan_id。
+ *
+ * 仍被其它计划引用的知识点（共享知识点）不删，只解除本计划的归属，
+ * 避免删一个计划连带清掉另一个计划的进度。
  */
-export function deletePlan(id: string): boolean {
+export function deletePlan(id: string): { deleted: boolean; concepts: number } {
   const db = getDb();
   const row = db.prepare("select goal_id from plans where id = ?").get(id) as
     | { goal_id: string | null }
     | undefined;
-  if (!row) return false;
-  db.transaction(() => {
+  if (!row) return { deleted: false, concepts: 0 };
+
+  const removedConcepts = db.transaction(() => {
+    // 本计划名下的知识点（课程归属 + 条目引用，去重）
+    const owned = db
+      .prepare(
+        `select distinct c.id as id, c.topic_id as topic_id
+           from concepts c
+          where c.course_id in (select id from plan_items where plan_id = ?)
+             or c.id in (select concept_id from plan_items where plan_id = ? and concept_id is not null)`,
+      )
+      .all(id, id) as { id: string; topic_id: string }[];
+
+    // 同时被别的计划引用的知识点只解除归属，不删
+    const shared = new Set(
+      (
+        db
+          .prepare(
+            "select distinct concept_id as id from plan_items where plan_id <> ? and concept_id is not null",
+          )
+          .all(id) as { id: string }[]
+      ).map((r) => r.id),
+    );
+
     // 计划删除后，关联的会话/材料/复习条目回到“未归类”，不连带删除
     db.prepare("update sessions set plan_id = null, plan_item_id = null where plan_id = ?").run(id);
     db.prepare("update materials set plan_id = null where plan_id = ?").run(id);
     db.prepare("update review_items set plan_id = null where plan_id = ?").run(id);
-    // 知识点不删除，只解除课程归属；档案里会显示为“待整理”
+
+    const unlinkExercise = db.prepare("update exercises set concept_id = null where concept_id = ?");
+    const unlinkAttempt = db.prepare("update attempts set concept_id = null where concept_id = ?");
+    const unlinkFocus = db.prepare(
+      "update sessions set focus_concept_id = null where focus_concept_id = ?",
+    );
+    const deleteReview = db.prepare("delete from review_items where concept_id = ?");
+    const deleteConcept = db.prepare("delete from concepts where id = ?");
+
+    let removed = 0;
+    for (const c of owned) {
+      if (shared.has(c.id)) continue;
+      // 历史保留，只解除指向：题库/作答不再挂到已删除的知识点上
+      unlinkExercise.run(c.id);
+      unlinkAttempt.run(c.id);
+      unlinkFocus.run(c.id);
+      deleteReview.run(c.id);
+      deleteConcept.run(c.id);
+      cleanupTopicIfEmpty(c.topic_id);
+      removed += 1;
+    }
+
+    // 剩下的（共享知识点）只解除课程归属
     db.prepare(
       "update concepts set course_id = null where course_id in (select id from plan_items where plan_id = ?)",
     ).run(id);
@@ -2370,8 +2425,10 @@ export function deletePlan(id: string): boolean {
         .get(row.goal_id) as { n: number };
       if (others.n === 0) db.prepare("delete from goals where id = ?").run(row.goal_id);
     }
+    return removed;
   })();
-  return true;
+
+  return { deleted: true, concepts: removedConcepts };
 }
 
 export function listPlans(): PlanDTO[] {
@@ -2458,11 +2515,61 @@ export function updatePlanCourse(
   return getPlan(planId);
 }
 
-export function deletePlanCourse(planId: string, itemId: string): PlanDTO | null {
+/**
+ * 删除计划里的一门课程。
+ *
+ * 与删计划一致：课程名下的知识点（concepts.course_id 指向本课程，或本条目
+ * concept_id 指向的知识点）一起删除，知识点上的作答证据随知识点消失；
+ * 仍被其它课程/计划使用的知识点只解除归属，不删。
+ * 会话、练习题与作答记录本身保留，只解除与本课程/知识点的关联。
+ */
+export function deletePlanCourse(
+  planId: string,
+  itemId: string,
+): { plan: PlanDTO; concepts: number } | null {
   const course = courseOfPlan(planId, itemId);
   if (!course) return null;
   const db = getDb();
-  db.transaction(() => {
+  const removed = db.transaction(() => {
+    const owned = db
+      .prepare(
+        `select distinct c.id as id, c.topic_id as topic_id
+           from concepts c
+          where c.course_id = ?
+             or c.id = (select concept_id from plan_items where id = ? and concept_id is not null)`,
+      )
+      .all(itemId, itemId) as { id: string; topic_id: string }[];
+
+    // 还被别的课程条目（含同计划其它课程、其它计划）引用的知识点只解除归属
+    const shared = new Set(
+      (
+        db
+          .prepare("select distinct concept_id as id from plan_items where id <> ? and concept_id is not null")
+          .all(itemId) as { id: string }[]
+      ).map((r) => r.id),
+    );
+
+    const unlinkExercise = db.prepare("update exercises set concept_id = null where concept_id = ?");
+    const unlinkAttempt = db.prepare("update attempts set concept_id = null where concept_id = ?");
+    const unlinkFocus = db.prepare(
+      "update sessions set focus_concept_id = null where focus_concept_id = ?",
+    );
+    const deleteReview = db.prepare("delete from review_items where concept_id = ?");
+    const deleteConcept = db.prepare("delete from concepts where id = ?");
+
+    let removedCount = 0;
+    for (const c of owned) {
+      if (shared.has(c.id)) continue;
+      unlinkExercise.run(c.id);
+      unlinkAttempt.run(c.id);
+      unlinkFocus.run(c.id);
+      deleteReview.run(c.id);
+      deleteConcept.run(c.id);
+      cleanupTopicIfEmpty(c.topic_id);
+      removedCount += 1;
+    }
+
+    // 剩下的（共享知识点）只解除课程归属
     db.prepare("update concepts set course_id = null where course_id = ?").run(itemId);
     db.prepare("update sessions set plan_item_id = null where plan_item_id = ?").run(itemId);
     db.prepare("delete from plan_items where id = ?").run(itemId);
@@ -2473,8 +2580,9 @@ export function deletePlanCourse(planId: string, itemId: string): PlanDTO | null
       db.prepare("update plan_items set order_index = ? where id = ?").run(i, row.id);
     });
     touchPlan(planId);
+    return removedCount;
   })();
-  return getPlan(planId);
+  return { plan: getPlan(planId)!, concepts: removed };
 }
 
 export function movePlanCourse(
@@ -2539,16 +2647,47 @@ export function addConceptToCourse(
   return { plan: getPlan(planId), created: result.created, conflict: false };
 }
 
+/**
+ * 从课程里移除知识点。
+ *
+ * 与删课程/删计划同一语义：移除即删除，连同它上面的作答证据（evidence / review_items）
+ * 一起清掉，档案里不再留「待整理」的空壳；会话、练习题与作答历史保留，只解除指向。
+ * 仍被其它课程条目引用的知识点只解除本课程的归属，不删。
+ */
 export function removeConceptFromCourse(planId: string, conceptId: string): PlanDTO | null {
-  const row = getDb()
+  const db = getDb();
+  const row = db
     .prepare(
-      `select c.id from concepts c join plan_items pi on pi.id = c.course_id
+      `select c.id as id, c.topic_id as topic_id, c.course_id as course_id
+         from concepts c join plan_items pi on pi.id = c.course_id
         where c.id = ? and pi.plan_id = ?`,
     )
-    .get(conceptId, planId) as { id: string } | undefined;
+    .get(conceptId, planId) as
+    | { id: string; topic_id: string; course_id: string | null }
+    | undefined;
   if (!row) return null;
-  getDb().prepare("update concepts set course_id = null, updated_at = ? where id = ?").run(now(), conceptId);
-  touchPlan(planId);
+  db.transaction(() => {
+    const shared = db
+      .prepare("select count(*) as n from plan_items where concept_id = ? and id <> ?")
+      .get(conceptId, row.course_id ?? "") as { n: number };
+    if (Number(shared.n) > 0) {
+      // 还被别的课程用着：只解除本课程的归属
+      db.prepare("update concepts set course_id = null, updated_at = ? where id = ?").run(
+        now(),
+        conceptId,
+      );
+    } else {
+      db.prepare("update exercises set concept_id = null where concept_id = ?").run(conceptId);
+      db.prepare("update attempts set concept_id = null where concept_id = ?").run(conceptId);
+      db.prepare("update sessions set focus_concept_id = null where focus_concept_id = ?").run(
+        conceptId,
+      );
+      db.prepare("delete from review_items where concept_id = ?").run(conceptId);
+      db.prepare("delete from concepts where id = ?").run(conceptId);
+      cleanupTopicIfEmpty(row.topic_id);
+    }
+    touchPlan(planId);
+  })();
   return getPlan(planId);
 }
 

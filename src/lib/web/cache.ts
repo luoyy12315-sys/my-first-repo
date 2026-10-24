@@ -108,6 +108,18 @@ export function countSessionSearches(sessionId: string): number {
   return Number(r.n);
 }
 
+/** 缓存里还有多少条（含已过期但还没被覆盖的记录），设置页用来显示与清空 */
+export function webCacheRows(): number {
+  const r = getDb().prepare("select count(*) as n from web_cache").get() as { n: number };
+  return Number(r.n);
+}
+
+/** 清空检索缓存：只删 web_cache，不动搜索日志与会话 */
+export function clearWebCache(): number {
+  const r = getDb().prepare("delete from web_cache").run();
+  return Number(r.changes ?? 0);
+}
+
 /** 设置页的 7 天汇总 */
 export function webStats(days = 7) {
   const since = now() - days * 24 * 3600 * 1000;
