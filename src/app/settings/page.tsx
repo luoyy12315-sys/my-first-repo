@@ -1,11 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import {
   CheckCircle2,
   ChevronDown,
   ExternalLink,
-  Globe,
   Pencil,
   Plus,
   RefreshCw,
@@ -22,6 +21,7 @@ import {
   Button,
   Card,
   Field,
+  IconButton,
   Modal,
   SectionHeader,
   Spinner,
@@ -638,33 +638,32 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-serif text-[26px] tracking-tight text-ink">设置</h1>
-          <p className="mt-1 text-[13px] text-ink2">
-            可配置多个模型，不同会话可以各用一个。
-          </p>
-        </div>
-        <Button size="sm" icon={<Plus className="size-3.5" />} onClick={openAdd}>
-          添加模型
-        </Button>
+      <div className="mb-6">
+        <h1 className="font-serif text-[26px] tracking-tight text-ink">设置</h1>
+        <p className="mt-1 text-[13px] text-ink2">模型、讲解风格、联网检索、用量与数据，都在这一页。</p>
       </div>
 
       <section className="mb-8">
         <SectionHeader
           title="模型服务"
+          hintBelow
           hint={
             models.length
-              ? `${models.length} 个配置 · 默认「${defaultModel?.label ?? "—"}」`
+              ? `${models.length} 个配置 · 默认「${defaultModel?.label ?? "—"}」· 对话里可随时切换，切换会被记住`
               : legacy?.source === "env"
                 ? "当前来自环境变量"
-                : "尚未配置"
+                : "还没有添加模型"
           }
           action={
-            <Badge tone={healthBadge.tone}>
-              {healthBadge.tone === "ok" ? <CheckCircle2 className="size-3" /> : null}
-              {healthBadge.text}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge tone={healthBadge.tone}>
+                {healthBadge.tone === "ok" ? <CheckCircle2 className="size-3" /> : null}
+                {healthBadge.text}
+              </Badge>
+              <Button size="sm" icon={<Plus className="size-3.5" />} onClick={openAdd}>
+                添加模型
+              </Button>
+            </div>
           }
         />
 
@@ -679,8 +678,8 @@ export default function SettingsPage() {
                 ? "当前正在使用环境变量里的模型配置（AI_BASE_URL / AI_MODEL / AI_API_KEY）。"
                 : "还没有添加任何模型。"}
             </p>
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink3">
-              添加后可以在对话框左下角切换；不同会话可以各用一个模型。Ollama 不需要填 Key。
+            <p className="mt-1 max-w-[58ch] text-[13px] leading-relaxed text-ink3">
+              添加后可以在对话框左下角切换，不同会话可以各用一个。Ollama 不需要填 Key。
             </p>
             <Button className="mt-3" size="sm" icon={<Plus className="size-3.5" />} onClick={openAdd}>
               添加第一个模型
@@ -690,7 +689,7 @@ export default function SettingsPage() {
           <div className="flex flex-col gap-2">
             {models.map((m) => (
               <Card key={m.id} className="p-3.5">
-                <div className="flex flex-wrap items-start gap-2">
+                <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <p className="truncate text-[13.5px] font-medium text-ink">{m.label}</p>
@@ -705,11 +704,11 @@ export default function SettingsPage() {
                         <Badge tone="warn">缺 Key</Badge>
                       )}
                       {m.lastOkAt ? (
-                        <Badge tone="neutral">上次正常 {m.lastTestMs ?? 0}ms</Badge>
+                        <Badge tone="neutral">上次正常 {formatLatency(m.lastTestMs ?? 0)}</Badge>
                       ) : null}
                       {m.lastError ? <Badge tone="bad">上次失败</Badge> : null}
                     </div>
-                    <p className="mt-1 truncate font-mono text-[12px] text-ink3">
+                    <p className="mt-1 truncate font-mono text-[12px] text-ink3" title={`${m.model} · ${m.baseUrl}`}>
                       {m.model} · {m.baseUrl}
                     </p>
                     <p className="mt-0.5 text-[12px] text-ink3">
@@ -718,13 +717,11 @@ export default function SettingsPage() {
                       {m.keyMasked ? ` · ${m.keyMasked}` : " · 无 Key"}
                     </p>
                     {m.lastError ? (
-                      <p className="mt-1 line-clamp-2 rounded-lg bg-badsoft/40 px-2 py-1 text-[12px] leading-relaxed text-bad">
-                        {m.lastError}
-                      </p>
+                      <p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-bad">{m.lastError}</p>
                     ) : null}
                   </div>
 
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div className="flex shrink-0 items-center justify-end gap-1 sm:pt-0.5">
                     <Button
                       size="sm"
                       variant="ghost"
@@ -744,37 +741,31 @@ export default function SettingsPage() {
                         设为默认
                       </Button>
                     ) : null}
-                    <button
-                      onClick={() => openEdit(m)}
-                      className="rounded-full p-2 text-ink3 transition-colors hover:bg-panel2 hover:text-ink"
-                      aria-label={`编辑 ${m.label}`}
-                      title="编辑"
-                    >
+                    <IconButton label={`编辑 ${m.label}`} onClick={() => openEdit(m)}>
                       <Pencil className="size-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setPendingDelete(m)}
-                      className="rounded-full p-2 text-ink3 transition-colors hover:bg-badsoft hover:text-bad"
-                      aria-label={`删除 ${m.label}`}
-                      title="删除"
-                    >
+                    </IconButton>
+                    <IconButton label={`删除 ${m.label}`} tone="danger" onClick={() => setPendingDelete(m)}>
                       <Trash2 className="size-3.5" />
-                    </button>
+                    </IconButton>
                   </div>
                 </div>
               </Card>
             ))}
-            <p className="mt-1 text-[12px] leading-relaxed text-ink3">
-              切换只影响当前会话，会被记住。
-            </p>
           </div>
         )}
 
         {legacy && !legacy.configured && models.length === 0 ? (
-          <p className="mt-2 rounded-lg bg-warnsoft/60 px-3 py-2 text-[12px] leading-relaxed text-ink2">
+          <p className="mt-2 max-w-[58ch] rounded-lg bg-warnsoft/60 px-3 py-2 text-[12px] leading-relaxed text-ink2">
             {legacy.reason}。没有真实模型时，应用不会用固定文本冒充教学——对话页会明确提示未配置。
           </p>
         ) : null}
+
+        <p className="mt-2 max-w-[58ch] text-[12px] leading-relaxed text-ink3">
+          想删掉某个模型只是不想再用它？删配置不会删学习记录。
+          <Link href="/library" className="ml-1 underline">
+            去学习档案
+          </Link>
+        </p>
       </section>
 
       <Modal
@@ -795,7 +786,7 @@ export default function SettingsPage() {
       >
         <div className="flex flex-col gap-3">
           <div>
-            <p className="mb-1.5 text-[12.5px] font-medium text-ink">快速填充</p>
+            <p className="mb-1.5 text-[13px] font-medium text-ink">快速填充</p>
             <div className="flex flex-wrap gap-1.5">
               {PRESETS.map((p) => (
                 <button
@@ -830,7 +821,7 @@ export default function SettingsPage() {
               <input
                 value={draft.model}
                 onChange={(e) => setDraft((d) => ({ ...d, model: e.target.value }))}
-                className={cx(inputClass, "font-mono text-[12.5px]")}
+                className={cx(inputClass, "font-mono text-[12px]")}
                 placeholder="deepseek-chat"
               />
             </Field>
@@ -840,7 +831,7 @@ export default function SettingsPage() {
             <input
               value={draft.baseUrl}
               onChange={(e) => setDraft((d) => ({ ...d, baseUrl: e.target.value }))}
-              className={cx(inputClass, "font-mono text-[12.5px]")}
+              className={cx(inputClass, "font-mono text-[12px]")}
               placeholder="https://api.deepseek.com/v1"
             />
           </Field>
@@ -870,7 +861,7 @@ export default function SettingsPage() {
                 type="password"
                 value={draft.apiKey}
                 onChange={(e) => setDraft((d) => ({ ...d, apiKey: e.target.value }))}
-                className={cx(inputClass, "font-mono text-[12.5px]")}
+                className={cx(inputClass, "font-mono text-[12px]")}
                 placeholder={editing ? "••••••••（留空保持不变）" : "sk-..."}
                 autoComplete="off"
               />
@@ -889,12 +880,12 @@ export default function SettingsPage() {
             />
           </Field>
 
-          <label className="flex items-start gap-2 text-[12.5px] text-ink2">
+          <label className="flex items-start gap-2 text-[13px] text-ink2">
             <input
               type="checkbox"
               checked={draft.isDefault}
               onChange={(e) => setDraft((d) => ({ ...d, isDefault: e.target.checked }))}
-              className="mt-0.5 size-3.5 accent-[var(--accent)]"
+              className="mt-0.5 size-4 accent-[var(--accent)]"
             />
             设为默认模型（新会话默认用它）
           </label>
@@ -919,7 +910,7 @@ export default function SettingsPage() {
         <p className="text-[13px] leading-relaxed text-ink2">
           将删除「{pendingDelete?.label}」（{pendingDelete?.model}）及其 Key。
         </p>
-        <p className="mt-2 rounded-xl border border-line bg-panel2/50 px-3 py-2.5 text-[12.5px] leading-relaxed text-ink2">
+        <p className="mt-2 text-[12px] leading-relaxed text-ink2">
           已经用这个模型产生的学习记录、证据和对话都<span className="font-medium text-ink">不会</span>被删除；
           正在使用它的会话会自动回到默认模型。
         </p>
@@ -928,9 +919,10 @@ export default function SettingsPage() {
 <section className="mb-8">
         <SectionHeader
           title="讲解风格"
+          hintBelow
           hint={
             styles.length
-              ? `${styles.length} 个自定义风格 · ${activeStyleId ? "有一个使用中" : "当前按默认讲法"}`
+              ? `${styles.length} 个风格，只有一个生效（${activeStyleId ? "现在用其中一个" : "现在按默认讲法"}）`
               : "还没有自定义风格；默认讲法不额外注入提示词"
           }
           action={
@@ -947,9 +939,9 @@ export default function SettingsPage() {
           }
         />
 
-        <Card className="flex flex-col gap-2.5 p-4">
+        <Card className="divide-y divide-line overflow-hidden">
           {styleEditor ? (
-            <div className="rounded-xl border border-line bg-panel2/50 p-3.5">
+            <div className="bg-panel2/40 px-4 py-3.5">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="text-[13px] font-medium text-ink">
@@ -967,7 +959,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="mt-3 flex flex-col gap-3">
-                <Field label="名字" hint={`最多 ${MAX_STYLE_NAME} 字，只用于在这里辨认`}>
+                <Field label="名字" hint={`最多 ${MAX_STYLE_NAME} 字`}>
                   <input
                     className={inputClass}
                     maxLength={MAX_STYLE_NAME}
@@ -979,10 +971,7 @@ export default function SettingsPage() {
                   />
                 </Field>
 
-                <Field
-                  label="你希望我怎么讲"
-                  hint={`最多 ${MAX_TEACHING_DIRECTIVE} 字；留空就只按下面的篇幅与选项要求`}
-                >
+                <Field label="你希望我怎么讲" hint={`最多 ${MAX_TEACHING_DIRECTIVE} 字，留空也行`}>
                   <textarea
                     className={cx(inputClass, "min-h-[96px] resize-y leading-relaxed")}
                     maxLength={MAX_TEACHING_DIRECTIVE}
@@ -993,7 +982,7 @@ export default function SettingsPage() {
                     placeholder="例如：先讲结论，再用一个生活里的例子说明，最后指出最容易错的地方"
                   />
                 </Field>
-                <p className="-mt-1 text-right text-[11.5px] text-ink3">
+                <p className="-mt-1 text-right text-[12px] text-ink3">
                   {styleEditor.directive.length}/{MAX_TEACHING_DIRECTIVE}
                 </p>
 
@@ -1007,7 +996,7 @@ export default function SettingsPage() {
                   onChange={(v) => setStyleEditor((s) => (s ? { ...s, verbosity: v } : s))}
                 />
 
-                <div className="flex flex-col gap-2 rounded-xl border border-line bg-panel px-3 py-2.5">
+                <div className="flex flex-col gap-2">
                   <label className="flex items-start gap-2 text-[13px] text-ink2">
                     <input
                       type="checkbox"
@@ -1034,16 +1023,16 @@ export default function SettingsPage() {
                   </label>
                 </div>
 
-                <details className="rounded-xl border border-line bg-panel px-3 py-2.5">
-                  <summary className="cursor-pointer select-none text-[12.5px] text-ink2">
+                <details className="border-t border-line pt-2.5">
+                  <summary className="cursor-pointer select-none text-[12px] text-ink2">
                     {stylePreview ? "保存后注入给模型的提示词（点开查看）" : "这份内容不会额外注入（全默认）"}
                   </summary>
                   {stylePreview ? (
-                    <pre className="mt-2 whitespace-pre-wrap break-words font-mono text-[11.5px] leading-relaxed text-ink3">
+                    <pre className="mt-2 max-w-[58ch] whitespace-pre-wrap break-words font-mono text-[12px] leading-relaxed text-ink3">
                       {stylePreview}
                     </pre>
                   ) : (
-                    <p className="mt-2 text-[12px] leading-relaxed text-ink3">
+                    <p className="mt-2 max-w-[58ch] text-[12px] leading-relaxed text-ink3">
                       什么都没填、选项也都没勾，模型按默认讲法回答。
                     </p>
                   )}
@@ -1068,11 +1057,11 @@ export default function SettingsPage() {
           ) : null}
 
           {styles.length === 0 && !styleEditor ? (
-            <div className="rounded-xl border border-dashed border-line bg-panel2/30 px-3.5 py-4">
-              <p className="text-[13px] leading-relaxed text-ink2">
+            <div className="px-4 py-3.5">
+              <p className="max-w-[58ch] text-[13px] leading-relaxed text-ink2">
                 点右上角「添加风格」，写下你希望我怎么讲，再调篇幅和两个选项。
               </p>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-ink3">
+              <p className="mt-1 max-w-[58ch] text-[12px] leading-relaxed text-ink3">
                 可以存好几个风格（比如「平时」和「考前复习」）随时切换；都不设置时就是默认讲法。
               </p>
             </div>
@@ -1083,51 +1072,48 @@ export default function SettingsPage() {
             return (
               <div
                 key={s.id}
+                data-style-row
                 className={cx(
-                  "rounded-xl border px-3.5 py-3",
-                  active ? "border-accent/50 bg-accentsoft/40" : "border-line bg-panel",
+                  "flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start",
+                  active && "bg-accentsoft/40",
                 )}
               >
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <p className="text-[13.5px] font-medium text-ink">{s.name}</p>
-                  {active ? <Badge tone="ok">使用中</Badge> : null}
-                  <span className="text-[12px] text-ink3">{styleSummary(s)}</span>
-                  <div className="ml-auto flex items-center gap-1">
-                    {active ? (
-                      <Button size="sm" variant="ghost" onClick={() => activateStyle(null)}>
-                        改用默认
-                      </Button>
-                    ) : (
-                      <Button size="sm" variant="ghost" onClick={() => activateStyle(s.id)}>
-                        使用
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      icon={<Pencil className="size-3.5" />}
-                      onClick={() => setStyleEditor({ ...s })}
-                    >
-                      编辑
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      icon={<Trash2 className="size-3.5" />}
-                      onClick={() => setPendingStyleDelete(s)}
-                    >
-                      删除
-                    </Button>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <p className="text-[13.5px] font-medium text-ink">{s.name}</p>
+                    {active ? <Badge tone="ok">使用中</Badge> : null}
+                    <span className="text-[12px] text-ink3">{styleSummary(s)}</span>
                   </div>
+                  <p
+                    className={cx(
+                      "mt-1 line-clamp-2 text-[12px] leading-relaxed",
+                      s.directive.trim() ? "text-ink2" : "text-ink3",
+                    )}
+                  >
+                    {s.directive.trim() || "没有额外描述，只按篇幅和选项要求"}
+                  </p>
                 </div>
-                <p
-                  className={cx(
-                    "mt-1.5 line-clamp-2 text-[12.5px] leading-relaxed",
-                    s.directive.trim() ? "text-ink2" : "text-ink3",
+                <div className="flex shrink-0 items-center justify-end gap-1 sm:pt-0.5">
+                  {active ? (
+                    <Button size="sm" variant="ghost" onClick={() => activateStyle(null)}>
+                      改用默认
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="ghost" onClick={() => activateStyle(s.id)}>
+                      使用
+                    </Button>
                   )}
-                >
-                  {s.directive.trim() || "没有额外描述，只按篇幅和选项要求"}
-                </p>
+                  <IconButton label={`编辑 ${s.name}`} onClick={() => setStyleEditor({ ...s })}>
+                    <Pencil className="size-3.5" />
+                  </IconButton>
+                  <IconButton
+                    label={`删除 ${s.name}`}
+                    tone="danger"
+                    onClick={() => setPendingStyleDelete(s)}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </IconButton>
+                </div>
               </div>
             );
           })}
@@ -1153,7 +1139,7 @@ export default function SettingsPage() {
           只删除这个风格设置，对话与学习记录不受影响。
         </p>
         {pendingStyleDelete?.id === activeStyleId ? (
-          <p className="mt-2 text-[12.5px] leading-relaxed text-ink3">
+          <p className="mt-2 text-[12px] leading-relaxed text-ink3">
             它正在使用中，删除后会回到默认讲法（或剩下的第一个风格）。
           </p>
         ) : null}
@@ -1161,52 +1147,69 @@ export default function SettingsPage() {
       <section className="mb-8">
         <SectionHeader
           title="联网检索"
+          hintBelow
           hint={
-            web?.enabled
-              ? web.configured
-                ? "需要时手动查证；关掉开关就完全不发请求"
-                : "已启用，但还没填接口地址"
-              : "关闭时不发任何请求；任意返回 JSON 的搜索接口都能接"
-          }
-          action={
-            <Badge tone={web?.enabled ? (web.configured ? "ok" : "warn") : "neutral"}>
-              {web?.enabled ? <Globe className="size-3" /> : null}
-              {web?.enabled ? (web.configured ? "已启用" : "待配置") : "关闭"}
-            </Badge>
+            !web
+              ? "读取中…"
+              : !web.enabled
+                ? "关闭时不发任何请求；填任何返回 JSON 的搜索接口都能接"
+                : web.configured
+                  ? "已启用 · 需要时手动查证，关掉开关就完全不发请求"
+                  : "已启用，但还没填接口地址"
           }
         />
 
-        <Card className="flex flex-col gap-3.5 p-4">
-          <label className="flex items-start gap-2.5 text-[13px] text-ink">
-            <input
-              type="checkbox"
-              checked={webDraft.enabled}
-              onChange={(e) => setWebDraft((d) => ({ ...d, enabled: e.target.checked }))}
-              className="mt-0.5 size-4 accent-[var(--accent)]"
-            />
-            <span>
-              启用联网检索
-              <span className="mt-0.5 block text-[12px] leading-relaxed text-ink3">
-                不绑定服务商：填你自己的搜索接口地址即可；Key 只存在本机数据库，不回显。
+        <Card className="divide-y divide-line overflow-hidden">
+          <div className="flex flex-col gap-2.5 p-4 sm:flex-row sm:gap-6">
+            <label className="flex flex-1 items-start gap-2.5 text-[13px] text-ink">
+              <input
+                type="checkbox"
+                checked={webDraft.enabled}
+                onChange={(e) => setWebDraft((d) => ({ ...d, enabled: e.target.checked }))}
+                className="mt-0.5 size-4 accent-[var(--accent)]"
+              />
+              <span>
+                启用联网检索
+                <span className="mt-0.5 block text-[12px] leading-relaxed text-ink3">
+                  关闭时一次请求都不发
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
+            <label className="flex flex-1 items-start gap-2.5 text-[13px] text-ink">
+              <input
+                type="checkbox"
+                checked={webDraft.defaultMode === "manual"}
+                onChange={(e) =>
+                  setWebDraft((d) => ({ ...d, defaultMode: e.target.checked ? "manual" : "off" }))
+                }
+                className="mt-0.5 size-4 accent-[var(--accent)]"
+              />
+              <span>
+                对话里默认打开
+                <span className="mt-0.5 block text-[12px] leading-relaxed text-ink3">
+                  输入框旁的地球按钮可临时开关，不改这里的默认值
+                </span>
+              </span>
+            </label>
+          </div>
+
+          <div className="flex flex-col gap-3.5 p-4">
 
           <div className="grid gap-3 sm:grid-cols-[1.6fr_1fr]">
-            <Field label="接口地址" hint="填完整 URL；GET 可以把固定参数写进地址，如 ?format=json">
+            <Field label="接口地址" hint="完整 URL；GET 的固定参数可直接写进地址">
               <input
                 value={webDraft.endpoint}
                 onChange={(e) => {
                   setWebDraft((d) => ({ ...d, endpoint: e.target.value }));
                   setWebTestResult(null);
                 }}
-                className={cx(inputClass, "font-mono text-[12.5px]")}
+                className={cx(inputClass, "font-mono text-[12px]")}
                 placeholder="https://api.example.com/search"
                 autoComplete="off"
                 spellCheck={false}
               />
             </Field>
-            <Field label="调用方式" hint="GET 拼查询参数；POST 发 JSON 请求体">
+            <Field label="调用方式">
               <select
                 value={webDraft.method}
                 onChange={(e) => {
@@ -1224,13 +1227,13 @@ export default function SettingsPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <Field
               label="API Key"
-              hint={web?.keyMasked ? `当前 ${web.keyMasked}，留空表示不改` : "接口不需要就不填"}
+              hint={web?.keyMasked ? `已保存 ${web.keyMasked}，留空不修改` : "接口不需要就不填"}
             >
               <input
                 type="password"
                 value={webDraft.apiKey}
                 onChange={(e) => setWebDraft((d) => ({ ...d, apiKey: e.target.value }))}
-                className={cx(inputClass, "font-mono text-[12.5px]")}
+                className={cx(inputClass, "font-mono text-[12px]")}
                 placeholder={web?.keyMasked ? "已配置，留空不修改" : "可选"}
                 autoComplete="off"
               />
@@ -1239,14 +1242,14 @@ export default function SettingsPage() {
               label="认证请求头"
               hint={
                 web?.hasAuth
-                  ? "已配置，留空不修改；可写 {{apiKey}} 引用上面的 Key"
-                  : "可选，整行写；可写 {{apiKey}} 引用上面的 Key"
+                  ? "已保存，留空不修改；可用 {{apiKey}}"
+                  : "整行写；可用 {{apiKey}} 引用上面的 Key"
               }
             >
               <input
                 value={webDraft.authHeader}
                 onChange={(e) => setWebDraft((d) => ({ ...d, authHeader: e.target.value }))}
-                className={cx(inputClass, "font-mono text-[12.5px]")}
+                className={cx(inputClass, "font-mono text-[12px]")}
                 placeholder="Authorization: Bearer {{apiKey}}"
                 autoComplete="off"
                 spellCheck={false}
@@ -1269,24 +1272,7 @@ export default function SettingsPage() {
             </div>
           ) : null}
 
-          <label className="flex items-start gap-2.5 text-[13px] text-ink">
-            <input
-              type="checkbox"
-              checked={webDraft.defaultMode === "manual"}
-              onChange={(e) =>
-                setWebDraft((d) => ({ ...d, defaultMode: e.target.checked ? "manual" : "off" }))
-              }
-              className="mt-0.5 size-4 accent-[var(--accent)]"
-            />
-            <span>
-              在对话里默认打开联网
-              <span className="mt-0.5 block text-[12px] leading-relaxed text-ink3">
-                输入框旁的地球按钮随时可以临时开关，不会改这里的默认值。
-              </span>
-            </span>
-          </label>
-
-          <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               size="sm"
               loading={webSaving || webTesting}
@@ -1313,8 +1299,8 @@ export default function SettingsPage() {
           {webTestResult ? (
             <div
               className={cx(
-                "rounded-xl border px-3 py-2.5 text-[12.5px] leading-relaxed",
-                webTestResult.ok ? "border-ok/40 bg-oksoft/40" : "border-bad/40 bg-badsoft/40",
+                "rounded-xl px-3 py-2.5 text-[12px] leading-relaxed",
+                webTestResult.ok ? "bg-oksoft/50" : "bg-badsoft/50",
               )}
             >
               {webTestResult.ok ? (
@@ -1341,7 +1327,7 @@ export default function SettingsPage() {
                   <p className="text-ink">
                     测试失败：{webTestResult.message ?? "未知原因"}
                     {webTestResult.code ? (
-                      <span className="ml-1 font-mono text-[11.5px] text-ink3">
+                      <span className="ml-1 font-mono text-[12px] text-ink3">
                         {webTestResult.code}
                       </span>
                     ) : null}
@@ -1353,19 +1339,23 @@ export default function SettingsPage() {
               )}
             </div>
           ) : null}
+        </div>
 
-          <details className="rounded-xl border border-line bg-panel2/40 px-3 py-2.5">
-            <summary className="cursor-pointer select-none text-[12.5px] text-ink2">
+        <details className="p-4">
+            <summary className="cursor-pointer select-none text-[12px] text-ink2">
               高级设置（结果读不出来、或想调缓存时才用）
             </summary>
+            <p className="mt-1 max-w-[58ch] text-[12px] leading-relaxed text-ink3">
+              路径与字段名都可以留空：留空时自动识别常见写法（results / data.items，title / url / snippet）。
+            </p>
 
             <div className="mt-3 flex flex-col gap-3">
               {webDraft.method === "GET" ? (
-                <Field label="查询参数名" hint="关键词放在哪个参数里；多数接口是 q 或 query">
+                <Field label="查询参数名" hint="多数接口是 q 或 query">
                   <input
                     value={webDraft.queryParam}
                     onChange={(e) => setWebDraft((d) => ({ ...d, queryParam: e.target.value }))}
-                    className={cx(inputClass, "font-mono text-[12.5px]")}
+                    className={cx(inputClass, "font-mono text-[12px]")}
                     placeholder="q"
                     spellCheck={false}
                   />
@@ -1373,7 +1363,7 @@ export default function SettingsPage() {
               ) : (
                 <Field
                   label="请求体模板"
-                  hint="JSON；支持 {{query}} / {{maxResults}} / {{apiKey}} 占位符"
+                  hint="JSON；可用 {{query}} {{maxResults}} {{apiKey}}"
                 >
                   <textarea
                     value={webDraft.bodyTemplate}
@@ -1386,43 +1376,46 @@ export default function SettingsPage() {
               )}
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="结果数组路径" hint="留空自动识别；如 results、data.items、web.results">
+                <Field label="结果数组路径" hint="如 results、data.items">
                   <input
                     value={webDraft.resultsPath}
                     onChange={(e) => setWebDraft((d) => ({ ...d, resultsPath: e.target.value }))}
-                    className={cx(inputClass, "font-mono text-[12.5px]")}
+                    className={cx(inputClass, "font-mono text-[12px]")}
                     placeholder="自动识别"
                     spellCheck={false}
                   />
                 </Field>
-                <div className="grid grid-cols-3 gap-2">
-                  <Field label="标题字段" hint="空=自动">
+                <div className="flex flex-col gap-1.5">
+                  <p className="flex flex-wrap items-baseline gap-x-2 text-[13px] font-medium text-ink">
+                    字段名
+                    <span className="text-[12px] font-normal text-ink3">留空=自动识别</span>
+                  </p>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     <input
                       value={webDraft.titleField}
                       onChange={(e) => setWebDraft((d) => ({ ...d, titleField: e.target.value }))}
-                      className={cx(inputClass, "font-mono text-[12.5px]")}
+                      className={cx(inputClass, "font-mono text-[12px]")}
                       placeholder="title"
+                      aria-label="标题字段"
                       spellCheck={false}
                     />
-                  </Field>
-                  <Field label="链接字段" hint="空=自动">
                     <input
                       value={webDraft.urlField}
                       onChange={(e) => setWebDraft((d) => ({ ...d, urlField: e.target.value }))}
-                      className={cx(inputClass, "font-mono text-[12.5px]")}
+                      className={cx(inputClass, "font-mono text-[12px]")}
                       placeholder="url"
+                      aria-label="链接字段"
                       spellCheck={false}
                     />
-                  </Field>
-                  <Field label="摘要字段" hint="空=自动">
                     <input
                       value={webDraft.snippetField}
                       onChange={(e) => setWebDraft((d) => ({ ...d, snippetField: e.target.value }))}
-                      className={cx(inputClass, "font-mono text-[12.5px]")}
+                      className={cx(inputClass, "font-mono text-[12px]")}
                       placeholder="snippet"
+                      aria-label="摘要字段"
                       spellCheck={false}
                     />
-                  </Field>
+                  </div>
                 </div>
               </div>
 
@@ -1508,7 +1501,7 @@ export default function SettingsPage() {
             </div>
           </details>
 
-          <p className="rounded-lg bg-panel2/50 px-3 py-2 text-[12px] leading-relaxed text-ink3">
+          <p className="max-w-[58ch] px-4 py-3.5 text-[12px] leading-relaxed text-ink3">
             判题与解析不走检索；检索失败或超时时会明说「未能联网核实」，不会摆出来源卡片。
           </p>
         </Card>
@@ -1567,7 +1560,7 @@ export default function SettingsPage() {
                       <span className="font-serif text-xl tabular-nums text-ink">
                         {formatTokens(b.totalTokens)}
                       </span>
-                      <span className="text-[11px] text-ink3">tokens</span>
+                      <span className="text-[12px] text-ink3">tokens</span>
                     </p>
                     <p className="mt-0.5 text-[12px] text-ink3">
                       {b.calls} 次调用 · {b.avgLatencyMs == null ? "平均 —" : `平均 ${formatLatency(b.avgLatencyMs)}`}
@@ -1585,7 +1578,7 @@ export default function SettingsPage() {
                   <p className="text-[12px] text-ink3">最近 {usage.days} 天 · 按调用次数排序</p>
                 </div>
                 {usage.byModel.length === 0 ? (
-                  <p className="mt-2 text-[12.5px] leading-relaxed text-ink3">
+                  <p className="mt-2 text-[12px] leading-relaxed text-ink3">
                     最近 {usage.days} 天没有调用记录；累计数据仍可在上方查看。
                   </p>
                 ) : (
@@ -1596,7 +1589,7 @@ export default function SettingsPage() {
                         className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2"
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-mono text-[12.5px] text-ink">
+                          <p className="truncate font-mono text-[12px] text-ink">
                             {m.model || "未知模型"}
                           </p>
                           <p className="mt-0.5 text-[12px] leading-relaxed text-ink3">
@@ -1606,7 +1599,7 @@ export default function SettingsPage() {
                           </p>
                         </div>
                         <div className="shrink-0 text-right">
-                          <p className="tabular-nums text-[12.5px] text-ink">
+                          <p className="tabular-nums text-[12px] text-ink">
                             {formatTokens(m.totalTokens)} tokens
                           </p>
                           <p className="mt-0.5 tabular-nums text-[12px] text-ink3">
@@ -1624,7 +1617,7 @@ export default function SettingsPage() {
       </section>
 
       <section className="mb-8 mt-8">
-        <SectionHeader title="数据" hint="SQLite 数据库" />
+        <SectionHeader title="数据" hintBelow hint="SQLite 数据库" />
         <Card className="p-4">
           {system ? (
             <>
@@ -1659,54 +1652,50 @@ export default function SettingsPage() {
       </section>
 
       <section>
+        <SectionHeader
+          title="开源复用与许可"
+          hintBelow
+          hint="本项目自身以 MIT 发布；完整许可证见仓库 THIRD_PARTY_NOTICES.md"
+        />
         <details className="group">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl border border-line bg-panel px-4 py-3 transition-colors hover:border-linestrong [&::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl border border-line bg-panel px-4 py-3 transition-colors hover:border-linestrong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 [&::-webkit-details-marker]:hidden">
             <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <span className="font-serif text-[16px] text-ink">开源复用与许可</span>
+              <span className="text-[13px] text-ink2">第三方许可清单</span>
               <span className="text-[12px] text-ink3">8 项 · 保留原始版权声明</span>
             </span>
             <ChevronDown className="size-4 shrink-0 text-ink3 transition-transform group-open:rotate-180" />
           </summary>
           <Card className="mt-2 divide-y divide-line p-0">
-          {[
-            { name: "OpenTutor", license: "MIT", usage: "BKT 知识追踪算法移植（knowledge_tracer.py → src/lib/learning/mastery.ts）；块式教学组件注册思路", url: "https://github.com/zijinz456/OpenTutor" },
-            { name: "better-sqlite3", license: "MIT", usage: "SQLite 持久化", url: "https://github.com/WiseLibs/better-sqlite3" },
-            { name: "KaTeX", license: "MIT", usage: "公式渲染", url: "https://github.com/KaTeX/KaTeX" },
-            { name: "react-markdown", license: "MIT", usage: "Markdown 渲染", url: "https://github.com/remarkjs/react-markdown" },
-            { name: "Recharts", license: "MIT", usage: "图表", url: "https://github.com/recharts/recharts" },
-            { name: "Next.js / React", license: "MIT", usage: "应用框架", url: "https://github.com/vercel/next.js" },
-            { name: "lucide-react", license: "ISC", usage: "图标", url: "https://github.com/lucide-icons/lucide" },
-            { name: "sonner", license: "MIT", usage: "轻提示", url: "https://github.com/emilkowalski/sonner" },
-          ].map((l) => (
-            <div key={l.name} className="flex items-start gap-3 px-4 py-2.5">
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] text-ink">
-                  {l.name} <span className="ml-1 text-[12px] text-ink3">{l.license}</span>
-                </p>
-                <p className="mt-0.5 text-[12px] leading-relaxed text-ink3">{l.usage}</p>
+            {[
+              { name: "OpenTutor", license: "MIT", usage: "BKT 知识追踪算法移植（knowledge_tracer.py → src/lib/learning/mastery.ts）；块式教学组件注册思路", url: "https://github.com/zijinz456/OpenTutor" },
+              { name: "better-sqlite3", license: "MIT", usage: "SQLite 持久化", url: "https://github.com/WiseLibs/better-sqlite3" },
+              { name: "KaTeX", license: "MIT", usage: "公式渲染", url: "https://github.com/KaTeX/KaTeX" },
+              { name: "react-markdown", license: "MIT", usage: "Markdown 渲染", url: "https://github.com/remarkjs/react-markdown" },
+              { name: "Recharts", license: "MIT", usage: "图表", url: "https://github.com/recharts/recharts" },
+              { name: "Next.js / React", license: "MIT", usage: "应用框架", url: "https://github.com/vercel/next.js" },
+              { name: "lucide-react", license: "ISC", usage: "图标", url: "https://github.com/lucide-icons/lucide" },
+              { name: "sonner", license: "MIT", usage: "轻提示", url: "https://github.com/emilkowalski/sonner" },
+            ].map((l) => (
+              <div key={l.name} className="flex items-start gap-3 px-4 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] text-ink">
+                    {l.name} <span className="ml-1 text-[12px] text-ink3">{l.license}</span>
+                  </p>
+                  <p className="mt-0.5 text-[12px] leading-relaxed text-ink3">{l.usage}</p>
+                </div>
+                <a
+                  href={l.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-0.5 shrink-0 text-ink3 hover:text-accent"
+                  aria-label={`打开 ${l.name}`}
+                >
+                  <ExternalLink className="size-3.5" />
+                </a>
               </div>
-              <a
-                href={l.url}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-0.5 shrink-0 text-ink3 hover:text-accent"
-                aria-label={`打开 ${l.name}`}
-              >
-                <ExternalLink className="size-3.5" />
-              </a>
-            </div>
-          ))}
-        </Card>
+            ))}
+          </Card>
         </details>
-        <p className="mt-2 text-[12px] leading-relaxed text-ink3">
-          本项目自身以 MIT 发布。第三方源码的完整许可证见仓库 THIRD_PARTY_NOTICES.md。
-        </p>
-        <p className="mt-2 text-[12px] text-ink3">
-          想删掉某个模型只是不想再用它？删配置不会删学习记录。
-          <Link href="/library" className="ml-1 underline">
-            去学习档案
-          </Link>
-        </p>
       </section>
     </div>
   );
@@ -1735,7 +1724,7 @@ function SliderField({
   return (
     <label className="block">
       <span className="flex items-baseline justify-between gap-2">
-        <span className="text-[12.5px] text-ink2">{label}</span>
+        <span className="text-[12px] text-ink2">{label}</span>
         <span className="font-mono text-[13px] tabular-nums text-ink">
           {value}
           {suffix}
@@ -1773,3 +1762,7 @@ function formatLatency(ms: number | null): string {
   const seconds = ms / 1000;
   return `${seconds >= 10 ? Math.round(seconds) : seconds.toFixed(1)}s`;
 }
+
+
+
+

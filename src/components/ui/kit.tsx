@@ -180,12 +180,29 @@ export function SectionHeader({
   hint,
   action,
   className,
+  hintBelow = false,
 }: {
   title: string;
   hint?: string;
   action?: ReactNode;
   className?: string;
+  /**
+   * 说明独占一行。窄屏上"标题 + 说明 + 动作"挤不下时，说明换行会把动作顶到下一行右端，
+   * 看起来像掉出来的孤岛；需要这种稳定排版时传 true（设置页在用）。
+   */
+  hintBelow?: boolean;
 }) {
+  if (hintBelow) {
+    return (
+      <div className={cx("mb-3 flex flex-col gap-1", className)}>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="min-w-0 truncate font-serif text-[17px] tracking-tight text-ink">{title}</h2>
+          {action ? <div className="shrink-0">{action}</div> : null}
+        </div>
+        {hint ? <p className="text-xs text-ink3">{hint}</p> : null}
+      </div>
+    );
+  }
   return (
     <div className={cx("mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1", className)}>
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -194,6 +211,34 @@ export function SectionHeader({
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </div>
+  );
+}
+
+/** 图标按钮：统一 32px 点击区，避免与 sm 文字按钮（也是 32px）排在一起时高低不齐 */
+export function IconButton({
+  label,
+  onClick,
+  children,
+  tone = "neutral",
+}: {
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+  tone?: "neutral" | "danger";
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={cx(
+        "grid size-8 shrink-0 place-items-center rounded-full transition-colors",
+        tone === "danger" ? "text-ink3 hover:bg-badsoft hover:text-bad" : "text-ink3 hover:bg-panel2 hover:text-ink",
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
