@@ -136,13 +136,20 @@ for (const width of [1440, 390]) {
   await page.waitForTimeout(500);
   const aside = page.locator("aside");
   check("侧栏不再常驻搜索输入框", (await page.locator("aside input").count()) === 0);
-  const searchRow = aside.locator("button", { hasText: "搜索" }).first();
-  check("侧栏有搜索入口", (await searchRow.count()) === 1);
+  const searchBtn = aside.locator('button[aria-label="搜索"]').first();
+  check("侧栏有搜索放大镜", (await searchBtn.count()) === 1);
+  const searchBox = await searchBtn.boundingBox();
+  const collapseBox = await page.getByLabel("收起侧边栏").boundingBox();
+  check(
+    "搜索在折叠按钮左边",
+    Boolean(searchBox && collapseBox) && searchBox.x + searchBox.width <= collapseBox.x,
+    JSON.stringify([searchBox?.x, collapseBox?.x]),
+  );
   check("侧栏没有键位角标", (await page.locator("aside kbd").count()) === 0);
   const expandedWidth = (await aside.boundingBox())?.width ?? 0;
   check("侧边栏默认展开 248px", expandedWidth > 200, String(expandedWidth));
 
-  await searchRow.click();
+  await searchBtn.click();
   await page.waitForTimeout(500);
   const dialog = page.getByRole("dialog", { name: "搜索" });
   check("点搜索打开搜索弹层", await dialog.isVisible());
@@ -155,6 +162,12 @@ for (const width of [1440, 390]) {
   const sessionList = await fetch(`${BASE}/api/sessions`).then((r) => r.json()).catch(() => null);
   const sessionTitle = sessionList?.sessions?.[0]?.title ?? "";
   const needle = sessionTitle.slice(0, 2) || "你好";
+  const dialogBox = await dialog.boundingBox();
+  check(
+    "搜索弹层水平居中",
+    Boolean(dialogBox) && Math.abs(dialogBox.x + dialogBox.width / 2 - 1440 / 2) < 60,
+    JSON.stringify(dialogBox && Math.round(dialogBox.x + dialogBox.width / 2)),
+  );
   await dialog.getByLabel("搜索").fill(needle);
   await page.waitForTimeout(800);
   const hitRows = await dialog.locator("button[data-index]").count();

@@ -122,11 +122,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <>
             <Link
               href="/"
-              className="font-serif text-[21px] font-semibold tracking-tight text-ink transition-opacity hover:opacity-70"
+              className="mr-auto font-serif text-[21px] font-semibold tracking-tight text-ink transition-opacity hover:opacity-70"
               title="Lumina"
             >
               Lumina
             </Link>
+            {/* 搜索：放大镜放在折叠按钮左边 */}
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              aria-label="搜索"
+              title="搜索"
+              className="grid size-8 shrink-0 place-items-center rounded-full text-ink3 transition-colors hover:bg-panel2 hover:text-ink"
+            >
+              <Search className="size-4" />
+            </button>
             <button
               type="button"
               onClick={toggleCollapsed}
@@ -167,17 +177,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </Link>
       </div>
 
-      <div className="px-3 pb-1">
-        {expanded ? (
-          <button
-            type="button"
-            onClick={() => setSearchOpen(true)}
-            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-[13.5px] text-ink2 transition-colors hover:bg-panel2 hover:text-ink"
-          >
-            <Search className="size-4 text-ink3" />
-            <span>搜索</span>
-          </button>
-        ) : (
+      {expanded ? null : (
+        <div className="px-3 pb-1">
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
@@ -187,8 +188,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Search className="size-4 text-ink3" />
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       <nav className={cx("mt-1 flex flex-col gap-0.5", expanded ? "px-3" : "px-2")}>
         {NAV.map((item) => {

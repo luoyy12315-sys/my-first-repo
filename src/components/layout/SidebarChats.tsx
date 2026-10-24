@@ -8,6 +8,7 @@
  */
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight,
@@ -152,15 +153,6 @@ export default function SidebarChats({
         {s.title}
       </Link>
       <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
-        <button
-          type="button"
-          onClick={() => void toggleSessionPin(s)}
-          aria-label={s.pinnedAt ? "取消置顶" : "置顶对话"}
-          title={s.pinnedAt ? "取消置顶" : "置顶"}
-          className="grid size-6 place-items-center rounded-full text-ink3 transition-colors hover:bg-panel2 hover:text-ink"
-        >
-          {s.pinnedAt ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
-        </button>
         <OverflowMenu compact ariaLabel="对话操作" align="right">
           <MenuItem onClick={() => setRename({ type: "session", session: s })}>
             <Pencil className="size-3.5" />
@@ -179,6 +171,15 @@ export default function SidebarChats({
             删除
           </MenuItem>
         </OverflowMenu>
+        <button
+          type="button"
+          onClick={() => void toggleSessionPin(s)}
+          aria-label={s.pinnedAt ? "取消置顶" : "置顶对话"}
+          title={s.pinnedAt ? "取消置顶" : "置顶"}
+          className="grid size-6 place-items-center rounded-full text-ink3 transition-colors hover:bg-panel2 hover:text-ink"
+        >
+          {s.pinnedAt ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+        </button>
       </div>
     </div>
   );
@@ -210,15 +211,6 @@ export default function SidebarChats({
             ) : null}
           </button>
           <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
-            <button
-              type="button"
-              onClick={() => void togglePlanPin(p)}
-              aria-label={p.pinnedAt ? "取消置顶" : "置顶计划"}
-              title={p.pinnedAt ? "取消置顶" : "置顶"}
-              className="grid size-6 place-items-center rounded-full text-ink3 transition-colors hover:bg-panel2 hover:text-ink"
-            >
-              {p.pinnedAt ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
-            </button>
             <OverflowMenu compact ariaLabel="计划操作" align="right">
               <MenuItem onClick={() => setRename({ type: "plan", plan: p })}>
                 <Pencil className="size-3.5" />
@@ -237,6 +229,15 @@ export default function SidebarChats({
                 删除
               </MenuItem>
             </OverflowMenu>
+            <button
+              type="button"
+              onClick={() => void togglePlanPin(p)}
+              aria-label={p.pinnedAt ? "取消置顶" : "置顶计划"}
+              title={p.pinnedAt ? "取消置顶" : "置顶"}
+              className="grid size-6 place-items-center rounded-full text-ink3 transition-colors hover:bg-panel2 hover:text-ink"
+            >
+              {p.pinnedAt ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+            </button>
           </div>
         </div>
         {open ? (
@@ -283,6 +284,8 @@ export default function SidebarChats({
         </section>
       ) : null}
 
+      {/* 弹窗挂在 body 上，避免被侧栏的 backdrop-blur 困在侧栏里 */}
+      <DialogPortal>
       {/* 重命名：会话和计划共用一个弹窗 */}
       <RenameDialog target={rename} onClose={() => setRename(null)} onDone={notify} />
 
@@ -299,8 +302,16 @@ export default function SidebarChats({
       />
 
       <MoveDialog session={move} plans={plans} onClose={() => setMove(null)} onDone={notify} />
+      </DialogPortal>
     </>
   );
+}
+
+/** 侧栏在 backdrop-blur 里，fixed 定位会以侧栏为包含块；弹窗统一挂到 body 才在页面中间 */
+function DialogPortal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted ? createPortal(children, document.body) : null;
 }
 
 function RenameDialog({
