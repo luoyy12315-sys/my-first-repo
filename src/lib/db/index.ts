@@ -264,6 +264,14 @@ function migrate(db: Database.Database) {
         `);
       },
     },
+    {
+      id: "20261024_sidebar_pins",
+      run: () => {
+        // 侧栏置顶：会话和计划各一个置顶时间戳，null 表示没置顶
+        ensureColumn(db, "sessions", "pinned_at", "pinned_at integer");
+        ensureColumn(db, "plans", "pinned_at", "pinned_at integer");
+      },
+    },
   ];
   for (const b of batches) {
     if (applied.has(b.id)) continue;

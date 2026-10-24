@@ -7,7 +7,6 @@ import {
   Compass,
   Library,
   PanelLeftClose,
-  PanelLeftOpen,
   Plus,
   Repeat2,
   Route,
@@ -17,8 +16,9 @@ import {
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import SearchDialog from "./SearchDialog";
+import SidebarChats from "./SidebarChats";
 import { cx } from "@/components/ui/kit";
-import type { SessionSummary } from "@/lib/types";
+import type { PlanDTO, SessionSummary } from "@/lib/types";
 
 const NAV = [
   { href: "/", label: "学习", icon: Compass },
@@ -32,16 +32,24 @@ const COLLAPSE_KEY = "lumina-sidebar-collapsed";
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/";
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [plans, setPlans] = useState<PlanDTO[]>([]);
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const immersive = pathname.startsWith("/w/");
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/sessions", { cache: "no-store" });
-      if (res.ok) {
-        const data = (await res.json()) as { sessions: SessionSummary[] };
-        setSessions(data.sessions.slice(0, 40));
+      const [sRes, pRes] = await Promise.all([
+        fetch("/api/sessions?limit=200", { cache: "no-store" }),
+        fetch("/api/plans", { cache: "no-store" }),
+      ]);
+      if (sRes.ok) {
+        const data = (await sRes.json()) as { sessions: SessionSummary[] };
+        setSessions(data.sessions);
+      }
+      if (pRes.ok) {
+        const data = (await pRes.json()) as { plans: PlanDTO[] };
+        setPlans(data.plans);
       }
     } catch {
       /* 侧边栏属于次要信息，失败静默 */
@@ -80,7 +88,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     // 否则同一会话会出现"主区新名字、侧栏旧名字"。
     const onChange = () => void load();
     window.addEventListener("sessions:changed", onChange);
-    return () => window.removeEventListener("sessions:changed", onChange);
+    window.addEventListener("plans:changed", onChange);
+    return () => {
+      window.removeEventListener("sessions:changed", onChange);
+      window.removeEventListener("plans:changed", onChange);
+    };
   }, [pathname, load, immersive]);
 
   // 不在这里落库：空会话点了又不用会污染侧栏和历史。
@@ -106,23 +118,39 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           expanded ? "justify-between pl-5 pr-2 pt-5" : "justify-center px-2 pt-5",
         )}
       >
-        <Link
-          href="/"
-          className="font-serif text-[21px] font-semibold tracking-tight text-ink transition-opacity hover:opacity-70"
-          title="Lumina"
-        >
-          {expanded ? "Lumina" : <Sparkles className="size-[18px] text-accent" />}
-        </Link>
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}
-          aria-expanded={!collapsed}
-          title={collapsed ? "展开侧边栏" : "收起侧边栏"}
-          className="grid size-8 shrink-0 place-items-center rounded-full text-ink3 transition-colors hover:bg-panel2 hover:text-ink"
-        >
-          {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
-        </button>
+        {expanded ? (
+          <>
+            <Link
+              href="/"
+              className="font-serif text-[21px] font-semibold tracking-tight text-ink transition-opacity hover:opacity-70"
+              title="Lumina"
+            >
+              Lumina
+            </Link>
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              aria-label="收起侧边栏"
+              aria-expanded
+              title="收起侧边栏"
+              className="grid size-8 shrink-0 place-items-center rounded-full text-ink3 transition-colors hover:bg-panel2 hover:text-ink"
+            >
+              <PanelLeftClose className="size-4" />
+            </button>
+          </>
+        ) : (
+          // 折叠后不单独留折叠按钮：软件图标本身就是展开按钮（和 ChatGPT 一样）
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label="展开侧边栏"
+            aria-expanded={false}
+            title="展开侧边栏"
+            className="grid size-9 place-items-center rounded-full text-ink transition-colors hover:bg-panel2"
+          >
+            <Sparkles className="size-[18px] text-accent" />
+          </button>
+        )}
       </div>
 
       <div className="px-3 pb-2">
@@ -192,32 +220,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </nav>
 
       {expanded ? (
-        <div className="mt-4 min-h-0 flex-1 overflow-y-auto px-3 no-scrollbar">
-          <p className="px-3 pb-2 text-[12px] text-ink3">最近</p>
-          <div className="flex flex-col gap-0.5">
-            {sessions.length === 0 ? (
-              <p className="px-3 py-2 text-[12px] text-ink3">还没有对话。</p>
-            ) : (
-              sessions.slice(0, 6).map((s) => (
-                <Link
-                  key={s.id}
-                  href={`/s/${s.id}`}
-                  className={cx(
-                    "rounded-xl px-3 py-1.5 transition-colors",
-                    pathname === `/s/${s.id}`
-                      ? "bg-panel2 text-ink"
-                      : "text-ink2 hover:bg-panel2 hover:text-ink",
-                  )}
-                  title={s.planTitle ? `${s.title} · ${s.planTitle}` : s.title}
-                >
-                  <span className="block truncate text-[12.8px]">{s.title}</span>
-                  {s.planTitle ? (
-                    <span className="mt-0.5 block truncate text-[12px] text-ink3">{s.planTitle}</span>
-                  ) : null}
-                </Link>
-              ))
-            )}
-          </div>
+        <div className="mt-3 min-h-0 flex-1 overflow-y-auto px-3 pb-2 no-scrollbar">
+          <SidebarChats sessions={sessions} plans={plans} onReload={() => void load()} />
         </div>
       ) : (
         <div className="min-h-0 flex-1" />
@@ -255,7 +259,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         跳到主内容
       </a>
 
-      {/* ── 桌面侧边栏：折叠后鼠标悬停临时展开（和 ChatGPT 一样） ── */}
+      {/* ── 桌面侧边栏：折叠后只剩图标栏，点软件图标展开 ── */}
       <aside
         className={cx(
           "sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-line bg-panel/60 backdrop-blur-sm md:flex",

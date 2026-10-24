@@ -359,6 +359,7 @@ export function listSessions(limit = 30): SessionSummary[] {
     planItemId: (r.plan_item_id as string) ?? null,
     courseTitle: (r.course_title as string) ?? null,
     updatedAt: Number(r.updated_at),
+    pinnedAt: (r.pinned_at as number) ?? null,
     messageCount: Number(r.message_count ?? 0),
     summary: (r.summary as string) ?? null,
     resumeHint: (r.resume_hint as string) ?? null,
@@ -2324,6 +2325,7 @@ export function getPlan(id: string): PlanDTO | null {
     status: p.status as PlanStatus,
     createdAt: Number(p.created_at),
     updatedAt: Number(p.updated_at),
+    pinnedAt: (p.pinned_at as number) ?? null,
     items: courses.map((c) => c.dto),
     progress,
     currentCourseId: current?.dto.id ?? null,
@@ -2459,6 +2461,21 @@ export function confirmPlan(planId: string): PlanDTO | null {
   if (!plan.items.some((item) => item.concepts.length > 0)) return plan;
   getDb().prepare("update plans set status = 'active', updated_at = ? where id = ?").run(now(), planId);
   return getPlan(planId);
+}
+
+/** 侧栏置顶/取消置顶：只动 pinned_at，不碰 updated_at，避免置顶把会话顶到"最近"最前 */
+export function setSessionPinned(sessionId: string, pinned: boolean): boolean {
+  const r = getDb()
+    .prepare("update sessions set pinned_at = ? where id = ?")
+    .run(pinned ? now() : null, sessionId);
+  return r.changes > 0;
+}
+
+export function setPlanPinned(planId: string, pinned: boolean): PlanDTO | null {
+  const r = getDb()
+    .prepare("update plans set pinned_at = ? where id = ?")
+    .run(pinned ? now() : null, planId);
+  return r.changes > 0 ? getPlan(planId) : null;
 }
 
 export function setPlanStatus(planId: string, status: "active" | "paused"): PlanDTO | null {

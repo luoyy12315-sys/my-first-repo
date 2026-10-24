@@ -8,6 +8,7 @@ import {
   deleteSession,
   getAiModel,
   setSessionModel,
+  setSessionPinned,
   setSessionPlan,
   setSessionPlanItem,
   touchSession,
@@ -68,9 +69,14 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       planItemId?: string | null;
       /** 无限学习会话被用户明确整理进目标计划 */
       archive?: boolean;
+      /** 侧栏置顶 */
+      pinned?: boolean;
     }>(req);
     if (typeof body.title === "string" && body.title.trim()) {
       touchSession(id, { title: body.title.trim().slice(0, 80) });
+    }
+    if (body.pinned !== undefined) {
+      setSessionPinned(id, Boolean(body.pinned));
     }
 
     const wantsPlanChange = body.planId !== undefined || body.planItemId !== undefined;

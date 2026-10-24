@@ -137,6 +137,8 @@ create table if not exists sessions (
   resume_hint text,
   message_count integer not null default 0,
   archived integer not null default 0,
+  -- 侧栏置顶时间戳；null 表示未置顶
+  pinned_at integer,
   created_at integer not null,
   updated_at integer not null
 );
@@ -327,6 +329,8 @@ create table if not exists plans (
   id text primary key,
   goal_id text references goals(id) on delete cascade,
   title text not null,
+  -- 侧栏置顶时间戳；null 表示未置顶
+  pinned_at integer,
   note text,
   -- draft=待确认，active=正式学习，paused=暂停
   status text not null default 'draft',

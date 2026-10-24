@@ -182,12 +182,48 @@ for (const width of [1440, 390]) {
   await page.waitForTimeout(250);
   check("Esc 关闭搜索弹层", (await dialog.count()) === 0);
 
+  // 三组结构：有对话就一定有「最近」；有置顶才出现「置顶」，有计划才出现「计划」
+  const sidebarText = await aside.innerText();
+  const sessionCount = await page.locator('aside a[href^="/s/"]').count();
+  const plansNow = await fetch(`${BASE}/api/plans`).then((r) => r.json()).catch(() => null);
+  if (sessionCount > 0) {
+    check("侧栏有「最近」组", sidebarText.includes("最近"), sidebarText.slice(0, 40));
+  }
+  if ((plansNow?.plans?.length ?? 0) > 0) {
+    check("有计划的侧栏有「计划」组", sidebarText.includes("计划"));
+  }
+
+  // 悬停会话条：右侧出现图钉 + 三个点，三个点菜单是 重命名/置顶/移至计划/删除
+  if (sessionCount > 0) {
+    const firstSession = page.locator('aside a[href^="/s/"]').first();
+    await firstSession.hover();
+    await page.waitForTimeout(350);
+    const row = firstSession.locator("xpath=..");
+    check(
+      "悬停会话条出现右侧操作",
+      (await row.locator('[aria-label="置顶对话"], [aria-label="取消置顶"]').count()) === 1 &&
+        (await row.locator('[aria-label="对话操作"]').count()) === 1,
+    );
+    await row.locator('[aria-label="对话操作"]').click();
+    await page.waitForTimeout(250);
+    const sessionMenu = (await page.getByRole("menuitem").allInnerTexts()).map((x) => x.trim());
+    check(
+      "会话菜单是 重命名/置顶/移至计划/删除",
+      ["重命名", "置顶", "移至计划", "删除"].every((x) => sessionMenu.includes(x)),
+      JSON.stringify(sessionMenu),
+    );
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(200);
+  }
+
   await page.evaluate(() => localStorage.setItem("lumina-sidebar-collapsed", "1"));
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(400);
   const collapsedWidth = (await aside.boundingBox())?.width ?? 0;
   check("侧边栏可折叠成图标栏", collapsedWidth > 0 && collapsedWidth < 100, String(collapsedWidth));
   check("窄栏保留搜索按钮", (await page.locator('aside [aria-label="搜索"]').count()) >= 1);
+  check("折叠后没有单独的折叠按钮", (await page.locator('aside [aria-label="收起侧边栏"]').count()) === 0);
+  check("折叠后软件图标是展开按钮", (await page.locator('aside [aria-label="展开侧边栏"]').count()) === 1);
   await aside.hover();
   await page.waitForTimeout(500);
   const hoverWidth = (await aside.boundingBox())?.width ?? 0;
@@ -204,16 +240,17 @@ for (const width of [1440, 390]) {
   if (sessions.sessions?.length) {
     await page.goto(`${BASE}/s/${sessions.sessions[0].id}`, { waitUntil: "networkidle" });
     await page.waitForTimeout(800);
-    await page.locator("summary").first().click();
+    await page.locator("main summary").first().click();
     await page.waitForTimeout(250);
     const menu = await page.evaluate(() => {
-      const el = document.querySelector("details[open] > div");
+      const el = document.querySelector("main details[open] > div");
       if (!el) return null;
       const r = el.getBoundingClientRect();
       return {
         inViewport: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth,
         radius: getComputedStyle(el).borderRadius,
-        below: r.top >= (document.querySelector("summary")?.getBoundingClientRect().top ?? 0),
+        below:
+          r.top >= (document.querySelector("main summary")?.getBoundingClientRect().top ?? 0),
       };
     });
     check("会话页菜单向下展开且不越界", Boolean(menu?.inViewport && menu?.below), JSON.stringify(menu));

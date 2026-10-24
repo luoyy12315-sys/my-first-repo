@@ -3,7 +3,7 @@
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { Loader2, MoreHorizontal, X } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode, useState } from "react";
 import { DISPLAY_STATUS_LABEL, type ConceptDisplayStatus, type ConceptStatus } from "@/lib/types";
 
 export const cx = (...parts: Parameters<typeof clsx>) => twMerge(clsx(...parts));
@@ -248,19 +248,34 @@ export function IconButton({
  * 点击外部 / Esc 关闭；用原生 <details> 保留键盘可达性，不引入弹层库。
  */
 export function OverflowMenu({
-  label = "更多",
+  label = "",
   align = "right",
   placement = "bottom",
+  compact = false,
+  ariaLabel,
   children,
   className,
 }: {
   label?: string;
   align?: "left" | "right";
   placement?: "bottom" | "top";
+  /** 行内小按钮（侧栏会话行的三个点），不占 32px 高度 */
+  compact?: boolean;
+  /** 只给读屏用的名称（紧凑按钮不显示文字） */
+  ariaLabel?: string;
   children: ReactNode;
   className?: string;
 }) {
   const ref = useRef<HTMLDetailsElement>(null);
+  // 面板默认向下展开；靠近窗口底部（侧栏最后几条）时自动向上，避免被裁掉
+  const [flip, setFlip] = useState(false);
+
+  const updateFlip = () => {
+    const summary = ref.current?.querySelector("summary");
+    if (!summary) return;
+    const rect = summary.getBoundingClientRect();
+    setFlip(window.innerHeight - rect.bottom < 240);
+  };
 
   useEffect(() => {
     const root = ref.current;
@@ -283,21 +298,26 @@ export function OverflowMenu({
   }, []);
 
   return (
-    <details ref={ref} className={cx("relative shrink-0", className)}>
+    <details
+      ref={ref}
+      className={cx("relative shrink-0", className)}
+      onToggle={updateFlip}
+    >
       <summary
-        aria-label={label || "更多操作"}
+        aria-label={label || ariaLabel || "更多操作"}
         className={cx(
-          "flex h-8 cursor-pointer list-none items-center justify-center gap-1 rounded-full text-ink3 transition-colors hover:bg-panel2 hover:text-ink [&::-webkit-details-marker]:hidden",
-          label ? "px-2.5" : "w-8",
+          "flex cursor-pointer list-none items-center justify-center gap-1 rounded-full text-ink3 transition-colors hover:bg-panel2 hover:text-ink [&::-webkit-details-marker]:hidden",
+          compact ? "size-6" : "h-8",
+          label ? "px-2.5" : compact ? "" : "w-8",
         )}
       >
-        <MoreHorizontal className="size-4" />
+        <MoreHorizontal className={compact ? "size-3.5" : "size-4"} />
         {label ? <span className="text-[13px]">{label}</span> : null}
       </summary>
       <div
         className={cx(
           "absolute z-40 min-w-[11rem] overflow-hidden rounded-2xl border border-line bg-panel p-1.5 shadow-[var(--shadow-lg)]",
-          placement === "top"
+          placement === "top" || flip
             ? "bottom-full mb-2 animate-pop-up"
             : "top-full mt-2 animate-pop",
           align === "right" ? "right-0" : "left-0",

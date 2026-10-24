@@ -10,6 +10,7 @@ import {
   removeConceptFromCourse,
   renameConcept,
   setPlanCourseSkipped,
+  setPlanPinned,
   setPlanStatus,
   updatePlanCourse,
   updatePlanMeta,
@@ -29,6 +30,7 @@ interface PlanPatchBody {
   description?: string | null;
   direction?: "up" | "down";
   skipped?: boolean;
+  pinned?: boolean;
 }
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -57,6 +59,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       }
       const plan = confirmPlan(id);
       return ok({ plan });
+    }
+
+    if (action === "pin") {
+      const plan = setPlanPinned(id, Boolean(body.pinned));
+      return plan ? ok({ plan }) : fail(404, "计划不存在");
     }
 
     if (action === "pause" || action === "resume") {

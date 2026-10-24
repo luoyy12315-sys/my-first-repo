@@ -195,6 +195,8 @@ export interface SessionSummary {
   planItemId?: string | null;
   courseTitle?: string | null;
   updatedAt: number;
+  /** 侧栏置顶时间戳；null / undefined 表示未置顶 */
+  pinnedAt?: number | null;
   messageCount: number;
   summary?: string | null;
   resumeHint?: string | null;
@@ -345,6 +347,8 @@ export interface PlanDTO {
   status: PlanStatus;
   createdAt: number;
   updatedAt: number;
+  /** 侧栏置顶时间戳；null / undefined 表示未置顶 */
+  pinnedAt?: number | null;
   items: PlanItemDTO[];
   progress: PlanProgress;
   /** 当前学习位置：进行中的课程，其次第一门待开始且有知识点的课程 */
