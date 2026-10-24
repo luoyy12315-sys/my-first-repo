@@ -131,8 +131,9 @@ export default function QuizBlock({
   };
 
   const allCorrect = result?.summary.allCorrect ?? false;
+  const unlinked = exercises.length > 0 && exercises.every((exercise) => !exercise.conceptId);
   const canAdvance = Boolean(
-    result && allCorrect && result.summary.evidenceCount === result.summary.total,
+    result && allCorrect && (result.summary.evidenceCount === result.summary.total || unlinked),
   );
   const wrongNumbers = result
     ? result.results
@@ -187,12 +188,13 @@ export default function QuizBlock({
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <Badge tone="accent">小测 · {exercises.length} 题</Badge>
+          {unlinked ? <Badge tone="neutral">对话练习 · 不写入档案</Badge> : null}
           {conceptIds.size > 1 ? (
             <Badge tone="neutral">覆盖 {conceptIds.size} 个知识点</Badge>
           ) : null}
           <span className="truncate text-[13px] font-medium text-ink">{title ?? "阶段小测"}</span>
         </div>
-        <span className="text-[11.5px] text-ink3">
+        <span className="text-[12px] text-ink3">
           {result
             ? `答对 ${result.summary.correctCount}/${result.summary.total} 题`
             : `已作答 ${answeredCount}/${exercises.length}`}
@@ -204,11 +206,11 @@ export default function QuizBlock({
         return (
           <div key={exercise.id} className="border-t border-line px-4 py-4 first:border-t-0">
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <span className="text-[11.5px] text-ink3">
+              <span className="text-[12px] text-ink3">
                 第 {index + 1} 题 · 共 {exercises.length} 题
               </span>
               <Badge tone="neutral">{EXERCISE_TYPE_LABEL[exercise.type]}</Badge>
-              <span className="text-[11px] text-ink3">
+              <span className="text-[12px] text-ink3">
                 难度 {"●".repeat(exercise.difficulty)}
                 {"○".repeat(Math.max(0, 5 - exercise.difficulty))}
               </span>
@@ -220,7 +222,7 @@ export default function QuizBlock({
               {exercise.conceptId && exercise.conceptName ? (
                 <Link
                   href={`/library?c=${exercise.conceptId}`}
-                  className="max-w-[240px] truncate text-[11px] text-ink3 underline-offset-2 hover:text-accentink hover:underline"
+                  className="max-w-[240px] truncate text-[12px] text-ink3 underline-offset-2 hover:text-accentink hover:underline"
                 >
                   档案 · {exercise.conceptName}
                 </Link>
@@ -258,21 +260,23 @@ export default function QuizBlock({
             <p className="text-[13.5px] font-medium text-ink">
               答对 {result.summary.correctCount}/{result.summary.total} 题
             </p>
-            <span className="text-[11.5px] text-ink3">
+            <span className="text-[12px] text-ink3">
               平均得分 {Math.round(result.summary.score * 100)}%
             </span>
-            {result.summary.evidenceCount < result.summary.total ? (
-              <span className="text-[11.5px] text-ink3">
+            {result.summary.evidenceCount < result.summary.total && !unlinked ? (
+              <span className="text-[12px] text-ink3">
                 · {result.summary.total - result.summary.evidenceCount} 题未计入掌握度
               </span>
             ) : null}
           </div>
-          <p className="mt-1 text-[11.5px] leading-relaxed text-ink3">
-            {canAdvance
-              ? "全部答对并计入掌握度。可以继续下一步，或让 AI 用变式题再验证一次。"
-              : allCorrect
-                ? "全部答对，但本组有题目未通过二次校验，未计入掌握度；先讨论或重做后再推进。"
-                : "先看每题反馈与解析；答错或未评阅的题目不会给离开本步的按钮。"}
+          <p className="mt-1 text-[12px] leading-relaxed text-ink3">
+            {unlinked
+              ? "这组题用于对话中的即时检验，不写入正式学习档案，也不改变课程进度。"
+              : canAdvance
+                ? "全部答对并计入掌握度。可以继续下一步，或让 AI 用变式题再验证一次。"
+                : allCorrect
+                  ? "全部答对，但本组有题目未通过二次校验，未计入掌握度；先讨论或重做后再推进。"
+                  : "先看每题反馈与解析；答错或未评阅的题目不会给离开本步的按钮。"}
           </p>
         </div>
       ) : null}
@@ -294,7 +298,7 @@ export default function QuizBlock({
           </Button>
         )}
         {!result ? (
-          <span className="text-[11.5px] text-ink3">
+          <span className="text-[12px] text-ink3">
             {allAnswered ? "所有题目已作答，可以提交" : `还有 ${exercises.length - answeredCount} 题未作答`}
           </span>
         ) : null}

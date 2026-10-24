@@ -59,6 +59,8 @@ create unique index if not exists ux_topics_key on topics(canonical_key);
 create table if not exists concepts (
   id text primary key,
   topic_id text not null references topics(id) on delete cascade,
+  -- 唯一所属课程（plan_items 即课程/学习单元）；为空表示待整理
+  course_id text,
   name text not null,
   definition text,
   canonical_key text not null,
@@ -82,6 +84,7 @@ create table if not exists concepts (
 );
 create unique index if not exists ux_concepts_topic_key on concepts(topic_id, canonical_key);
 create index if not exists ix_concepts_topic on concepts(topic_id);
+-- course_id 的索引由迁移创建：旧库必须先加列，不能在建表阶段直接建索引
 create index if not exists ix_concepts_due on concepts(next_review_at);
 
 create table if not exists concept_edges (
@@ -119,7 +122,7 @@ create index if not exists ix_snapshots_concept on mastery_snapshots(concept_id,
 create table if not exists sessions (
   id text primary key,
   title text not null default '新的学习',
-  mode text not null default 'free',
+  mode text not null default 'infinite',
   goal_id text,
   -- 归属的学习计划（计划即“目标”）；为空表示未归类
   plan_id text,
@@ -325,7 +328,8 @@ create table if not exists plans (
   goal_id text references goals(id) on delete cascade,
   title text not null,
   note text,
-  status text not null default 'active',
+  -- draft=待确认，active=正式学习，paused=暂停
+  status text not null default 'draft',
   created_at integer not null,
   updated_at integer not null
 );

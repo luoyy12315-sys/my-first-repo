@@ -29,7 +29,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AppShell>{children}</AppShell>
         <Toaster
-          position="top-center"
+          position="top-right"
+          offset={16}
+          mobileOffset={{ top: 64, bottom: 76 }}
           toastOptions={{
             style: {
               background: "var(--panel)",

@@ -4,17 +4,18 @@ import path from "node:path";
 
 process.env.DATA_DIR = path.join(os.tmpdir(), `lumina-plan-bind-${process.pid}-${Date.now()}`);
 
-import { getDb, uid } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import {
+  addConceptToCourse,
+  confirmPlan,
   createPlan,
   createSession,
-  ensureConcept,
-  ensureTopic,
+  getConcept,
   getPlan,
   getSession,
+  listConcepts,
   listPlans,
-  PLAN_STEP_REQUIRED_CONCEPTS,
-  setSessionPlanItem,
+  removeConceptFromCourse,
   syncPlanItemCompletion,
 } from "@/lib/db/repo";
 import { executeTool } from "@/lib/ai/tools";
@@ -26,92 +27,198 @@ beforeAll(() => {
   getDb();
 });
 
-describe("计划步骤绑定知识点", () => {
-  it("save_plan 写入 conceptId；重复生成时给老步骤补绑定", async () => {
-    const session = createSession({ title: "计划绑定" });
+describe("目标学习：计划草稿 → 课程 → 知识点", () => {
+  it("save_plan 生成待确认草稿并绑定规划会话，同名草稿追加课程", async () => {
+    const session = createSession({ title: "规划会话", mode: "goal" });
+    const outcome = await tool(
+      "save_plan",
+      {
+        title: "导数系统学习",
+        goal: "掌握导数定义与求导",
+        courses: [
+          {
+            title: "极限与连续",
+            description: "导数的前置",
+            concepts: [{ name: "数列极限" }, { name: "函数连续" }],
+          },
+        ],
+      },
+      session.id,
+    );
+    expect(outcome.ok).toBe(true);
+
+    const plan = listPlans().find((p) => p.title === "导数系统学习")!;
+    expect(plan.status).toBe("draft");
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0].concepts.map((c) => c.name)).toEqual(["数列极限", "函数连续"]);
+    expect(plan.items[0].concepts[0]).toMatchObject({ status: "untouched", displayStatus: "todo" });
+    expect(getSession(session.id)?.planId).toBe(plan.id);
+    expect(getSession(session.id)?.planItemId).toBeNull();
 
     await tool(
       "save_plan",
-      { title: "绑定测试路线", items: [{ title: "第一步", rationale: "先学" }] },
+      {
+        title: "导数系统学习",
+        courses: [{ title: "求导法则", concepts: [{ name: "链式法则" }] }],
+      },
       session.id,
     );
-    const first = listPlans().find((p) => p.title === "绑定测试路线")!;
-    expect(first.items[0].conceptId).toBeNull();
-
-    // 只为已经存在的知识点建立绑定，不为未来课程预建空壳
-    const topic = ensureTopic("绑定测试主题");
-    const concept = ensureConcept({ topicId: topic.id, name: "机会成本" });
-    await tool(
-      "save_plan",
-      { title: "绑定测试路线", items: [{ title: "第一步", concept: "机会成本" }] },
-      session.id,
-    );
-    const second = listPlans().find((p) => p.title === "绑定测试路线")!;
-    expect(second.items[0].conceptId).toBe(concept.id);
-    expect(second.items[0].conceptName).toBe("机会成本");
-
-    await tool(
-      "save_plan",
-      { title: "未绑定测试路线", items: [{ title: "未来步骤", concept: "尚不存在的概念" }] },
-      session.id,
-    );
-    const third = listPlans().find((p) => p.title === "未绑定测试路线")!;
-    expect(third.items[0].conceptId).toBeNull();
+    const updated = listPlans().find((p) => p.title === "导数系统学习")!;
+    expect(updated.items.map((i) => i.title)).toEqual(["极限与连续", "求导法则"]);
+    expect(listPlans().filter((p) => p.title === "导数系统学习")).toHaveLength(1);
   });
 
-  it("会话可绑定具体计划步骤，并能在读回时保留", () => {
+  it("确认后课程进度按知识点掌握数计算，不再使用 3 个概念的旧阈值", () => {
     const plan = createPlan({
-      title: "会话步骤绑定测试",
-      items: [{ title: "第一步" }, { title: "第二步" }],
+      title: "进度测试",
+      status: "active",
+      courses: [
+        {
+          title: "导数基础",
+          concepts: [{ name: "导数定义" }, { name: "求导法则" }],
+        },
+      ],
     });
+    const course = plan.items[0];
     const session = createSession({
-      title: "绑定会话",
+      title: "导数课程",
+      mode: "goal",
       planId: plan.id,
-      planItemId: plan.items[0].id,
+      planItemId: course.id,
     });
-    expect(getSession(session.id)?.planItemId).toBe(plan.items[0].id);
 
-    setSessionPlanItem(session.id, plan.items[1].id);
-    expect(getSession(session.id)?.planItemId).toBe(plan.items[1].id);
-
-    setSessionPlanItem(session.id, null);
-    expect(getSession(session.id)?.planItemId ?? null).toBeNull();
-  });
-
-  it("本步至少 3 个不同知识点独立答对才自动完成", () => {
-    const plan = createPlan({
-      title: "证据完成测试",
-      items: [{ title: "需要验证的步骤" }],
+    expect(getPlan(plan.id)?.progress).toMatchObject({
+      conceptsMastered: 0,
+      conceptsTotal: 2,
+      percent: 0,
+      coursesDone: 0,
+      coursesTotal: 1,
     });
-    const session = createSession({
-      title: "证据会话",
-      planId: plan.id,
-      planItemId: plan.items[0].id,
-    });
-    const topic = ensureTopic("证据完成主题");
-    const conceptIds = ["证据点 A", "证据点 B", "证据点 C"].map(
-      (name) => ensureConcept({ topicId: topic.id, name }).id,
-    );
-    const insert = getDb().prepare(
-      "insert into evidence (id, session_id, concept_id, kind, correct, independent, hint_used, weight, created_at) values (?, ?, ?, 'attempt', 1, 1, 0, 1, ?)",
-    );
-    const add = (conceptId: string) =>
-      insert.run(uid("ev_"), session.id, conceptId, Date.now());
+    expect(getPlan(plan.id)?.items[0].status).toBe("pending");
 
-    add(conceptIds[0]);
-    add(conceptIds[1]);
+    getDb().prepare("update concepts set status = 'mastered' where id = ?").run(course.concepts[0].id);
     const partial = syncPlanItemCompletion(session.id);
-    expect(partial).toMatchObject({ verified: 2, required: PLAN_STEP_REQUIRED_CONCEPTS, completed: false });
+    expect(partial).toMatchObject({ mastered: 1, total: 2, completed: false });
     expect(getPlan(plan.id)?.items[0].status).toBe("in_progress");
+    expect(getPlan(plan.id)?.progress.percent).toBe(50);
 
-    add(conceptIds[2]);
+    getDb().prepare("update concepts set status = 'mastered' where id = ?").run(course.concepts[1].id);
     const done = syncPlanItemCompletion(session.id);
-    expect(done).toMatchObject({ verified: 3, required: PLAN_STEP_REQUIRED_CONCEPTS, completed: true });
+    expect(done).toMatchObject({ mastered: 2, total: 2, completed: true });
     expect(getPlan(plan.id)?.items[0].status).toBe("done");
-    expect(getPlan(plan.id)?.items[0].verifiedConceptNames).toEqual([
-      "证据点 A",
-      "证据点 B",
-      "证据点 C",
-    ]);
+    expect(getPlan(plan.id)?.progress).toMatchObject({
+      percent: 100,
+      coursesDone: 1,
+      coursesTotal: 1,
+    });
+  });
+
+  it("空课程不计入完成率；添加知识点后才进入统计", () => {
+    const plan = createPlan({
+      title: "空课程测试",
+      status: "active",
+      courses: [{ title: "待配置课程", concepts: [] }],
+    });
+    expect(getPlan(plan.id)?.progress).toMatchObject({
+      conceptsTotal: 0,
+      percent: 0,
+      unconfiguredCourses: 1,
+    });
+    expect(getPlan(plan.id)?.items[0].unconfigured).toBe(true);
+
+    const result = addConceptToCourse(plan.id, plan.items[0].id, { name: "待学习知识点" });
+    expect(result.conflict).toBe(false);
+    expect(result.plan?.items[0].progress).toMatchObject({ mastered: 0, total: 1 });
+    expect(result.plan?.progress.unconfiguredCourses).toBe(0);
+  });
+
+  it("一个知识点只能归属一门课程；移除后保留档案", () => {
+    const first = createPlan({
+      title: "课程 A",
+      status: "active",
+      courses: [{ title: "A-1", concepts: [{ name: "共享知识点" }] }],
+    });
+    const second = createPlan({
+      title: "课程 B",
+      status: "active",
+      courses: [{ title: "B-1", concepts: [] }],
+    });
+    const conflict = addConceptToCourse(second.id, second.items[0].id, { name: "共享知识点" });
+    expect(conflict.conflict).toBe(true);
+
+    const conceptId = first.items[0].concepts[0].id;
+    const removed = removeConceptFromCourse(first.id, conceptId);
+    expect(removed?.items[0].concepts).toHaveLength(0);
+    const concept = getConcept(conceptId);
+    expect(concept?.name).toBe("共享知识点");
+    expect(concept?.courseId).toBeNull();
+    // 没有课程归属的知识点会显示为待整理，而不是被删除
+    expect(listConcepts().some((c) => c.id === conceptId)).toBe(true);
+  });
+
+  it("save_concepts 只关联课程已有知识点，不临场扩目录", async () => {
+    const plan = createPlan({
+      title: "课程结构保护",
+      status: "active",
+      courses: [{ title: "第一课", concepts: [{ name: "课程内知识点" }] }],
+    });
+    const course = plan.items[0];
+    const session = createSession({
+      title: "结构保护会话",
+      mode: "goal",
+      planId: plan.id,
+      planItemId: course.id,
+    });
+    const outcome = await tool(
+      "save_concepts",
+      { topic: "任意主题", concepts: [{ name: "课程内知识点" }, { name: "课程外新知识点" }] },
+      session.id,
+    );
+    expect(outcome.ok).toBe(true);
+    expect(getPlan(plan.id)?.items[0].concepts.map((c) => c.name)).toEqual(["课程内知识点"]);
+    expect(listConcepts().some((c) => c.name === "课程外新知识点")).toBe(false);
+    expect(getConcept(course.concepts[0].id)?.introducedAt).toBeTruthy();
+    expect(outcome.notice).toContain("不在当前课程");
+  });
+
+  it("确认计划需要有课程和知识点", () => {
+    const empty = createPlan({ title: "空计划", status: "draft", courses: [] });
+    expect(confirmPlan(empty.id)?.status).toBe("draft");
+
+    const plan = createPlan({
+      title: "可确认计划",
+      status: "draft",
+      courses: [{ title: "第一课", concepts: [{ name: "第一点" }] }],
+    });
+    expect(confirmPlan(plan.id)?.status).toBe("active");
+    expect(getSession(createSession({ mode: "goal" }).id)?.mode).toBe("goal");
+  });
+});
+
+describe("无限学习不写正式档案", () => {
+  it("save_concepts 与 present_exercise 不创建概念、不产生掌握度证据", async () => {
+    const session = createSession({ title: "无限学习", mode: "infinite" });
+    const before = listConcepts().length;
+
+    const saved = await tool(
+      "save_concepts",
+      { topic: "不应写入", concepts: [{ name: "无限学习临时概念" }] },
+      session.id,
+    );
+    expect(saved.ok).toBe(true);
+    expect(listConcepts().length).toBe(before);
+
+    const exercise = await tool(
+      "present_exercise",
+      {
+        concept: "也不应写入",
+        type: "judge",
+        prompt: "这是一道对话练习。",
+        answer: "true",
+      },
+      session.id,
+    );
+    expect(exercise.ok).toBe(true);
+    expect(listConcepts().length).toBe(before);
   });
 });

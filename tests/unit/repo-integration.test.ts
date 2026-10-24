@@ -27,8 +27,10 @@ import {
   markHintUsed,
   markSolutionViewed,
   createAiModel,
+  getAiModel,
   listAiModels,
   getDefaultAiModel,
+  recordAiModelTest,
   updateAiModel,
   deleteAiModel,
   setSessionModel,
@@ -53,7 +55,8 @@ import {
   deleteConcept,
   countPlanItemsForConcept,
   mergeConceptsInto,
-  setPlanItemConcept,
+  addConceptToCourse,
+  removeConceptFromCourse,
 } from "@/lib/db/repo";
 import { buildTeachingMessages } from "@/lib/ai/prompt";
 import { addMessage, createBlock, updateMessage } from "@/lib/db/repo";
@@ -198,6 +201,37 @@ describe("P1-4 · 忽略/已复习的条目不再立即重建", () => {
   });
 });
 
+describe("错一次也能当天再练", () => {
+  it("learning + wrong_streak=1 会生成一条今天的复习建议", () => {
+    const conceptId = newConcept("错一次当天复习");
+    const now = Date.now();
+    db()
+      .prepare(
+        "update concepts set status = 'learning', wrong_streak = 1, evidence_count = 1, p_mastery = 0.2, next_review_at = ?, last_studied_at = ? where id = ?",
+      )
+      .run(now + 86400000, now, conceptId);
+
+    refreshReviewQueue();
+    const item = listReviewItems().find((x) => x.conceptId === conceptId);
+    expect(item).toBeTruthy();
+    expect(item?.reason).toContain("今天再练一题");
+  });
+});
+
+describe("证据口径", () => {
+  it("零权重证据仍保留在明细里，并带 weight 供 UI 区分", () => {
+    const conceptId = newConcept("证据权重口径");
+    const s = createSession({ title: "证据权重" });
+    const ex = uid("e_");
+    seedExercise(s.id, conceptId, ex);
+    seedEvidence({ sessionId: s.id, conceptId, exerciseId: ex, correct: false, at: t0, weight: 0 });
+    seedEvidence({ sessionId: s.id, conceptId, exerciseId: ex, correct: true, at: t0 + 1 });
+
+    const rows = listConceptEvidence(conceptId);
+    expect(rows.map((r) => r.weight).sort()).toEqual([0, 1]);
+  });
+});
+
 describe("P2-2 · 概念全局去重与合并", () => {
   it("同名概念在不同主题下复用同一个档案", () => {
     const t1 = ensureTopic("去重主题甲");
@@ -235,7 +269,11 @@ describe("P2-2 · 概念全局去重与合并", () => {
     seedEvidence({ sessionId: s.id, conceptId: c1, exerciseId: ex1, correct: true, at: t0 + 1 });
     seedEvidence({ sessionId: s.id, conceptId: c1, exerciseId: ex1, correct: true, at: t0 + 2 });
     seedEvidence({ sessionId: s.id, conceptId: c2, exerciseId: ex2, correct: true, at: t0 + 3 });
-    const plan = createPlan({ title: "合并测试计划", items: [{ title: "步骤", conceptId: c2 }] });
+    const plan = createPlan({
+      title: "合并测试计划",
+      status: "active",
+      courses: [{ title: "步骤", concepts: [{ name: "合并测试" }] }],
+    });
 
     const result = mergeDuplicateConcepts();
     expect(result.merged).toBeGreaterThanOrEqual(1);
@@ -251,16 +289,25 @@ describe("P2-2 · 概念全局去重与合并", () => {
     expect(attempts.n).toBe(3);
     const item = db()
       .prepare("select concept_id from plan_items where plan_id = ?")
-      .get(plan.id) as { concept_id: string };
-    expect(item.concept_id).toBe(merged.id);
+      .get(plan.id) as { concept_id: string | null };
+    expect(getPlan(plan.id)?.items[0].concepts[0].id).toBe(merged.id);
+    expect(item.concept_id).toBeNull();
     expect(listDuplicateConceptGroups()).toHaveLength(0);
   });
 });
 
 describe("计划分组", () => {
   it("会话和材料挂在计划下，材料检索按计划隔离，删计划只解绑", () => {
-    const plan = createPlan({ title: "线代冲刺", items: [{ title: "矩阵" }] });
-    const other = createPlan({ title: "英语词汇", items: [{ title: "词根" }] });
+    const plan = createPlan({
+      title: "线代冲刺",
+      status: "active",
+      courses: [{ title: "矩阵", concepts: [] }],
+    });
+    const other = createPlan({
+      title: "英语词汇",
+      status: "active",
+      courses: [{ title: "词根", concepts: [] }],
+    });
     const s = createSession({ title: "线代会话", planId: plan.id });
     expect(getSession(s.id)?.planTitle).toBe("线代冲刺");
     expect(listSessions(50).find((x) => x.id === s.id)?.planTitle).toBe("线代冲刺");
@@ -554,7 +601,7 @@ describe("A2 · 结构化复习会话收尾", () => {
     expect(st.status).toBe("done");
     expect(completeReviewForSession(s.id)).toBe(false);
 
-    const plain = createSession({ mode: "free" });
+    const plain = createSession({ mode: "infinite" });
     expect(completeReviewForSession(plain.id)).toBe(false);
   });
 });
@@ -593,6 +640,26 @@ describe("多模型配置", () => {
     expect(b.isDefault).toBe(true);
     expect(getDefaultAiModel()?.id).toBe(b.id);
     expect(listAiModels().filter((m) => m.isDefault).length).toBe(1);
+  });
+
+  it("失败测试保留上次成功时间与耗时，成功后清掉错误", () => {
+    const m = mk("健康检查", "model-health");
+    recordAiModelTest(m.id, true, 120, null);
+    const ok = getAiModel(m.id)!;
+    expect(ok.lastOkAt).toBeTruthy();
+    expect(ok.lastTestMs).toBe(120);
+    expect(ok.lastError).toBeNull();
+
+    recordAiModelTest(m.id, false, 0, "模型服务鉴权失败");
+    const failed = getAiModel(m.id)!;
+    expect(failed.lastOkAt).toBe(ok.lastOkAt);
+    expect(failed.lastTestMs).toBe(120);
+    expect(failed.lastError).toBe("模型服务鉴权失败");
+
+    recordAiModelTest(m.id, true, 80, null);
+    const recovered = getAiModel(m.id)!;
+    expect(recovered.lastError).toBeNull();
+    expect(recovered.lastTestMs).toBe(80);
   });
 
   it("删除默认项时自动提升另一条，不会出现'全都不能用'", () => {
@@ -684,31 +751,34 @@ describe("P1-3 · 复习会话复用", () => {
 });
 
 describe("计划引用保护与手动合并", () => {
-  it("空壳清理与单条删除都不会动计划步骤引用的知识点", () => {
+  it("空壳清理与单条删除都不会动课程归属的知识点", () => {
     const conceptId = newConcept("计划保护概念");
     const plan = createPlan({
       title: "计划保护测试",
-      items: [{ title: "步骤一", conceptId }],
+      status: "active",
+      courses: [{ title: "步骤一", concepts: [{ name: "计划保护概念" }] }],
     });
 
     expect(countPlanItemsForConcept(conceptId)).toBe(1);
     deleteEmptyConcepts();
     expect(getConcept(conceptId)).not.toBeNull();
-    expect(getPlan(plan.id)?.items[0].conceptId).toBe(conceptId);
+    expect(getPlan(plan.id)?.items[0].concepts[0].id).toBe(conceptId);
     expect(deleteConcept(conceptId)).toBe(false);
     expect(getConcept(conceptId)).not.toBeNull();
   });
 
-  it("手动合并会转移证据与计划引用，并按合并后证据重算", () => {
+  it("手动合并会转移证据与课程归属，并按合并后证据重算", () => {
     const topic = ensureTopic("手动合并主题");
     const survivor = ensureConcept({ topicId: topic.id, name: "中心化记账" }).id;
     const duplicate = ensureConcept({ topicId: topic.id, name: "中心化账本" }).id;
     const plan = createPlan({
       title: "手动合并计划",
-      items: [{ title: "第一步", conceptId: duplicate }],
+      status: "active",
+      courses: [{ title: "第一步", concepts: [{ name: "中心化账本" }] }],
     });
     const session = createSession({
       title: "合并会话",
+      mode: "goal",
       planId: plan.id,
       planItemId: plan.items[0].id,
       focusConceptId: duplicate,
@@ -721,13 +791,14 @@ describe("计划引用保护与手动合并", () => {
 
     expect(mergeConceptsInto(survivor, [duplicate])).toEqual({ merged: 1 });
     expect(getConcept(duplicate)).toBeNull();
-    expect(getPlan(plan.id)?.items[0].conceptId).toBe(survivor);
+    expect(getPlan(plan.id)?.items[0].concepts[0].id).toBe(survivor);
     expect(getSession(session.id)?.focusConceptId).toBe(survivor);
     expect(listConceptEvidence(survivor).length).toBeGreaterThanOrEqual(1);
 
-    expect(setPlanItemConcept(plan.items[0].id, null)).toBe(true);
-    expect(getPlan(plan.id)?.items[0].conceptId).toBeNull();
-    expect(setPlanItemConcept(plan.items[0].id, survivor)).toBe(true);
-    expect(getPlan(plan.id)?.items[0].conceptId).toBe(survivor);
+    expect(removeConceptFromCourse(plan.id, survivor)?.items[0].concepts).toHaveLength(0);
+    expect(getConcept(survivor)?.courseId).toBeNull();
+    const readded = addConceptToCourse(plan.id, plan.items[0].id, { name: "中心化记账" });
+    expect(readded.conflict).toBe(false);
+    expect(readded.plan?.items[0].concepts[0].id).toBe(survivor);
   });
 });

@@ -3,6 +3,7 @@
 import { ArrowDown, ArrowUp, Check, X } from "lucide-react";
 import { cx } from "@/components/ui/kit";
 import Markdown from "@/components/Markdown";
+import type { AnswerReveal } from "@/lib/learning/exercise";
 import type { ExercisePublic } from "@/lib/types";
 
 export type Draft = {
@@ -17,6 +18,17 @@ export type Draft = {
 };
 
 const LETTERS = "ABCDEFGHIJ";
+
+/** 选项在「未判题 / 判对 / 判错 / 漏选的正确项」下的视觉状态 */
+type OptionState = "idle" | "selected" | "correct" | "missed" | "wrong";
+
+const OPTION_CLASS: Record<OptionState, string> = {
+  idle: "border-line hover:border-linestrong hover:bg-panel2/50",
+  selected: "border-accent bg-accentsoft/60",
+  correct: "border-ok bg-oksoft/70",
+  missed: "border-ok/45 bg-oksoft/30",
+  wrong: "border-bad bg-badsoft/60",
+};
 
 export function answerValueFor(exercise: ExercisePublic | null, draft: Draft): unknown | null {
   if (!exercise) return null;
@@ -47,37 +59,63 @@ export function AnswerInput({
   set,
   disabled,
   submitted,
+  reveal,
 }: {
   exercise: ExercisePublic;
   draft: Draft;
   set: <K extends keyof Draft>(k: K, v: Draft[K]) => void;
   disabled: boolean;
   submitted: boolean;
+  /** 服务端在判定后下发的答案下标；未判定时为 null/undefined */
+  reveal?: AnswerReveal | null;
 }) {
   const type = exercise.type;
+  // 只有已提交且拿到答案时才标对错；用户改选后重新提交会拿到新的结果
+  const shown = submitted ? reveal ?? null : null;
+
+  const singleState = (i: number, selected: boolean): OptionState => {
+    if (!shown || shown.kind !== "single") return selected ? "selected" : "idle";
+    if (shown.index === i) return "correct";
+    return selected ? "wrong" : "idle";
+  };
+
+  const multiState = (i: number, selected: boolean): OptionState => {
+    if (!shown || shown.kind !== "multi") return selected ? "selected" : "idle";
+    const isCorrect = shown.indices.includes(i);
+    if (isCorrect) return selected ? "correct" : "missed";
+    return selected ? "wrong" : "idle";
+  };
 
   if (type === "single") {
     return (
       <div className="flex flex-col gap-2">
         {exercise.options.map((opt, i) => {
           const selected = draft.single === i;
+          const state = singleState(i, selected);
           return (
             <button
               key={i}
               disabled={disabled}
               onClick={() => set("single", i)}
+              aria-pressed={selected}
+              aria-invalid={state === "wrong" ? true : undefined}
               className={cx(
                 "flex items-start gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-all",
-                selected
-                  ? "border-accent bg-accentsoft/60"
-                  : "border-line hover:border-linestrong hover:bg-panel2/50",
-                submitted && "opacity-90",
+                OPTION_CLASS[state],
               )}
             >
               <span
                 className={cx(
-                  "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border text-[11px] font-medium",
-                  selected ? "border-accent bg-accent text-white" : "border-line text-ink3",
+                  "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border text-[12px] font-medium",
+                  state === "correct"
+                    ? "border-ok bg-ok text-white"
+                    : state === "missed"
+                      ? "border-ok text-ok"
+                      : state === "wrong"
+                        ? "border-bad bg-bad text-white"
+                        : selected
+                          ? "border-accent bg-accent text-white"
+                          : "border-line text-ink3",
                 )}
               >
                 {LETTERS[i]}
@@ -85,6 +123,11 @@ export function AnswerInput({
               <span className="min-w-0 flex-1 text-[14px] leading-6 text-ink">
                 <Markdown className="[&_.md]:text-[14px]">{opt}</Markdown>
               </span>
+              {state === "correct" ? <Check className="mt-1 size-4 shrink-0 text-ok" aria-label="正确" /> : null}
+              {state === "missed" ? (
+                <Check className="mt-1 size-4 shrink-0 text-ok/60" aria-label="未选中的正确项" />
+              ) : null}
+              {state === "wrong" ? <X className="mt-1 size-4 shrink-0 text-bad" aria-label="错误" /> : null}
             </button>
           );
         })}
@@ -98,6 +141,7 @@ export function AnswerInput({
       <div className="flex flex-col gap-2">
         {exercise.options.map((opt, i) => {
           const selected = chosen.includes(i);
+          const state = multiState(i, selected);
           return (
             <button
               key={i}
@@ -105,26 +149,38 @@ export function AnswerInput({
               onClick={() =>
                 set("multi", selected ? chosen.filter((x) => x !== i) : [...chosen, i].sort((a, b) => a - b))
               }
+              aria-pressed={selected}
               className={cx(
                 "flex items-start gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-all",
-                selected ? "border-accent bg-accentsoft/60" : "border-line hover:border-linestrong hover:bg-panel2/50",
+                OPTION_CLASS[state],
               )}
             >
               <span
                 className={cx(
-                  "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-[6px] border text-[11px]",
-                  selected ? "border-accent bg-accent text-white" : "border-line text-ink3",
+                  "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-[6px] border text-[12px]",
+                  state === "correct"
+                    ? "border-ok bg-ok text-white"
+                    : state === "missed"
+                      ? "border-ok text-ok"
+                      : state === "wrong"
+                        ? "border-bad bg-bad text-white"
+                        : selected
+                          ? "border-accent bg-accent text-white"
+                          : "border-line text-ink3",
                 )}
               >
-                {selected ? <Check className="size-3" /> : LETTERS[i]}
+                {selected || state === "missed" ? <Check className="size-3" /> : LETTERS[i]}
               </span>
               <span className="min-w-0 flex-1 text-[14px] leading-6 text-ink">
                 <Markdown className="[&_.md]:text-[14px]">{opt}</Markdown>
               </span>
+              {state === "wrong" ? <X className="mt-1 size-4 shrink-0 text-bad" aria-label="多选错误" /> : null}
             </button>
           );
         })}
-        <p className="text-[11.5px] text-ink3">可多选，全部选对才算对。</p>
+        <p className="text-[12px] text-ink3">
+          可多选，全部选对才算对。{shown?.kind === "multi" ? "绿色为正确选项。" : ""}
+        </p>
       </div>
     );
   }
@@ -137,17 +193,36 @@ export function AnswerInput({
           { v: false, label: "错误" },
         ].map((o) => {
           const selected = draft.judge === o.v;
+          const state: OptionState =
+            shown?.kind === "judge"
+              ? shown.value === o.v
+                ? "correct"
+                : selected
+                  ? "wrong"
+                  : "idle"
+              : selected
+                ? "selected"
+                : "idle";
           return (
             <button
               key={String(o.v)}
               disabled={disabled}
               onClick={() => set("judge", o.v)}
+              aria-pressed={selected}
               className={cx(
-                "flex-1 rounded-xl border px-4 py-3 text-[14px] transition-all",
-                selected ? "border-accent bg-accentsoft/60 text-accentink" : "border-line text-ink hover:bg-panel2/60",
+                "flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-4 py-3 text-[14px] transition-all",
+                state === "correct"
+                  ? "border-ok bg-oksoft/70 text-ok"
+                  : state === "wrong"
+                    ? "border-bad bg-badsoft/60 text-bad"
+                    : state === "selected"
+                      ? "border-accent bg-accentsoft/60 text-accentink"
+                      : "border-line text-ink hover:bg-panel2/60",
               )}
             >
               {o.label}
+              {state === "correct" ? <Check className="size-3.5" /> : null}
+              {state === "wrong" ? <X className="size-3.5" /> : null}
             </button>
           );
         })}
@@ -185,7 +260,7 @@ export function AnswerInput({
     return (
       <div className="flex flex-col gap-3">
         <div className="rounded-xl border border-dashed border-line bg-panel2/40 p-2.5">
-          <p className="mb-1.5 px-1 text-[11px] uppercase tracking-wide text-ink3">待排序 · 点击加入</p>
+          <p className="mb-1.5 px-1 text-[12px] uppercase tracking-wide text-ink3">待排序 · 点击加入</p>
           <div className="flex flex-wrap gap-1.5">
             {remaining.length === 0 ? (
               <span className="px-1 py-1 text-[12px] text-ink3">已全部加入</span>
@@ -209,7 +284,7 @@ export function AnswerInput({
           ) : (
             order.map((idx, pos) => (
               <div key={idx} className="flex items-center gap-2 rounded-lg border border-line bg-panel px-2.5 py-2">
-                <span className="w-5 text-center text-[11.5px] tabular-nums text-ink3">{pos + 1}</span>
+                <span className="w-5 text-center text-[12px] tabular-nums text-ink3">{pos + 1}</span>
                 <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{exercise.options[idx]}</span>
                 <button
                   disabled={disabled || pos === 0}

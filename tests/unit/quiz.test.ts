@@ -4,7 +4,7 @@ import path from "node:path";
 
 process.env.DATA_DIR = path.join(os.tmpdir(), `lumina-quiz-${process.pid}-${Date.now()}`);
 
-import { createSession, getBlock, listExercisesByBlockId } from "@/lib/db/repo";
+import { createPlan, createSession, getBlock, listConcepts, listExercisesByBlockId } from "@/lib/db/repo";
 import { executeTool } from "@/lib/ai/tools";
 import { serializeBlock } from "@/lib/api/serialize";
 
@@ -35,9 +35,25 @@ const quiz = {
   ],
 };
 
-describe("多题小测", () => {
+function goalSession(concepts: string[]) {
+  const plan = createPlan({
+    title: `小测课程 ${Math.random()}`,
+    status: "active",
+    courses: [{ title: "机会成本", concepts: concepts.map((name) => ({ name })) }],
+  });
+  const course = plan.items[0];
+  const session = createSession({
+    title: "小测测试",
+    mode: "goal",
+    planId: plan.id,
+    planItemId: course.id,
+  });
+  return { plan, course, session };
+}
+
+describe("多题小测 · 目标学习", () => {
   it("一次创建 quiz 块和 3 道题，公开数据不含答案", async () => {
-    const session = createSession({ title: "小测测试" });
+    const { course, session } = goalSession(["机会成本"]);
     const outcome = await executeTool("present_quiz", JSON.stringify(quiz), {
       sessionId: session.id,
       messageId: "m_quiz",
@@ -49,6 +65,7 @@ describe("多题小测", () => {
     const exercises = listExercisesByBlockId(outcome.blocks[0].id);
     expect(exercises).toHaveLength(3);
     expect(exercises.map((e) => e.type)).toEqual(["single", "judge", "blank"]);
+    expect(exercises.every((e) => e.conceptId === course.concepts[0].id)).toBe(true);
 
     const serialized = serializeBlock(getBlock(outcome.blocks[0].id)!);
     expect(serialized.quizExercises).toHaveLength(3);
@@ -57,7 +74,7 @@ describe("多题小测", () => {
   });
 
   it("小测第一版拒绝 open 题", async () => {
-    const session = createSession({ title: "小测 open 测试" });
+    const { session } = goalSession(["机会成本"]);
     const outcome = await executeTool(
       "present_quiz",
       JSON.stringify({
@@ -77,8 +94,8 @@ describe("多题小测", () => {
 });
 
 describe("多知识点混合小测", () => {
-  it("每道题可以使用不同知识点，并落到各自概念", async () => {
-    const session = createSession({ title: "混合小测" });
+  it("每道题可以落到课程里的不同知识点", async () => {
+    const { session } = goalSession(["混合小测概念 A", "混合小测概念 B", "混合小测概念 C"]);
     const outcome = await executeTool(
       "present_quiz",
       JSON.stringify({
@@ -114,5 +131,66 @@ describe("多知识点混合小测", () => {
     expect(new Set(exercises.map((e) => e.conceptName))).toEqual(
       new Set(["混合小测概念 A", "混合小测概念 B", "混合小测概念 C"]),
     );
+  });
+
+  it("无限学习中的小测不创建知识点、也不关联档案", async () => {
+    const session = createSession({ title: "无限小测", mode: "infinite" });
+    const before = listConcepts().length;
+    const outcome = await executeTool(
+      "present_quiz",
+      JSON.stringify({
+        title: "对话小测",
+        questions: [
+          {
+            concept: "临时概念 A",
+            type: "judge",
+            prompt: "说法一。",
+            answer: "true",
+          },
+          {
+            concept: "临时概念 B",
+            type: "judge",
+            prompt: "说法二。",
+            answer: "false",
+          },
+        ],
+      }),
+      { sessionId: session.id, messageId: "m_quiz_infinite" },
+    );
+    expect(outcome.ok).toBe(true);
+    const exercises = listExercisesByBlockId(outcome.blocks[0].id);
+    expect(exercises.every((e) => e.conceptId === null)).toBe(true);
+    expect(listConcepts().length).toBe(before);
+    expect(outcome.notice).toContain("无限学习");
+  });
+
+  it("目标学习中点了课程外知识点时，题目不计入课程进度", async () => {
+    const { session } = goalSession(["课程内知识点"]);
+    const outcome = await executeTool(
+      "present_quiz",
+      JSON.stringify({
+        title: "课程外知识点小测",
+        questions: [
+          {
+            concept: "课程外知识点",
+            type: "judge",
+            prompt: "课程外的说法。",
+            answer: "true",
+          },
+          {
+            type: "judge",
+            prompt: "不指定知识点的说法。",
+            answer: "false",
+          },
+        ],
+      }),
+      { sessionId: session.id, messageId: "m_quiz_outside" },
+    );
+    expect(outcome.ok).toBe(true);
+    const exercises = listExercisesByBlockId(outcome.blocks[0].id);
+    expect(exercises[0].conceptId).toBeNull();
+    // 没有点名时回退到课程的下一个知识点
+    expect(exercises[1].conceptId).toBeTruthy();
+    expect(outcome.notice).toContain("未关联课程知识点");
   });
 });

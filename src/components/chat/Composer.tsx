@@ -94,7 +94,7 @@ export default function Composer({
   return (
     <div className="flex flex-col gap-2">
       {!compact ? (
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar [mask-image:linear-gradient(to_right,#000_calc(100%-28px),transparent)] sm:[mask-image:none]">
           {QUICK.map((q) => (
             <button
               key={q.label}
@@ -132,7 +132,7 @@ export default function Composer({
               ? "模型服务未配置：先到「设置」页填入 API 地址与 Key"
               : placeholder ?? "问点什么。可以直接说「从零开始教我梯度下降」。"
           }
-          className="w-full resize-none bg-transparent px-4 pt-3.5 pb-12 text-[15px] leading-relaxed text-ink outline-none placeholder:text-ink3 disabled:cursor-not-allowed"
+          className="min-h-[80px] w-full resize-none bg-transparent px-4 pt-3.5 pb-12 text-[15px] leading-relaxed text-ink outline-none placeholder:text-ink3 disabled:cursor-not-allowed"
         />
         <div className="absolute inset-x-2.5 bottom-2.5 flex items-center justify-between">
           <div className="flex items-center gap-1">
@@ -152,7 +152,7 @@ export default function Composer({
                 onClick={() => onWebModeChange(webMode === "manual" ? "off" : "manual")}
                 disabled={!webConfigured || Boolean(pending)}
                 className={cx(
-                  "flex items-center gap-1 rounded-full px-2 py-1 text-[11px] transition-colors disabled:opacity-40",
+                  "flex items-center gap-1 rounded-full px-2 py-1 text-[12px] transition-colors disabled:opacity-40",
                   webMode === "manual" && webConfigured
                     ? "bg-accentsoft text-accentink"
                     : "text-ink3 hover:bg-panel2 hover:text-ink",
@@ -179,7 +179,7 @@ export default function Composer({
                   onClick={() => setPickerOpen((v) => !v)}
                   disabled={Boolean(pending)}
                   className={cx(
-                    "flex max-w-[10.5rem] items-center gap-1 rounded-full border border-line px-2 py-1 text-[11px] text-ink2 transition-colors",
+                    "flex max-w-[10.5rem] items-center gap-1 rounded-full border border-line px-2 py-1 text-[12px] text-ink2 transition-colors",
                     "hover:border-linestrong hover:text-ink disabled:opacity-50",
                   )}
                   title={`当前模型：${currentLabel}${currentModelName ? `（${currentModelName}）` : ""}`}
@@ -196,7 +196,7 @@ export default function Composer({
                     role="listbox"
                     className="absolute bottom-full left-0 z-30 mb-2 w-64 overflow-hidden rounded-xl border border-line bg-panel shadow-[0_12px_32px_rgba(0,0,0,0.16)]"
                   >
-                    <p className="border-b border-line px-3 py-2 text-[11px] text-ink3">
+                    <p className="border-b border-line px-3 py-2 text-[12px] text-ink3">
                       本会话使用的模型 · 切换后立即生效
                     </p>
                     <div className="max-h-64 overflow-y-auto py-1">
@@ -224,15 +224,17 @@ export default function Composer({
                               <span className="flex items-center gap-1.5">
                                 <span className="truncate text-[12.5px] text-ink">{m.label}</span>
                                 {m.isDefault ? (
-                                  <span className="shrink-0 rounded-full bg-panel2 px-1.5 text-[10px] text-ink3">默认</span>
+                                  <span className="shrink-0 rounded-full bg-panel2 px-1.5 text-[12px] text-ink3">默认</span>
                                 ) : null}
                                 {!m.configured ? (
-                                  <span className="shrink-0 rounded-full bg-warnsoft px-1.5 text-[10px] text-warn">缺 Key</span>
+                                  <span className="shrink-0 rounded-full bg-warnsoft px-1.5 text-[12px] text-warn">缺 Key</span>
                                 ) : null}
                               </span>
-                              <span className="mt-0.5 block truncate font-mono text-[10.5px] text-ink3">
-                                {m.model}
-                              </span>
+                              {m.model !== m.label ? (
+                                <span className="mt-0.5 block truncate font-mono text-[12px] text-ink3">
+                                  {m.model}
+                                </span>
+                              ) : null}
                             </span>
                           </button>
                         );
@@ -240,7 +242,7 @@ export default function Composer({
                     </div>
                     <a
                       href="/settings"
-                      className="block border-t border-line px-3 py-2 text-[11.5px] text-ink3 hover:bg-panel2 hover:text-ink"
+                      className="block border-t border-line px-3 py-2 text-[12px] text-ink3 hover:bg-panel2 hover:text-ink"
                     >
                       管理模型（添加 / 修改）→
                     </a>
@@ -248,14 +250,14 @@ export default function Composer({
                 ) : null}
               </div>
             ) : (
-              <span className="ml-1 flex items-center gap-1 text-[11px] text-ink3">
+              <span className="ml-1 flex items-center gap-1 text-[12px] text-ink3">
                 <Sparkles className="size-3 shrink-0" />
                 <span className="truncate">{ai?.configured ? currentLabel : "未配置模型"}</span>
               </span>
             )}
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="hidden text-[11px] text-ink3 sm:inline">Enter 发送 · Shift+Enter 换行</span>
+            <span className="hidden text-[12px] text-ink3 sm:inline">Enter 发送 · Shift+Enter 换行</span>
             {pending && onStop ? (
               <button
                 onClick={onStop}

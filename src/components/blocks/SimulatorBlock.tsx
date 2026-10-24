@@ -158,7 +158,7 @@ export default function SimulatorBlock({
         </div>
         <button
           onClick={reset}
-          className="flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11.5px] text-ink3 hover:bg-panel2 hover:text-ink"
+          className="flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[12px] text-ink3 hover:bg-panel2 hover:text-ink"
           title="恢复默认参数"
         >
           <RotateCcw className="size-3.5" />
@@ -197,11 +197,11 @@ export default function SimulatorBlock({
                   <span className="text-[12.5px] text-ink2">{o.label}</span>
                   <span className="font-mono text-[14px] tabular-nums text-accentink">
                     {o.error ? (
-                      <span className="text-[11.5px] text-bad">计算失败</span>
+                      <span className="text-[12px] text-bad">计算失败</span>
                     ) : (
                       <>
                         {o.value.toFixed(o.digits ?? 3)}
-                        {o.unit ? <span className="ml-0.5 text-[11.5px] text-ink3">{o.unit}</span> : null}
+                        {o.unit ? <span className="ml-0.5 text-[12px] text-ink3">{o.unit}</span> : null}
                       </>
                     )}
                   </span>
@@ -247,7 +247,7 @@ export default function SimulatorBlock({
                 {plot.yLabel ?? "输出"}
               </text>
             </svg>
-            <p className="mt-1 text-center text-[11px] text-ink3">
+            <p className="mt-1 text-center text-[12px] text-ink3">
               拖动左侧参数，曲线与数值会实时变化
             </p>
           </div>

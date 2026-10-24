@@ -1,0 +1,1293 @@
+{
+  "home": {
+    "contrastIssues": [
+      {
+        "txt": "／学习工作台",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "text-[11px] tracking-wide text-ink3 transition-colors group-"
+      },
+      {
+        "txt": "最近",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "px-3 pb-2 text-[11px] uppercase tracking-wide text-ink3"
+      },
+      {
+        "txt": "SQL 数据库基础：从零到独立写查询",
+        "fs": 10,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mt-0.5 block truncate text-[10px] text-ink3"
+      },
+      {
+        "txt": "AI 学习工作台",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "text-[11.5px] uppercase tracking-[0.14em] text-ink3"
+      },
+      {
+        "txt": "按知识点状态计算学习进度",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "min-w-0 text-xs text-ink3"
+      },
+      {
+        "txt": "来自真实作答证据",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "min-w-0 text-xs text-ink3"
+      },
+      {
+        "txt": "还没有需要复习的内容。目标学习里产生作答证据后，这里会按真实掌握情况给出建议。",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "rounded-xl border border-dashed border-line px-3 py-4 text-["
+      },
+      {
+        "txt": "10/23",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "shrink-0 text-[11px] text-ink3"
+      },
+      {
+        "txt": "可随时暂停，历史里能接着聊",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "text-[11px] text-ink3"
+      },
+      {
+        "txt": "先生成草稿，不会直接开始",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "text-[11px] text-ink3"
+      },
+      {
+        "txt": "从零掌握关系型数据库与 SQL 基础，能独立完成建表、增删改查、多表连接与聚合统计",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 line-clamp-2 text-[12px] leading-relaxed text-ink3"
+      },
+      {
+        "txt": "学习进度",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": ""
+      },
+      {
+        "txt": "1% · 已掌握0/30",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "tabular-nums"
+      },
+      {
+        "txt": "已完成课程0/8",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "flex items-center gap-1"
+      },
+      {
+        "txt": "当前：第一课：数据库与表的基本概念 · 数据库与表的结构",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "truncate"
+      },
+      {
+        "txt": "2个会话 ·0份材料",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "text-[11px] text-ink3"
+      },
+      {
+        "txt": "按课程看知识点",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "text-[11px] text-ink3"
+      },
+      {
+        "txt": "按证据排期",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "text-[11px] text-ink3"
+      }
+    ],
+    "contrastCount": 20,
+    "census": {
+      "10": 36,
+      "11": 85,
+      "12": 201,
+      "13": 179,
+      "14": 62,
+      "16": 7309,
+      "17": 22,
+      "18": 8,
+      "21": 6,
+      "38": 7
+    }
+  },
+  "session": {
+    "contrastIssues": [
+      {
+        "txt": "／学习工作台",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "text-[11px] tracking-wide text-ink3 transition-colors group-"
+      },
+      {
+        "txt": "最近",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "px-3 pb-2 text-[11px] uppercase tracking-wide text-ink3"
+      },
+      {
+        "txt": "SQL 数据库基础：从零到独立写查询",
+        "fs": 10,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mt-0.5 block truncate text-[10px] text-ink3"
+      },
+      {
+        "txt": "聚焦：视图 VIEW",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "truncate text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "SQL 数据库基础：从零到独立写查询",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": ""
+      },
+      {
+        "txt": "·第七课：数据修改进阶与视图",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": ""
+      },
+      {
+        "txt": "· 只更新这个知识点的证据",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": ""
+      },
+      {
+        "txt": "#SQL 数据库基础：从零到独立写查询",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "text-[11px] text-ink3"
+      },
+      {
+        "txt": "你",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "flex items-center gap-1.5 text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "Lumina",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "flex items-center gap-1.5 text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "难度●●○○○",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "工作区",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "flex items-center gap-1 rounded-full px-2 py-1 text-[11.5px]"
+      },
+      {
+        "txt": "A",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 flex size-5 shrink-0 items-center justify-center roun"
+      },
+      {
+        "txt": "B",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 flex size-5 shrink-0 items-center justify-center roun"
+      },
+      {
+        "txt": "C",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 flex size-5 shrink-0 items-center justify-center roun"
+      },
+      {
+        "txt": "D",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 flex size-5 shrink-0 items-center justify-center roun"
+      },
+      {
+        "txt": "跳过",
+        "fs": 13,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "inline-flex items-center justify-center gap-2 rounded-full f"
+      },
+      {
+        "txt": "这道题：",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": ""
+      }
+    ],
+    "contrastCount": 25,
+    "census": {
+      "10": 36,
+      "11": 180,
+      "12": 110,
+      "13": 89,
+      "14": 117,
+      "15": 6,
+      "16": 8900,
+      "17": 6,
+      "21": 6
+    }
+  },
+  "materials": {
+    "contrastIssues": [
+      {
+        "txt": "／学习工作台",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "text-[11px] tracking-wide text-ink3 transition-colors group-"
+      },
+      {
+        "txt": "最近",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "px-3 pb-2 text-[11px] uppercase tracking-wide text-ink3"
+      },
+      {
+        "txt": "SQL 数据库基础：从零到独立写查询",
+        "fs": 10,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mt-0.5 block truncate text-[10px] text-ink3"
+      },
+      {
+        "txt": "计划",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "flex items-center gap-1.5 text-[12px] text-ink3"
+      },
+      {
+        "txt": "全部材料按计划分组；选一个计划后，新上传会归入它",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "上传到：未归类（在「计划」下拉里选一个计划可上传到它）",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "支持 txt / md / csv / json / html / pdf / do",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "· PDF 只提取文本层；扫描件需要 OCR，当前不支持，会明确报错。",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": ""
+      },
+      {
+        "txt": "· 旧版 .doc 与 PPTX 暂未启用，请先另存为 .docx / PDF。",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": ""
+      },
+      {
+        "txt": "· 材料中的内容会被当作\"待分析的数据\"，其中的任何指令都不会被执行。",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": ""
+      },
+      {
+        "txt": "· 引用时不编造页码：解析器没有提供页码时，只标注来源文件与段落。",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": ""
+      }
+    ],
+    "contrastCount": 11,
+    "census": {
+      "10": 36,
+      "11": 20,
+      "12": 291,
+      "13": 134,
+      "14": 71,
+      "16": 7782,
+      "17": 6,
+      "18": 5,
+      "21": 6,
+      "26": 4
+    }
+  },
+  "plan": {
+    "contrastIssues": [
+      {
+        "txt": "／学习工作台",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "text-[11px] tracking-wide text-ink3 transition-colors group-"
+      },
+      {
+        "txt": "最近",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "px-3 pb-2 text-[11px] uppercase tracking-wide text-ink3"
+      },
+      {
+        "txt": "SQL 数据库基础：从零到独立写查询",
+        "fs": 10,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mt-0.5 block truncate text-[10px] text-ink3"
+      },
+      {
+        "txt": "目标学习",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mb-1.5 flex items-center gap-2 text-[11.5px] uppercase track"
+      },
+      {
+        "txt": "无限学习不会出现在这里。它的历史对话在中单独归类。",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mt-6 text-[11.5px] leading-relaxed text-ink3"
+      },
+      {
+        "txt": "历史",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mx-1 underline underline-offset-2"
+      },
+      {
+        "txt": "从零掌握关系型数据库与 SQL 基础，能独立完成建表、增删改查、多表连接与聚合统计",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 line-clamp-2 text-[12px] leading-relaxed text-ink3"
+      },
+      {
+        "txt": "学习进度",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": ""
+      },
+      {
+        "txt": "1% · 已掌握0/30",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "tabular-nums"
+      },
+      {
+        "txt": "已完成课程0/8",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "flex items-center gap-1"
+      },
+      {
+        "txt": "当前：第一课：数据库与表的基本概念 · 数据库与表的结构",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "truncate"
+      },
+      {
+        "txt": "2个会话 ·0份材料",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "text-[11px] text-ink3"
+      }
+    ],
+    "contrastCount": 12,
+    "census": {
+      "10": 36,
+      "11": 33,
+      "12": 133,
+      "13": 116,
+      "14": 16,
+      "16": 7791,
+      "17": 6,
+      "21": 6,
+      "26": 4
+    }
+  },
+  "plan-detail": {
+    "contrastIssues": [
+      {
+        "txt": "／学习工作台",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "text-[11px] tracking-wide text-ink3 transition-colors group-"
+      },
+      {
+        "txt": "最近",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "px-3 pb-2 text-[11px] uppercase tracking-wide text-ink3"
+      },
+      {
+        "txt": "SQL 数据库基础：从零到独立写查询",
+        "fs": 10,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mt-0.5 block truncate text-[10px] text-ink3"
+      },
+      {
+        "txt": "目标学习",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "flex items-center gap-1 hover:text-ink"
+      },
+      {
+        "txt": "/",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": ""
+      },
+      {
+        "txt": "8门课程 ·0/30个知识点已掌握",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mt-1 text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "学习进度（按知识点状态计算）",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": ""
+      },
+      {
+        "txt": "1%",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "tabular-nums"
+      },
+      {
+        "txt": "已完成课程0/8",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": ""
+      },
+      {
+        "txt": "已掌握知识点0/30",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": ""
+      },
+      {
+        "txt": "进行中",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "flex items-center gap-1"
+      },
+      {
+        "txt": "已掌握0/4",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "tabular-nums"
+      },
+      {
+        "txt": "待开始",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "flex items-center gap-1"
+      },
+      {
+        "txt": "已掌握0/5",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "tabular-nums"
+      },
+      {
+        "txt": "已掌握0/3",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "tabular-nums"
+      }
+    ],
+    "contrastCount": 15,
+    "census": {
+      "10": 36,
+      "11": 100,
+      "12": 228,
+      "13": 704,
+      "14": 16,
+      "16": 8247,
+      "17": 6,
+      "21": 6,
+      "25": 18
+    }
+  },
+  "history": {
+    "contrastIssues": [
+      {
+        "txt": "／学习工作台",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "text-[11px] tracking-wide text-ink3 transition-colors group-"
+      },
+      {
+        "txt": "最近",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "px-3 pb-2 text-[11px] uppercase tracking-wide text-ink3"
+      },
+      {
+        "txt": "SQL 数据库基础：从零到独立写查询",
+        "fs": 10,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mt-0.5 block truncate text-[10px] text-ink3"
+      },
+      {
+        "txt": "计划",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "flex items-center gap-1.5 text-[12px] text-ink3"
+      },
+      {
+        "txt": "1 个会话",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "min-w-0 text-xs text-ink3"
+      },
+      {
+        "txt": "这些是持续的对话式学习，不属于任何正式计划，也不展示课程进度。",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mb-2 text-[11.5px] leading-relaxed text-ink3"
+      },
+      {
+        "txt": "2 个会话",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "min-w-0 text-xs text-ink3"
+      },
+      {
+        "txt": "10/23 13:24·2条消息",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 truncate text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "10/23 13:34·2条消息· 第一课：数据库与表的基本概念",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 truncate text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "10/23 13:29·2条消息· 第七课：数据修改进阶与视图",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 truncate text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "10/23 13:25·2条消息",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 truncate text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "复习",
+        "fs": 11.5,
+        "color": "rgb(154, 100, 21)",
+        "bg": "rgb(248,240,222)",
+        "ratio": 4.4,
+        "need": 4.5,
+        "cls": "inline-flex items-center gap-1 rounded-full border px-2 py-0"
+      }
+    ],
+    "contrastCount": 12,
+    "census": {
+      "10": 36,
+      "11": 83,
+      "12": 196,
+      "13": 97,
+      "14": 73,
+      "16": 7779,
+      "17": 39,
+      "21": 6,
+      "26": 4
+    }
+  },
+  "library": {
+    "contrastIssues": [
+      {
+        "txt": "／学习工作台",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "text-[11px] tracking-wide text-ink3 transition-colors group-"
+      },
+      {
+        "txt": "最近",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "px-3 pb-2 text-[11px] uppercase tracking-wide text-ink3"
+      },
+      {
+        "txt": "SQL 数据库基础：从零到独立写查询",
+        "fs": 10,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mt-0.5 block truncate text-[10px] text-ink3"
+      },
+      {
+        "txt": "学习档案",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mb-1.5 flex items-center gap-2 text-[11.5px] uppercase track"
+      },
+      {
+        "txt": "计划",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "ml-auto flex items-center gap-1.5 text-[12px] text-ink3"
+      },
+      {
+        "txt": "4 个知识点",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "min-w-0 text-xs text-ink3"
+      },
+      {
+        "txt": "计划：SQL 数据库基础：从零到独立写查询",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mb-1.5 text-[11px] text-ink3"
+      },
+      {
+        "txt": "3 个知识点",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "min-w-0 text-xs text-ink3"
+      },
+      {
+        "txt": "5 个知识点",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "min-w-0 text-xs text-ink3"
+      },
+      {
+        "txt": "判定规则：p≥0.85 且独立答对 ≥3 次、覆盖 ≥3 道不同题目且无连错，才标记",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mt-8 flex items-center gap-1.5 text-[11px] text-ink3"
+      },
+      {
+        "txt": "数据库是表的集合，表由行（记录）和列（字段）组成，每列有固定数据类型",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 truncate text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "主键唯一标识一行；外键指向另一张表的主键，用于表达表间关系",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 truncate text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "整数、小数、字符串、日期时间、布尔等类型的用途与选择",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 truncate text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "DDL 建表改表、DML 增删改数据、DQL 查询数据、DCL 权限控制",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 truncate text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "用 SELECT 结果批量写入，或用关联子查询更新列值",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 truncate text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "在查询中实现条件分支与分组打标",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 truncate text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "把一条查询保存为虚拟表，简化常用取数",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 truncate text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "从业务问题识别需要的表、连接方式、过滤与聚合层级",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 truncate text-[11.5px] text-ink3"
+      }
+    ],
+    "contrastCount": 40,
+    "census": {
+      "10": 36,
+      "11": 249,
+      "12": 859,
+      "13": 114,
+      "14": 420,
+      "16": 7779,
+      "17": 101,
+      "21": 6,
+      "26": 8
+    }
+  },
+  "review": {
+    "contrastIssues": [
+      {
+        "txt": "／学习工作台",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "text-[11px] tracking-wide text-ink3 transition-colors group-"
+      },
+      {
+        "txt": "最近",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "px-3 pb-2 text-[11px] uppercase tracking-wide text-ink3"
+      },
+      {
+        "txt": "SQL 数据库基础：从零到独立写查询",
+        "fs": 10,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mt-0.5 block truncate text-[10px] text-ink3"
+      },
+      {
+        "txt": "复习",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mb-1.5 flex items-center gap-2 text-[11.5px] uppercase track"
+      },
+      {
+        "txt": "计划",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "flex items-center gap-1.5 text-[12px] text-ink3"
+      }
+    ],
+    "contrastCount": 5,
+    "census": {
+      "10": 36,
+      "11": 20,
+      "12": 29,
+      "13": 149,
+      "14": 52,
+      "16": 7777,
+      "17": 6,
+      "18": 9,
+      "21": 6,
+      "26": 7
+    }
+  },
+  "settings": {
+    "contrastIssues": [
+      {
+        "txt": "／学习工作台",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "text-[11px] tracking-wide text-ink3 transition-colors group-"
+      },
+      {
+        "txt": "最近",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "px-3 pb-2 text-[11px] uppercase tracking-wide text-ink3"
+      },
+      {
+        "txt": "SQL 数据库基础：从零到独立写查询",
+        "fs": 10,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mt-0.5 block truncate text-[10px] text-ink3"
+      },
+      {
+        "txt": "1 个配置 · 默认「deepseek-v4-1-flash-261017」",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "min-w-0 text-xs text-ink3"
+      },
+      {
+        "txt": "默认模型用于新会话；某个会话切换过模型后会一直沿用，可在对话框左下角改回。",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mt-1 text-[11.5px] leading-relaxed text-ink3"
+      },
+      {
+        "txt": "默认关闭",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "min-w-0 text-xs text-ink3"
+      },
+      {
+        "txt": "本地 SQLite，不上传云端",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "min-w-0 text-xs text-ink3"
+      },
+      {
+        "txt": "保留原始版权声明",
+        "fs": 12,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "min-w-0 text-xs text-ink3"
+      },
+      {
+        "txt": "本项目自身以 MIT 发布。第三方源码的完整许可证见仓库 THIRD_PARTY_N",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mt-2 text-[11px] leading-relaxed text-ink3"
+      },
+      {
+        "txt": "想删掉某个模型只是不想再用它？删配置不会删学习记录。",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "mt-2 text-[11px] text-ink3"
+      },
+      {
+        "txt": "去学习档案",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(250,248,244)",
+        "ratio": 3.46,
+        "need": 4.5,
+        "cls": "ml-1 underline"
+      },
+      {
+        "txt": "deepseek-v4-1-flash-261017·https://ark.cn-",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-1 truncate font-mono text-[11.5px] text-ink3"
+      },
+      {
+        "txt": "OpenAI 兼容· 温度0.6· ark-****d2b2",
+        "fs": 11,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 text-[11px] text-ink3"
+      },
+      {
+        "txt": "关闭时不会产生任何外部请求。手动模式下，只把本轮问题（脱敏后）发送给你配置的搜索服务",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "mt-0.5 block text-[11.5px] leading-relaxed text-ink3"
+      },
+      {
+        "txt": "自建 SearXNG / Tavily / Brave",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "text-[11.5px] font-normal text-ink3"
+      },
+      {
+        "txt": "必填，例如 http://127.0.0.1:8888",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "text-[11.5px] font-normal text-ink3"
+      },
+      {
+        "txt": "SearXNG 可留空",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "text-[11.5px] font-normal text-ink3"
+      },
+      {
+        "txt": "1–5",
+        "fs": 11.5,
+        "color": "rgb(139, 133, 121)",
+        "bg": "rgb(255,255,255)",
+        "ratio": 3.67,
+        "need": 4.5,
+        "cls": "text-[11.5px] font-normal text-ink3"
+      }
+    ],
+    "contrastCount": 45,
+    "census": {
+      "10": 36,
+      "11": 270,
+      "12": 622,
+      "13": 287,
+      "14": 106,
+      "16": 7781,
+      "17": 23,
+      "18": 8,
+      "21": 6,
+      "26": 2
+    }
+  }
+}

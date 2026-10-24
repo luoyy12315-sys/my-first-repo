@@ -42,11 +42,13 @@ export async function probeModel(config: AiConfig, extra?: Partial<AiConfig>): P
     };
   } catch (e) {
     const err = e instanceof AiError ? e : new AiError("AI_NETWORK", (e as Error).message);
+    const detail = sanitize(err.detail);
+    const accountIssue = /overdue|balance|quota|insufficient/i.test(detail ?? "");
     return {
       ok: false,
       code: err.code,
-      message: err.message,
-      detail: sanitize(err.detail),
+      message: accountIssue ? "账户余额不足或已欠费" : err.message,
+      detail,
       latencyMs: Date.now() - started,
       model: config.model,
     };

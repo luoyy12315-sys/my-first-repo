@@ -2,9 +2,9 @@
 
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { Loader2, X } from "lucide-react";
+import { Loader2, MoreHorizontal, X } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
-import { STATUS_LABEL, type ConceptStatus } from "@/lib/types";
+import { DISPLAY_STATUS_LABEL, type ConceptDisplayStatus, type ConceptStatus } from "@/lib/types";
 
 export const cx = (...parts: Parameters<typeof clsx>) => twMerge(clsx(...parts));
 
@@ -89,7 +89,7 @@ export function Badge({
   return (
     <span
       className={cx(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11.5px] font-medium leading-5",
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[12px] font-medium leading-5",
         tones[tone],
         className,
       )}
@@ -99,43 +99,53 @@ export function Badge({
   );
 }
 
-const STATUS_TONE: Record<ConceptStatus, "neutral" | "accent" | "ok" | "bad" | "warn"> = {
-  untouched: "neutral",
+const DISPLAY_TONE: Record<ConceptDisplayStatus, "neutral" | "accent" | "ok" | "warn"> = {
+  todo: "neutral",
   learning: "accent",
-  needs_work: "warn",
-  initial: "accent",
+  review: "warn",
   mastered: "ok",
 };
 
 export function StatusPill({
   status,
   introduced,
+  displayStatus,
   className,
 }: {
   status: ConceptStatus;
   /** 已讲解但还没有作答证据：不要显示成“尚未接触” */
   introduced?: boolean;
+  /** 服务端统一推导的四态；不传时按内部状态降级映射 */
+  displayStatus?: ConceptDisplayStatus;
   className?: string;
 }) {
-  const explained = status === "untouched" && introduced;
+  const display =
+    displayStatus ??
+    (status === "mastered"
+      ? "mastered"
+      : status === "needs_work"
+        ? "review"
+        : status === "untouched"
+          ? introduced
+            ? "learning"
+            : "todo"
+          : "learning");
   return (
-    <Badge tone={explained ? "accent" : STATUS_TONE[status] ?? "neutral"} className={className}>
+    <Badge tone={DISPLAY_TONE[display]} className={className}>
       <span
         className="size-1.5 rounded-full"
         style={{
           background:
-            status === "mastered"
+            display === "mastered"
               ? "var(--ok)"
-              : status === "needs_work"
+              : display === "review"
                 ? "var(--warn)"
-                : status === "untouched"
-                  ? explained
-                    ? "var(--accent)"
-                    : "var(--ink-3)"
+                : display === "todo"
+                  ? "var(--ink-3)"
                   : "var(--accent)",
         }}
       />
-      {explained ? "已讲解 · 待验证" : STATUS_LABEL[status]}
+      {DISPLAY_STATUS_LABEL[display]}
     </Badge>
   );
 }
@@ -187,8 +197,70 @@ export function SectionHeader({
   );
 }
 
-export function Progress({ value, max = 1, className }: { value: number; max?: number; className?: string }) {
-  const pct = Math.max(0, Math.min(100, (value / (max || 1)) * 100));
+/**
+ * 溢出菜单：把"次要但偶尔要用的动作"收起来。
+ * 用原生 <details> 实现，不引入弹层库，键盘与点击外部关闭都由浏览器兜底（点外部再点一次 summary 即可）。
+ */
+export function OverflowMenu({
+  label = "更多",
+  align = "right",
+  children,
+  className,
+}: {
+  label?: string;
+  align?: "left" | "right";
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <details className={cx("relative shrink-0", className)}>
+      <summary className="flex cursor-pointer list-none items-center gap-1 rounded-full px-2.5 py-1.5 text-[12px] text-ink3 transition-colors hover:bg-panel2 hover:text-ink [&::-webkit-details-marker]:hidden">
+        <MoreHorizontal className="size-4" />
+        {label}
+      </summary>
+      <div
+        className={cx(
+          "absolute bottom-full z-30 mb-1.5 w-48 overflow-hidden rounded-xl border border-line bg-panel p-1 shadow-[var(--shadow-lg)]",
+          align === "right" ? "right-0" : "left-0",
+        )}
+      >
+        {children}
+      </div>
+    </details>
+  );
+}
+
+export function MenuItem({
+  onClick,
+  children,
+  tone = "neutral",
+  disabled,
+}: {
+  onClick: () => void;
+  children: ReactNode;
+  tone?: "neutral" | "danger";
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={(e) => {
+        // 选完就收起菜单，省得用户再点一次
+        (e.currentTarget.closest("details") as HTMLDetailsElement | null)?.removeAttribute("open");
+        onClick();
+      }}
+      className={cx(
+        "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] transition-colors disabled:opacity-45",
+        tone === "danger" ? "text-bad hover:bg-badsoft" : "text-ink2 hover:bg-panel2 hover:text-ink",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function Progress({ value, max = 1, className }: { value: number; max?: number; className?: string }) {  const pct = Math.max(0, Math.min(100, (value / (max || 1)) * 100));
   return (
     <div className={cx("h-1.5 w-full overflow-hidden rounded-full bg-line", className)}>
       <div
@@ -270,7 +342,7 @@ export function Field({
     <label className="block">
       <span className="mb-1.5 flex items-baseline gap-2 text-[13px] font-medium text-ink">
         {label}
-        {hint ? <span className="text-[11.5px] font-normal text-ink3">{hint}</span> : null}
+        {hint ? <span className="text-[12px] font-normal text-ink3">{hint}</span> : null}
       </span>
       {children}
     </label>
@@ -291,7 +363,7 @@ export function Stat({ value, label, tone }: { value: ReactNode; label: string; 
       >
         {value}
       </span>
-      <span className="text-[11.5px] uppercase tracking-wide text-ink3">{label}</span>
+      <span className="text-[12px] uppercase tracking-wide text-ink3">{label}</span>
     </div>
   );
 }

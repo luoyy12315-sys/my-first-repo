@@ -105,21 +105,56 @@ async function main() {
   const tested = await json("/api/ai/test", { method: "POST" });
   check("模型连通性测试", tested.body.ok === true, JSON.stringify(tested.body).slice(0, 160));
 
-  // 2. 建会话 + 流式教学
-  const created = await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "free" }) });
+  // 2. 建一个正式目标计划（课程 + 知识点），验证目标学习链路
+  const stamp = Date.now();
+  const planCreated = await json("/api/plans", {
+    method: "POST",
+    body: JSON.stringify({ title: `冒烟计划 ${stamp}`, note: "验证目标学习与证据闭环" }),
+  });
+  const planId = planCreated.body.plan?.id;
+  check("创建计划草稿", Boolean(planId));
+  let planRes = await json(`/api/plans/${planId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ action: "addCourse", title: "经济学基础", description: "机会成本与成本概念" }),
+  });
+  const courseId = planRes.body.plan?.items?.[0]?.id;
+  check("添加课程", Boolean(courseId));
+  planRes = await json(`/api/plans/${planId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ action: "addConcept", itemId: courseId, name: "机会成本" }),
+  });
+  const seededConceptId = planRes.body.plan?.items?.[0]?.concepts?.[0]?.id;
+  check("添加知识点", Boolean(seededConceptId));
+  const confirmed = await json(`/api/plans/${planId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ action: "confirm" }),
+  });
+  check("确认计划", confirmed.body.plan?.status === "active");
+
+  // 3. 目标学习会话 + 流式教学
+  const created = await json("/api/sessions", {
+    method: "POST",
+    body: JSON.stringify({
+      mode: "goal",
+      planId,
+      planItemId: courseId,
+      focusConceptId: seededConceptId,
+    }),
+  });
   const sessionId = created.body.session?.id;
-  check("创建学习会话", Boolean(sessionId));
+  check("创建目标学习会话", Boolean(sessionId));
 
   const events = await chat(sessionId, "从零开始教我机会成本，我完全没基础。");
   check("收到文本增量", events.some((e) => e.type === "delta" && e.text));
   check("收到教学组件", events.some((e) => e.type === "block"));
   check("流正常结束", events.some((e) => e.type === "done"));
 
-  // 3. 会话持久化 + 答案不下发
+  // 4. 会话持久化 + 答案不下发
   const loaded = await json(`/api/sessions/${sessionId}`);
   check("消息已持久化（含助手消息）", loaded.body.messages?.filter((m) => m.role === "assistant").length >= 1);
   const exBlock = (loaded.body.blocks ?? []).find((b) => b.kind === "exercise");
   check("练习组件已落库", Boolean(exBlock?.exercise?.id));
+  check("练习关联当前课程知识点", exBlock?.exercise?.conceptId === seededConceptId);
   const leaked = JSON.stringify(loaded.body);
   check(
     "响应中不含答案字段",
@@ -128,8 +163,8 @@ async function main() {
   );
 
   const concepts = await json("/api/concepts");
-  const concept = (concepts.body.concepts ?? []).find((c) => c.name === "机会成本");
-  check("知识点已自动登记", Boolean(concept?.id));
+  const concept = (concepts.body.concepts ?? []).find((c) => c.id === seededConceptId);
+  check("知识点归属于课程", Boolean(concept?.id) && concept?.courseId === courseId);
   const evStart = (await json(`/api/concepts/${concept.id}`)).body.history?.evidence?.length ?? 0;
 
   // 4. 判题：错误答案
@@ -223,15 +258,38 @@ async function main() {
     `删除前 ${evBefore} / 删除后 ${afterDelete.body.history?.evidence?.length}`,
   );
 
-  // 10. 提示/解析标记只对"这一次作答"有效（重做必须能算独立完成）
+  // 10. 无限学习：练习可用，但不创建正式知识点/证据
   {
-    const s2 = await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "free" }) });
+    const before = (await json("/api/concepts")).body.concepts?.length ?? 0;
+    const si = await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "infinite" }) });
+    const sid = si.body.session?.id;
+    const ev = await chat(sid, "从零开始教我机会成本，我完全没基础。");
+    const ex = ev.find((e) => e.type === "block" && e.block?.kind === "exercise")?.block?.exercise;
+    check("无限学习仍可出练习", Boolean(ex?.id));
+    check("无限学习练习不关联正式知识点", ex?.conceptId === null);
+    const after = (await json("/api/concepts")).body.concepts?.length ?? 0;
+    check("无限学习不新增正式知识点", after === before, `${before} → ${after}`);
+    if (ex?.id) {
+      const graded = await json("/api/attempts", {
+        method: "POST",
+        body: JSON.stringify({ exerciseId: ex.id, answer: 2, idempotencyKey: "infinite-practice-1" }),
+      });
+      check("无限学习作答只留练习记录", graded.body.graded === true && graded.body.concept === null);
+    }
+  }
+
+  // 11. 提示/解析标记只对"这一次作答"有效（重做必须能算独立完成）
+  {
+    const s2 = await json("/api/sessions", {
+      method: "POST",
+      body: JSON.stringify({ mode: "goal", planId, planItemId: courseId, focusConceptId: seededConceptId }),
+    });
     const sid2 = s2.body.session.id;
     const ev = await chat(sid2, "从零开始教我机会成本，我完全没基础。");
     const ex = ev.find((e) => e.type === "block" && e.block?.kind === "exercise")?.block?.exercise?.id;
     check("提示用例拿到练习", Boolean(ex), String(ex));
 
-    const conceptBefore = (await json("/api/concepts")).body.concepts.find((c) => c.name === "机会成本");
+    const conceptBefore = (await json(`/api/concepts/${seededConceptId}`)).body.concept;
     const baseIndependent = conceptBefore.independentCorrect;
 
     const hint = await json(`/api/exercises/${ex}/hint`, { method: "POST" });
@@ -251,7 +309,7 @@ async function main() {
       body: JSON.stringify({ exerciseId: ex, answer: 2, idempotencyKey: "hint-once-2" }),
     });
     check("重做不再被判为用过提示", right.body.attempt?.usedHint === false);
-    const conceptAfter = (await json("/api/concepts")).body.concepts.find((c) => c.name === "机会成本");
+    const conceptAfter = (await json(`/api/concepts/${seededConceptId}`)).body.concept;
     check(
       "独立正确数确实 +1（旧行为会卡住不动）",
       conceptAfter.independentCorrect === baseIndependent + 1,
@@ -306,7 +364,7 @@ async function main() {
   const altId = alt.body.model;
   check("新增第二个模型", alt.status === 201 && Boolean(altId), JSON.stringify(alt.body).slice(0, 120));
 
-  const ms = await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "free" }) });
+  const ms = await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "infinite" }) });
   const modelSession = ms.body.session.id;
   const switched = await json(`/api/sessions/${modelSession}`, {
     method: "PATCH",
@@ -342,7 +400,7 @@ async function main() {
     const up = await fetch(`${BASE}/api/materials`, { method: "POST", body: form }).then((r) => r.json());
     check("材料上传并解析成功", up.status === "parsed", JSON.stringify(up).slice(0, 120));
 
-    const sMat = (await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "free" }) })).body.session.id;
+    const sMat = (await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "infinite" }) })).body.session.id;
     await chat(sMat, "根据我的材料，讲讲机会成本是什么");
     const matDetail = await json(`/api/sessions/${sMat}`);
     const matAnswer = matDetail.body.messages.filter((m) => m.role === "assistant").pop();
@@ -383,14 +441,14 @@ async function main() {
     // (1) off：整轮零外部请求
     await webMode("normal");
     await fetch(`${WEB}/reset`);
-    const sOff = (await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "free" }) })).body.session.id;
+    const sOff = (await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "infinite" }) })).body.session.id;
     await chat(sOff, "2026 年个税专项附加扣除有哪些？", { webMode: "off" });
     const offCount = (await webCount()).count;
     check("off 模式零外部请求", offCount === 0, `count=${offCount}`);
 
     // (2) manual：有来源卡片 + 引用可校验 + 伪造引用被剥离
     await fetch(`${WEB}/reset`);
-    const sWeb = (await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "free" }) })).body.session.id;
+    const sWeb = (await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "infinite" }) })).body.session.id;
     const ev = await chat(sWeb, "2026 年个税专项附加扣除有哪些？", { webMode: "manual" });
     const searchDone = ev.find((e) => e.type === "search_status" && e.state === "done");
     const sourcesEvt = ev.find((e) => e.type === "sources");
@@ -421,7 +479,7 @@ async function main() {
     );
 
     // (3) 相同 query 第二次命中缓存，provider 调用不增加
-    const sWeb2 = (await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "free" }) })).body.session.id;
+    const sWeb2 = (await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "infinite" }) })).body.session.id;
     await chat(sWeb2, "2026 年个税专项附加扣除有哪些？", { webMode: "manual" });
     const afterSecond = (await webCount()).count;
     check("相同 query 命中缓存（不再打 provider）", afterSecond === afterFirst, `${afterFirst} → ${afterSecond}`);
@@ -431,7 +489,7 @@ async function main() {
 
     // (4) 超时：诚实降级，不给假来源
     await webMode("timeout");
-    const sFail = (await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "free" }) })).body.session.id;
+    const sFail = (await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "infinite" }) })).body.session.id;
     const failEv = await chat(sFail, "换个话题查一下今天的天气", { webMode: "manual" });
     const failNotice = failEv.find((e) => e.type === "notice" && String(e.text).includes("未能联网核实"));
     check("搜索超时时说明未联网核实", Boolean(failNotice), JSON.stringify(failNotice ?? {}).slice(0, 120));
@@ -443,7 +501,7 @@ async function main() {
 
     // (5) 判题路径绝不检索
     await fetch(`${WEB}/reset`);
-    const sJudge = (await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "free" }) })).body.session.id;
+    const sJudge = (await json("/api/sessions", { method: "POST", body: JSON.stringify({ mode: "infinite" }) })).body.session.id;
     const judgeEv = await chat(sJudge, "从零开始教我机会成本，我完全没基础。", { webMode: "manual" });
     const exBlock = judgeEv.find((e) => e.type === "block" && e.block?.kind === "exercise");
     // 对话本身开了手动联网，会正常检索；这里要隔离的是"判题链路"，先归零计数

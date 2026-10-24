@@ -1,7 +1,7 @@
 import { aiStatusForSession, resolveAiConfigForSession } from "@/lib/ai/config";
 import { completeJson } from "@/lib/ai/provider";
 import { OPEN_GRADING_PROMPT } from "@/lib/ai/prompt";
-import { describeAnswer, gradeAnswer, type AnswerSpec } from "@/lib/learning/exercise";
+import { describeAnswer, describeReveal, gradeAnswer, type AnswerSpec } from "@/lib/learning/exercise";
 import {
   addAttempt,
   completeReviewForSession,
@@ -139,6 +139,8 @@ export async function POST(req: Request) {
         ...attempt,
         // 只有真正完成判定后才下发标准答案；未评阅的开放题不下发
         correctDisplay: graded ? describeAnswer(spec) : undefined,
+        // 选项题在判定后才下发下标，前端据此标出对错；未判定不下发
+        reveal: graded ? describeReveal(spec) : undefined,
         explanation: graded ? exercise.explanation : null,
         errorType: graded && !correct ? (result.errorType ?? null) : null,
       },

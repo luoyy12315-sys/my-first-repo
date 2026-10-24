@@ -26,6 +26,9 @@ export interface StreamResult {
   toolCalls: { id: string; name: string; arguments: string }[];
   finishReason: string | null;
   usage?: { promptTokens: number; completionTokens: number };
+  /** 推理过程：只用于界面状态与预算判断，绝不拼进正文、不入库 */
+  reasoning?: string;
+  reasoningTokens?: number;
 }
 
 export interface StreamOptions {
@@ -34,6 +37,8 @@ export interface StreamOptions {
   tools?: LlmToolSpec[];
   signal?: AbortSignal;
   onText?: (delta: string) => void;
+  /** 推理增量（不展示正文，用于"正在思考"状态与日志） */
+  onReasoning?: (delta: string) => void;
   /** 需要 JSON 输出时（如小结/评阅）启用 */
   jsonMode?: boolean;
 }
@@ -89,7 +94,7 @@ export async function streamChat(opts: StreamOptions): Promise<StreamResult> {
 }
 
 async function streamOpenAI(opts: StreamOptions): Promise<StreamResult> {
-  const { config, messages, tools, onText, jsonMode } = opts;
+  const { config, messages, tools, onText, onReasoning, jsonMode } = opts;
   const body: Record<string, unknown> = {
     model: config.model,
     messages: messages.map((m) => {
@@ -140,6 +145,8 @@ async function streamOpenAI(opts: StreamOptions): Promise<StreamResult> {
   const decoder = new TextDecoder();
   let buffer = "";
   let text = "";
+  let reasoning = "";
+  let reasoningTokens = 0;
   const calls: { id: string; name: string; arguments: string }[] = [];
   let finishReason: string | null = null;
   let usage: StreamResult["usage"];
@@ -164,13 +171,29 @@ async function streamOpenAI(opts: StreamOptions): Promise<StreamResult> {
       }
       const errObj = json.error as { message?: string } | undefined;
       if (errObj) throw new AiError("AI_BAD_RESPONSE", errObj.message || "模型返回错误");
-      const u = json.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
-      if (u) usage = { promptTokens: u.prompt_tokens ?? 0, completionTokens: u.completion_tokens ?? 0 };
+      const u = json.usage as
+        | {
+            prompt_tokens?: number;
+            completion_tokens?: number;
+            completion_tokens_details?: { reasoning_tokens?: number };
+          }
+        | undefined;
+      if (u) {
+        usage = { promptTokens: u.prompt_tokens ?? 0, completionTokens: u.completion_tokens ?? 0 };
+        reasoningTokens = u.completion_tokens_details?.reasoning_tokens ?? reasoningTokens;
+      }
       const choice = (json.choices as Record<string, unknown>[] | undefined)?.[0];
       if (!choice) continue;
       finishReason = (choice.finish_reason as string) ?? finishReason;
       const delta = choice.delta as Record<string, unknown> | undefined;
       if (!delta) continue;
+      // 推理型模型（DeepSeek/豆包等）把思考放在 reasoning_content，
+      // 它的 token 计入 completion_tokens；不单独接住就会表现为"空回复"。
+      const reasoningDelta = delta.reasoning_content ?? delta.reasoning;
+      if (typeof reasoningDelta === "string" && reasoningDelta.length) {
+        reasoning += reasoningDelta;
+        onReasoning?.(reasoningDelta);
+      }
       const content = delta.content;
       if (typeof content === "string" && content.length) {
         text += content;
@@ -196,11 +219,13 @@ async function streamOpenAI(opts: StreamOptions): Promise<StreamResult> {
     toolCalls: calls.filter((c) => c && c.name),
     finishReason,
     usage,
+    reasoning,
+    reasoningTokens,
   };
 }
 
 async function streamAnthropic(opts: StreamOptions): Promise<StreamResult> {
-  const { config, messages, tools, onText } = opts;
+  const { config, messages, tools, onText, onReasoning } = opts;
   const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
   const rest: Record<string, unknown>[] = [];
   for (const m of messages) {
@@ -263,6 +288,8 @@ async function streamAnthropic(opts: StreamOptions): Promise<StreamResult> {
   const decoder = new TextDecoder();
   let buffer = "";
   let text = "";
+  let reasoning = "";
+  let reasoningTokens = 0;
   const calls: { id: string; name: string; arguments: string }[] = [];
   let finishReason: string | null = null;
   let usage: StreamResult["usage"];
@@ -289,10 +316,13 @@ async function streamAnthropic(opts: StreamOptions): Promise<StreamResult> {
           calls.push({ id: block.id ?? `call_${calls.length}`, name: block.name ?? "", arguments: "" });
         }
       } else if (type === "content_block_delta") {
-        const delta = json.delta as { type?: string; text?: string; partial_json?: string };
+        const delta = json.delta as { type?: string; text?: string; partial_json?: string; thinking?: string };
         if (delta?.type === "text_delta" && delta.text) {
           text += delta.text;
           onText?.(delta.text);
+        } else if (delta?.type === "thinking_delta" && delta.thinking) {
+          reasoning += delta.thinking;
+          onReasoning?.(delta.thinking);
         } else if (delta?.type === "input_json_delta" && delta.partial_json) {
           if (calls.length) calls[calls.length - 1].arguments += delta.partial_json;
         }
@@ -305,7 +335,14 @@ async function streamAnthropic(opts: StreamOptions): Promise<StreamResult> {
     }
   }
 
-  return { text, toolCalls: calls.filter((c) => c.arguments !== "" || c.name), finishReason, usage };
+  return {
+    text,
+    toolCalls: calls.filter((c) => c.arguments !== "" || c.name),
+    finishReason,
+    usage,
+    reasoning,
+    reasoningTokens,
+  };
 }
 
 function safeParse(s: string): unknown {

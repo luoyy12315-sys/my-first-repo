@@ -1,0 +1,27 @@
+{
+  "ranAt": "2026-10-24T02:40:24.968Z",
+  "base": "http://127.0.0.1:3212",
+  "cases": [
+    {
+      "id": "table-continuation",
+      "acceptance": "出现 table 组件，且组件之后仍有正文（textAfterBlock=true）",
+      "chars": 139,
+      "blocks": [
+        {
+          "kind": "table",
+          "title": "权责发生制 vs 收付实现制"
+        }
+      ],
+      "textAfterBlock": true,
+      "reasoningChars": 790,
+      "reasoningEvents": 1,
+      "finishReason": "stop",
+      "usage": {
+        "promptTokens": 8924,
+        "completionTokens": 919
+      },
+      "errors": [],
+      "preview": "最关键的区别只有两点：**确认时点跟着「权利和义务」走，还是跟着「现金」走**——这决定了同一笔业务在两种基础下可能落在不同期间。第二点是收入与费用是否配比：权责发生制把收入、费用匹配到归属期间，所以利润不等于现金净流入；收付实现制的账面结余就等于现金变动，可比性差但一看就懂。"
+    }
+  ]
+}

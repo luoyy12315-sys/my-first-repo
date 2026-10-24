@@ -31,6 +31,35 @@ const check = (name, cond, extra = "") => {
 
 const errors = [];
 
+async function createGoalFixture(prefix, concepts) {
+  const plan = await fetch(`${BASE}/api/plans`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ title: `${prefix}-${Date.now()}`, note: "浏览器回归用目标学习夹具" }),
+  }).then((r) => r.json());
+  const planId = plan.plan.id;
+  let detail = await fetch(`${BASE}/api/plans/${planId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ action: "addCourse", title: "经济学基础" }),
+  }).then((r) => r.json());
+  const courseId = detail.plan.items[0].id;
+  for (const name of concepts) {
+    detail = await fetch(`${BASE}/api/plans/${planId}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "addConcept", itemId: courseId, name }),
+    }).then((r) => r.json());
+  }
+  await fetch(`${BASE}/api/plans/${planId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ action: "confirm" }),
+  });
+  const confirmed = await fetch(`${BASE}/api/plans/${planId}`).then((r) => r.json());
+  return { planId, courseId, plan: confirmed.plan };
+}
+
 async function main() {
   // 自建夹具：练习 + 模拟器各一条，避免依赖外部会话
   let sessionId = SESSION || "";
@@ -38,7 +67,7 @@ async function main() {
     const fx = await fetch(`${BASE}/api/sessions`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ mode: "free" }),
+      body: JSON.stringify({ mode: "infinite" }),
     }).then((r) => r.json());
     sessionId = fx.session.id;
     for (const text of [
@@ -102,7 +131,7 @@ async function main() {
   await p.waitForTimeout(600);
   const titleVisible = await p
     .locator("header")
-    .filter({ hasText: "自由学习" })
+    .filter({ hasText: "无限学习" })
     .first()
     .isVisible();
   check("会话标题栏可见", titleVisible);
@@ -168,7 +197,7 @@ async function main() {
   check("提交后出现判题反馈", await feedbackPanel.isVisible());
   check("错答被判为未答对", (await p.locator("text=没有答对").count()) > 0);
   check("提交后展示标准答案", await p.locator("text=正确答案").first().isVisible());
-  check("反馈包含知识点掌握度", await p.locator("text=掌握度").first().isVisible());
+  check("反馈包含对话练习标注", await p.locator("text=不写入档案").first().isVisible());
   check("答完后出现讲讲这道题", (await p.getByRole("button", { name: "讲讲这道题" }).count()) > 0);
   const exerciseCard = p
     .locator("div.overflow-hidden.rounded-2xl")
@@ -209,10 +238,16 @@ async function main() {
 
   // ── 多题小测：统一提交 + x/n 总评 + 逐题反馈 ──
   {
+    const fixture = await createGoalFixture("UI小测计划", ["测试机会成本", "测试账面成本", "测试沉没成本"]);
     const qs = await fetch(`${BASE}/api/sessions`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ mode: "free" }),
+      body: JSON.stringify({
+        mode: "goal",
+        planId: fixture.planId,
+        planItemId: fixture.courseId,
+        focusConceptId: fixture.plan.items[0].concepts[0].id,
+      }),
     }).then((r) => r.json());
     await fetch(`${BASE}/api/chat`, {
       method: "POST",
@@ -241,7 +276,7 @@ async function main() {
     const qAfter = await qp.locator("body").innerText();
     check("小测 3/3 总评", qAfter.includes("答对 3/3 题"));
     check("小测逐题反馈", (qAfter.match(/答对了/g) ?? []).length >= 3);
-    check("小测答完可继续下一步", (await qp.getByRole("button", { name: "继续下一步" }).count()) > 0);
+    check("小测答完可继续下一步", (await qp.getByRole("button", { name: /继续/ }).count()) > 0);
     await qp.screenshot({ path: "research/shots/quiz_block.png" });
     await qp.close();
   }
@@ -249,7 +284,7 @@ async function main() {
   // ── 学习档案 ──
   await p.goto(`${BASE}/library`, { waitUntil: "networkidle" });
   await p.waitForTimeout(500);
-  const conceptBtn = p.locator("button", { hasText: "机会成本" }).first();
+  const conceptBtn = p.locator("button", { hasText: "测试机会成本" }).first();
   check("档案页列出知识点", await conceptBtn.isVisible());
   await conceptBtn.click();
   await p.waitForTimeout(700);
@@ -281,7 +316,7 @@ async function main() {
   const created = await fetch(`${BASE}/api/sessions`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ mode: "free" }),
+    body: JSON.stringify({ mode: "infinite" }),
   }).then((r) => r.json());
   const rp = await browser.newPage({ viewport: { width: 1280, height: 950 } });
   const robustErrors = [];
@@ -294,7 +329,7 @@ async function main() {
   let rbody = await rp.locator("body").innerText();
   check("学习路线块不再把页面打崩", !/couldn.t load|Reload to try again|Application error/i.test(rbody));
   check("学习路线内容正常渲染", /极限与连续/.test(rbody) && /四周搞定导数/.test(rbody));
-  check("计划生成后有开始第一步", (await rp.getByRole("button", { name: "开始第一步" }).count()) > 0);
+  check("计划生成后有确认入口", (await rp.getByText("查看并确认计划").count()) > 0);
 
   await rp.locator("textarea").first().fill("来点坏公式");
   await rp.keyboard.press("Enter");
@@ -322,17 +357,87 @@ async function main() {
 
   await p.goto(`${BASE}/plan`, { waitUntil: "networkidle" });
   await p.waitForTimeout(500);
-  const before = await p.locator("h2", { hasText: "四周搞定导数" }).count();
+  const before = await p.locator("h3", { hasText: "四周搞定导数" }).count();
   check("路线出现在计划页", before > 0, `count=${before}`);
-  const delBtn = p.locator('button[aria-label="删除这条路线"]').first();
+  const delBtn = p.locator('button[aria-label^="删除计划"]').first();
   check("计划页有删除入口", (await delBtn.count()) > 0);
   await delBtn.click();
   await p.waitForTimeout(300);
-  check("删除前有确认弹窗", await p.locator("text=删除这条学习路线").first().isVisible());
+  check("删除前有确认弹窗", await p.locator("text=删除这个学习计划").first().isVisible());
   await p.locator("button", { hasText: "确认删除" }).first().click();
   await p.waitForTimeout(1000);
-  const after = await p.locator("h2", { hasText: "四周搞定导数" }).count();
+  const after = await p.locator("h3", { hasText: "四周搞定导数" }).count();
   check("确认后路线被删除", after === before - 1, `before=${before} after=${after}`);
+
+  // ── 目标学习：确认计划 → 课程页 → 学习后课程/计划进度更新 ──
+  {
+    const createdPlan = await fetch(`${BASE}/api/plans`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: `UI进度计划-${Date.now()}` }),
+    }).then((r) => r.json());
+    const planId = createdPlan.plan.id;
+    let detail = await fetch(`${BASE}/api/plans/${planId}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "addCourse", title: "导数基础" }),
+    }).then((r) => r.json());
+    const courseId = detail.plan.items[0].id;
+    await fetch(`${BASE}/api/plans/${planId}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "addConcept", itemId: courseId, name: "机会成本" }),
+    });
+
+    const gp = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+    await gp.goto(`${BASE}/plan/${planId}`, { waitUntil: "networkidle" });
+    check("计划草稿页显示待确认", (await gp.getByText("待确认").count()) > 0);
+    check("草稿里能看到知识点", (await gp.getByText("机会成本").count()) > 0);
+    await gp.getByRole("button", { name: "确认计划" }).first().click();
+    await gp.getByText("进行中").first().waitFor({ timeout: 10000 });
+    check("确认后计划进入进行中", true);
+    const planDetail = await fetch(`${BASE}/api/plans/${planId}`).then((r) => r.json());
+    check("计划已正式生效", planDetail.plan.status === "active");
+
+    await gp.goto(`${BASE}/plan/${planId}/course/${courseId}`, { waitUntil: "networkidle" });
+    check("课程页显示课程名", (await gp.getByText("导数基础").count()) > 0);
+    check("课程页显示知识点", (await gp.getByText("机会成本").count()) > 0);
+    await gp.getByRole("button", { name: "开始学习" }).first().click();
+    await gp.waitForURL(/\/s\//, { timeout: 15000 });
+    await gp.waitForTimeout(1500);
+    const goalBody = await gp.locator("body").innerText();
+    check("目标学习会话显示计划与课程", goalBody.includes("导数基础") && goalBody.includes(planDetail.plan.title));
+    check("目标学习会话显示课程进度", /个知识点已掌握/.test(goalBody));
+    await gp.getByRole("button", { name: /提交答案/ }).first().waitFor({ timeout: 30000 });
+    await gp.locator("button", { hasText: "150 元" }).first().click();
+    await gp.getByRole("button", { name: /提交答案/ }).first().click();
+    await gp.getByText(/答对了|没有答对/).first().waitFor({ timeout: 15000 });
+    await gp.waitForTimeout(1200);
+
+    const afterStudy = await fetch(`${BASE}/api/plans/${planId}`).then((r) => r.json());
+    check(
+      "学习后课程进度更新",
+      afterStudy.plan.items[0].progress.percent > 0 &&
+        ["in_progress", "done"].includes(afterStudy.plan.items[0].status),
+      JSON.stringify(afterStudy.plan.items[0].progress),
+    );
+    check("学习后计划进度更新", afterStudy.plan.progress.percent > 0, String(afterStudy.plan.progress.percent));
+
+    const mobile = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await mobile.goto(`${BASE}/plan/${planId}/course/${courseId}`, { waitUntil: "networkidle" });
+    const mCourse = await mobile.evaluate(() => ({
+      sw: document.documentElement.scrollWidth,
+      iw: window.innerWidth,
+    }));
+    check("移动端课程页无横向溢出", mCourse.sw <= mCourse.iw + 1, `scrollWidth=${mCourse.sw}`);
+    await mobile.close();
+
+    await gp.goto(`${BASE}/history`, { waitUntil: "networkidle" });
+    const historyBody = await gp.locator("body").innerText();
+    check("历史页区分无限学习", historyBody.includes("无限学习"));
+    check("历史页目标学习按计划展示", historyBody.includes("目标学习"));
+    await gp.close();
+  }
 
   // ── 学习档案：空壳知识点可清理 ──
   await p.goto(`${BASE}/library`, { waitUntil: "networkidle" });
@@ -376,7 +481,7 @@ async function main() {
       const s2 = await fetch(`${BASE}/api/sessions`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode: "free" }),
+        body: JSON.stringify({ mode: "infinite" }),
       }).then((r) => r.json());
       await fetch(`${BASE}/api/chat`, {
         method: "POST",

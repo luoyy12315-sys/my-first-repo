@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Button, EmptyState, Modal, SectionHeader, Spinner } from "@/components/ui/kit";
+import { Badge, Button, EmptyState, Modal, SectionHeader, Spinner } from "@/components/ui/kit";
 import { PlanSelect, usePlans } from "@/components/PlanSelect";
 import type { SessionSummary } from "@/lib/types";
 import { groupByPlan } from "@/lib/utils";
@@ -50,7 +50,15 @@ export default function HistoryPage() {
     [sessions, planFilter, q],
   );
 
-  const groups = useMemo(() => groupByPlan(filtered), [filtered]);
+  const infiniteSessions = useMemo(
+    () => filtered.filter((s) => s.mode === "infinite"),
+    [filtered],
+  );
+  const formalGroups = useMemo(
+    () => groupByPlan(filtered.filter((s) => s.mode !== "infinite")),
+    [filtered],
+  );
+  const hasResults = infiniteSessions.length > 0 || formalGroups.length > 0;
 
   const assign = async (sessionId: string, planId: string | null) => {
     const res = await fetch(`/api/sessions/${sessionId}`, {
@@ -83,12 +91,60 @@ export default function HistoryPage() {
     } else toast.error("删除失败");
   };
 
+  const renderSession = (s: SessionSummary, showPlan: boolean) => (
+    <div
+      key={s.id}
+      className="group flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line bg-panel px-3.5 py-2.5 transition-colors hover:border-accent/40"
+    >
+      <Link href={`/s/${s.id}`} className="min-w-0 flex-1 basis-full sm:basis-0">
+        <div className="flex items-center gap-1.5">
+          <p className="truncate text-[13.5px] text-ink">{s.title}</p>
+          <Badge tone={s.mode === "review" ? "warn" : s.mode === "goal" ? "accent" : "neutral"}>
+            {s.mode === "infinite" ? "无限学习" : s.mode === "goal" ? "目标学习" : "复习"}
+          </Badge>
+        </div>
+        <p className="mt-0.5 truncate text-[12px] text-ink3">
+          {new Date(s.updatedAt).toLocaleString("zh-CN", {
+            month: "numeric",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}{" "}
+          · {s.messageCount} 条消息
+          {s.courseTitle ? ` · ${s.courseTitle}` : ""}
+          {s.summary ? <span className="hidden sm:inline"> · {s.summary}</span> : null}
+        </p>
+      </Link>
+      <div className="ml-auto flex shrink-0 items-center gap-2">
+        {showPlan && plans.length > 0 ? (
+          <PlanSelect
+            plans={plans}
+            mode="assign"
+            value={s.planId ?? ""}
+            onChange={(v) => void assign(s.id, v || null)}
+            title={s.planTitle ? `当前归属：${s.planTitle}` : "未归类，点击更换"}
+            className="max-w-[190px] shrink-0 rounded-full border border-line bg-panel px-2 py-1 text-[12px] text-ink2 outline-none hover:border-linestrong sm:max-w-[260px]"
+            ariaLabel={`调整「${s.title}」所属计划`}
+          />
+        ) : null}
+        <button
+          onClick={() => setPendingDelete(s)}
+          className="rounded-full p-1.5 text-ink3 opacity-100 transition-all hover:bg-badsoft hover:text-bad sm:opacity-0 sm:group-hover:opacity-100"
+          title="删除会话"
+          aria-label={`删除会话 ${s.title}`}
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-8 md:py-10">
+    <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
       <div className="mb-5">
         <h1 className="font-serif text-[26px] tracking-tight text-ink">学习历史</h1>
         <p className="mt-1 text-[13px] text-ink2">
-          按计划分组；用「计划」下拉只看某一条路线。知识点视角在「学习档案」里。
+          无限学习与目标学习分开归类。
         </p>
       </div>
 
@@ -119,7 +175,7 @@ export default function HistoryPage() {
         <div className="flex items-center gap-2 py-10 text-[13px] text-ink3">
           <Spinner /> 读取中…
         </div>
-      ) : groups.length === 0 ? (
+      ) : !hasResults ? (
         <EmptyState
           title={sessions.length === 0 ? "还没有学习记录" : "没有找到匹配的会话"}
           description={
@@ -135,50 +191,26 @@ export default function HistoryPage() {
         />
       ) : (
         <div className="flex flex-col gap-6">
-          {groups.map((g) => (
-            <section key={g.planId ?? "ungrouped"}>
-              <SectionHeader title={g.planTitle} hint={`${g.items.length} 个会话`} />
+          {infiniteSessions.length > 0 ? (
+            <section>
+              <SectionHeader title="无限学习" hint={`${infiniteSessions.length} 个会话`} />
+              <p className="mb-2 text-[12px] leading-relaxed text-ink3">
+                没有计划，也不计课程进度。
+              </p>
               <div className="flex flex-col gap-1.5">
-                {g.items.map((s) => (
-                  <div
-                    key={s.id}
-                    className="group flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line bg-panel px-3.5 py-2.5 transition-colors hover:border-accent/40"
-                  >
-                    <Link href={`/s/${s.id}`} className="min-w-0 flex-1 basis-full sm:basis-0">
-                      <p className="truncate text-[13.5px] text-ink">{s.title}</p>
-                      <p className="mt-0.5 truncate text-[11.5px] text-ink3">
-                        {new Date(s.updatedAt).toLocaleString("zh-CN", {
-                          month: "numeric",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}{" "}
-                        · {s.messageCount} 条消息
-                        {s.summary ? <span className="hidden sm:inline"> · {s.summary}</span> : null}
-                      </p>
-                    </Link>
-                    <div className="ml-auto flex shrink-0 items-center gap-2">
-                      {plans.length > 0 ? (
-                        <PlanSelect
-                          plans={plans}
-                          mode="assign"
-                          value={s.planId ?? ""}
-                          onChange={(v) => void assign(s.id, v || null)}
-                          className="max-w-[120px] shrink-0 rounded-full border border-line bg-panel px-2 py-1 text-[11px] text-ink2 outline-none hover:border-linestrong sm:max-w-[130px]"
-                          ariaLabel={`调整「${s.title}」所属计划`}
-                        />
-                      ) : null}
-                      <button
-                        onClick={() => setPendingDelete(s)}
-                        className="rounded-full p-1.5 text-ink3 opacity-100 transition-all hover:bg-badsoft hover:text-bad sm:opacity-0 sm:group-hover:opacity-100"
-                        title="删除会话"
-                        aria-label={`删除会话 ${s.title}`}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                {infiniteSessions.map((s) => renderSession(s, false))}
+              </div>
+            </section>
+          ) : null}
+
+          {formalGroups.map((g) => (
+            <section key={g.planId ?? "ungrouped"}>
+              <SectionHeader
+                title={g.planId ? g.planTitle : "目标学习 · 未归计划"}
+                hint={`${g.items.length} 个会话`}
+              />
+              <div className="flex flex-col gap-1.5">
+                {g.items.map((s) => renderSession(s, true))}
               </div>
             </section>
           ))}

@@ -199,7 +199,7 @@ function gradeAnswerInner(
       }
       const picked = spec.options[idx] ?? "未知选项";
       return fail(
-        `你选的是「${picked}」，这个选项混淆了关键条件。先回到题干，确认它问的是哪一个量，再排除掉它。`,
+        `你选的是「${picked}」，这个选项不对。先对照题干的关键条件，再看下面的解析，找出你漏掉的那一步。`,
       );
     }
 
@@ -383,6 +383,29 @@ export function gradeAnswer(
 }
 
 /** 提交后展示给用户的"正确答案"文案（提交前绝不下发） */
+/**
+ * 判题后才能下发的结构化答案：只给选项下标，够前端把选项标成对/错。
+ * 与 describeAnswer 同源，避免两处各推一套答案。
+ * 填空/排序等没有"选项高亮"的题型返回 null，仍走文字版标准答案。
+ */
+export type AnswerReveal =
+  | { kind: "single"; index: number }
+  | { kind: "multi"; indices: number[] }
+  | { kind: "judge"; value: boolean };
+
+export function describeReveal(spec: AnswerSpec): AnswerReveal | null {
+  switch (spec.kind) {
+    case "single":
+      return { kind: "single", index: spec.index };
+    case "multi":
+      return { kind: "multi", indices: [...spec.indices].sort((a, b) => a - b) };
+    case "judge":
+      return { kind: "judge", value: spec.value };
+    default:
+      return null;
+  }
+}
+
 export function describeAnswer(spec: AnswerSpec): string {
   switch (spec.kind) {
     case "single":

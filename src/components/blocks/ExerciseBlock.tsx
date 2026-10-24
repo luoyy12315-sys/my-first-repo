@@ -13,16 +13,17 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import { Badge, Button, Spinner, cx } from "@/components/ui/kit";
+import { Badge, Button, MenuItem, OverflowMenu, Spinner, cx } from "@/components/ui/kit";
 import NextActions from "@/components/chat/NextActions";
 import Markdown from "@/components/Markdown";
 import { AnswerInput, answerValueFor, type Draft } from "@/components/blocks/AnswerInput";
+import type { AnswerReveal } from "@/lib/learning/exercise";
 import { ERROR_LABEL, EXERCISE_TYPE_LABEL, type AttemptDTO, type ExercisePublic } from "@/lib/types";
 import { toast } from "sonner";
 import { uuid } from "@/lib/utils";
 
 interface AttemptResult {
-  attempt: AttemptDTO;
+  attempt: AttemptDTO & { reveal?: AnswerReveal | null };
   graded: boolean;
   correct: boolean | null;
   score: number | null;
@@ -57,6 +58,7 @@ export default function ExerciseBlock({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>({});
   const [result, setResult] = useState<AttemptResult | null>(null);
+  const [reveal, setReveal] = useState<AnswerReveal | null>(null);
   const [pending, setPending] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
@@ -87,7 +89,7 @@ export default function ExerciseBlock({
       if (!exRes.ok) throw new Error("练习读取失败");
       const exData = (await exRes.json()) as {
         exercise: ExercisePublic;
-        attempts: (AttemptDTO & { userAnswer?: unknown })[];
+        attempts: (AttemptDTO & { userAnswer?: unknown; reveal?: AnswerReveal | null })[];
       };
       setExercise(exData.exercise);
       if (blockRes.ok) {
@@ -111,6 +113,7 @@ export default function ExerciseBlock({
         });
         setUsedHint(last.usedHint);
         setViewedSolution(last.viewedSolution);
+        setReveal(last.reveal ?? null);
       }
       setLoadError(null);
     } catch (e) {
@@ -172,6 +175,7 @@ export default function ExerciseBlock({
       }
       const data = (await res.json()) as AttemptResult;
       setResult(data);
+      setReveal(data.attempt?.reveal ?? null);
       // 计划步骤的验证进度/自动完成可能刚刚变化，让会话与计划页一起刷新
       window.dispatchEvent(new Event("plans:changed"));
       window.dispatchEvent(new Event("session:progress"));
@@ -194,6 +198,7 @@ export default function ExerciseBlock({
       const res = await fetch(`/api/exercises/${exercise.id}/solution`, { method: "POST" });
       const data = (await res.json()) as {
         correctDisplay?: string;
+        reveal?: AnswerReveal | null;
         explanation?: string | null;
         error?: string;
       };
@@ -202,6 +207,7 @@ export default function ExerciseBlock({
         return;
       }
       setSolution({ correctDisplay: data.correctDisplay, explanation: data.explanation ?? null });
+      setReveal(data.reveal ?? null);
       setViewedSolution(true);
       setConfirmSolution(false);
       toast.message("已显示解析", { description: "本次作答将标记为非独立完成。" });
@@ -351,24 +357,46 @@ export default function ExerciseBlock({
       : []),
   ];
 
+  const feedbackMenu = feedbackVote ? (
+    <span className="text-[12px] text-ink3">
+      已反馈（{feedbackVote === "easy" ? "太简单" : feedbackVote === "hard" ? "太难" : "有问题"}）
+    </span>
+  ) : (
+    <OverflowMenu label="题目反馈">
+      <MenuItem onClick={() => void sendFeedback("easy")}>太简单了</MenuItem>
+      <MenuItem onClick={() => void sendFeedback("hard")}>太难了</MenuItem>
+      <MenuItem tone="danger" onClick={() => setBrokenOpen((v) => !v)}>
+        这题有问题…
+      </MenuItem>
+      <div className="my-1 h-px bg-line" />
+      <MenuItem onClick={retry} disabled={retrying}>
+        <RefreshCw className={cx("size-3.5", retrying && "animate-spin")} />
+        {retrying ? "生成中…" : "换一题（换题型）"}
+      </MenuItem>
+    </OverflowMenu>
+  );
+
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-panel">
       <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2.5">
         <div className="flex items-center gap-2">
           <Badge tone="accent">{EXERCISE_TYPE_LABEL[exercise.type]}</Badge>
-          <span className="text-[11.5px] text-ink3">
+          <span className="text-[12px] text-ink3">
             难度 {"●".repeat(exercise.difficulty)}
             {"○".repeat(Math.max(0, 5 - exercise.difficulty))}
           </span>
           {exercise.solved ? <Badge tone="ok">已答对过</Badge> : null}
+          {!exercise.conceptId ? (
+            <Badge tone="neutral">对话练习 · 不写入档案</Badge>
+          ) : null}
           {exercise.attemptCount && exercise.attemptCount > 0 && !exercise.solved ? (
-            <span className="text-[11.5px] text-ink3">已尝试 {exercise.attemptCount} 次</span>
+            <span className="text-[12px] text-ink3">已尝试 {exercise.attemptCount} 次</span>
           ) : null}
         </div>
         {onOpenWorkspace && !expanded ? (
           <button
             onClick={onOpenWorkspace}
-            className="flex items-center gap-1 rounded-full px-2 py-1 text-[11.5px] text-ink3 hover:bg-panel2 hover:text-ink"
+            className="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[12px] text-ink3 hover:bg-panel2 hover:text-ink"
           >
             <Maximize2 className="size-3.5" />
             工作区
@@ -387,7 +415,7 @@ export default function ExerciseBlock({
                 {exercise.verification === "ambiguous" ? "题目口径可能有争议" : "本题未完成二次校验"}
               </span>
               {exercise.verificationNote ? `：${exercise.verificationNote}` : "。"}
-              <span className="mt-0.5 block text-[11.5px] text-ink3">本次作答不计入掌握度。</span>
+              <span className="mt-0.5 block text-[12px] text-ink3">本次作答不计入掌握度。</span>
             </div>
           </div>
         ) : null}
@@ -399,6 +427,7 @@ export default function ExerciseBlock({
             set={set}
             disabled={inputDisabled}
             submitted={answered}
+            reveal={reveal}
           />
         </div>
 
@@ -408,7 +437,7 @@ export default function ExerciseBlock({
             <div>
               <span className="font-medium text-warn">提示：</span>
               {hint}
-              <span className="mt-1 block text-[11.5px] text-ink3">
+              <span className="mt-1 block text-[12px] text-ink3">
                 {exercise.verification === "passed"
                   ? "使用提示后，本次仍计入证据但不算独立完成。"
                   : "本题不计入掌握度。"}
@@ -449,7 +478,7 @@ export default function ExerciseBlock({
                 <Markdown className="text-[13px]">{solution.explanation}</Markdown>
               </div>
             ) : null}
-            <p className="mt-2 text-[11px] text-ink3">已标记「非独立完成」，本次作答不计入掌握度。</p>
+            <p className="mt-2 text-[12px] text-ink3">已标记「非独立完成」，本次作答不计入掌握度。</p>
           </div>
         ) : null}
       </div>
@@ -482,7 +511,6 @@ export default function ExerciseBlock({
             <Button
               size="sm"
               variant="ghost"
-              className="ml-auto text-ink3"
               icon={<SkipForward className="size-3.5" />}
               onClick={() => {
                 setSkipped(true);
@@ -501,6 +529,7 @@ export default function ExerciseBlock({
               icon={<RefreshCw className="size-3.5" />}
               onClick={() => {
                 setResult(null);
+                setReveal(null);
                 setDraft({});
                 setSolution(null);
                 setConfirmSolution(false);
@@ -523,39 +552,7 @@ export default function ExerciseBlock({
             </Button>
           </>
         ) : null}
-      </div>
-
-      {/* 题目反馈与换一题（C2）：让"题不对"成为可执行的信号，而不是硬做 */}
-      <div className="flex flex-wrap items-center gap-2 border-t border-line bg-panel2/30 px-4 py-2 text-[11.5px] text-ink3">
-        <span>这道题：</span>
-        {feedbackVote ? (
-          <span className="text-ok">
-            已反馈（{feedbackVote === "easy" ? "太简单" : feedbackVote === "hard" ? "太难" : "有问题"}）
-          </span>
-        ) : (
-          <>
-            <button onClick={() => void sendFeedback("easy")} className="rounded-full px-2 py-0.5 hover:bg-panel2 hover:text-ink">
-              太简单
-            </button>
-            <button onClick={() => void sendFeedback("hard")} className="rounded-full px-2 py-0.5 hover:bg-panel2 hover:text-ink">
-              太难
-            </button>
-            <button
-              onClick={() => setBrokenOpen((v) => !v)}
-              className="rounded-full px-2 py-0.5 hover:bg-badsoft hover:text-bad"
-            >
-              有问题
-            </button>
-          </>
-        )}
-        <button
-          onClick={retry}
-          disabled={retrying}
-          className="ml-auto flex items-center gap-1 rounded-full px-2 py-0.5 text-accentink hover:bg-accentsoft disabled:opacity-50"
-        >
-          <RefreshCw className={cx("size-3", retrying && "animate-spin")} />
-          {retrying ? "生成中…" : "换一题（换题型）"}
-        </button>
+        <div className="ml-auto flex items-center gap-1.5">{feedbackMenu}</div>
       </div>
 
       {brokenOpen ? (
@@ -622,7 +619,7 @@ function ResultPanel({
             错因：{ERROR_LABEL[attempt.errorType] ?? attempt.errorType}
           </Badge>
         ) : null}
-        <span className="ml-auto text-[11px] text-ink3">第 {attempt.attemptNo} 次提交</span>
+        <span className="ml-auto text-[12px] text-ink3">第 {attempt.attemptNo} 次提交</span>
       </div>
       <p className="mt-1.5 whitespace-pre-wrap text-[13px] leading-relaxed text-ink2">{attempt.feedback}</p>
       {attempt.correctDisplay ? (
@@ -634,7 +631,7 @@ function ResultPanel({
         </div>
       ) : null}
       {concept ? (
-        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-line/70 pt-2 text-[11.5px] text-ink3">
+        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-line/70 pt-2 text-[12px] text-ink3">
           <span>知识点「{concept.name}」</span>
           <Badge tone={correct ? "accent" : "warn"}>
             掌握度 {concept.pMastery.toFixed(2)}
@@ -643,7 +640,7 @@ function ResultPanel({
         </div>
       ) : null}
       {exercise.type === "open" && !graded ? (
-        <p className="mt-1.5 text-[11.5px] text-ink3">开放题未评阅时不计入掌握度证据。</p>
+        <p className="mt-1.5 text-[12px] text-ink3">开放题未评阅时不计入掌握度证据。</p>
       ) : null}
     </div>
   );

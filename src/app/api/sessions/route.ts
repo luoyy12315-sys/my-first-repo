@@ -1,7 +1,19 @@
-import { createSession, findOpenReviewSession, getPlan, getSession, latestPlanForConcept, listSessions, setSessionPlan } from "@/lib/db/repo";
+import {
+  createSession,
+  findOpenReviewSession,
+  getConcept,
+  getPlan,
+  getSession,
+  latestPlanForConcept,
+  listSessions,
+  setSessionPlan,
+} from "@/lib/db/repo";
 import { fail, handleError, ok, readJson } from "@/lib/api/helpers";
+import type { LearningMode } from "@/lib/types";
 
 export const runtime = "nodejs";
+
+const MODES: LearningMode[] = ["infinite", "goal", "review"];
 
 export async function GET() {
   try {
@@ -16,42 +28,63 @@ export async function POST(req: Request) {
   try {
     const body = await readJson<{
       title?: string;
-      mode?: "free" | "goal" | "review";
+      mode?: LearningMode;
       goalId?: string;
       planId?: string | null;
       planItemId?: string | null;
       focusConceptId?: string;
       reviewItemId?: string;
     }>(req);
-    if (body.mode && !["free", "goal", "review"].includes(body.mode)) {
-      return fail(400, "mode 只能是 free / goal / review");
+    const mode = body.mode ?? "infinite";
+    if (!MODES.includes(mode)) {
+      return fail(400, "mode 只能是 infinite / goal / review");
     }
-    let planId: string | null | undefined = undefined;
-    if (body.planId !== undefined) {
-      if (body.planId !== null && (typeof body.planId !== "string" || !getPlan(body.planId))) {
-        return fail(400, "计划不存在");
+
+    // 无限学习永远不自动挂到计划/课程上；用户在明确整理时再走归档动作。
+    if (mode === "infinite") {
+      const session = createSession({
+        title: body.title?.slice(0, 80) || "新的学习",
+        mode,
+        reviewItemId: body.reviewItemId,
+        focusConceptId: body.focusConceptId,
+      });
+      return ok({ session });
+    }
+
+    let planId: string | null | undefined = body.planId;
+    let planItemId: string | null | undefined = body.planItemId;
+
+    if (mode === "review" && body.focusConceptId) {
+      const concept = getConcept(body.focusConceptId);
+      if (concept) {
+        planId = planId ?? concept.planId ?? latestPlanForConcept(concept.id);
+        planItemId = planItemId ?? concept.courseId ?? null;
       }
-      planId = body.planId;
-    } else if (body.focusConceptId) {
-      // 从档案/首页直接练某个概念时，自动沿用最近一次学习它的计划
+    } else if (body.planId === undefined && body.focusConceptId) {
       planId = latestPlanForConcept(body.focusConceptId);
     }
-    let planItemId: string | null | undefined = undefined;
-    if (body.planItemId !== undefined) {
-      if (body.planItemId !== null) {
-        if (typeof body.planItemId !== "string" || !planId) {
-          return fail(400, "绑定计划步骤时必须提供计划");
+
+    if (planId) {
+      if (typeof planId !== "string") return fail(400, "计划不存在");
+      const plan = getPlan(planId);
+      if (!plan) return fail(400, "计划不存在");
+      if (plan.status === "draft") return fail(400, "计划尚未确认，不能开始学习");
+      if (planItemId) {
+        if (typeof planItemId !== "string" || !plan.items.some((item) => item.id === planItemId)) {
+          return fail(400, "课程不存在或不属于该计划");
         }
-        const plan = getPlan(planId);
-        if (!plan || !plan.items.some((item) => item.id === body.planItemId)) {
-          return fail(400, "计划步骤不存在或不属于该计划");
+        if (plan.items.find((item) => item.id === planItemId)?.status === "skipped") {
+          return fail(400, "这门课程已跳过，请先在计划中恢复");
         }
       }
-      planItemId = body.planItemId;
+    } else {
+      planId = null;
+      planItemId = null;
     }
+
     // 复习是"一段连续动作"：同一条复习建议已经有未作答的会话时，回到那一条，
     // 而不是每点一次「练一练」就新开一个同名会话。
-    if (body.mode === "review" && body.reviewItemId) {
+    if (mode === "review" && body.reviewItemId) {
       const existing = findOpenReviewSession(body.reviewItemId);
       if (existing) {
         if (planId) setSessionPlan(existing.id, planId);
@@ -61,8 +94,8 @@ export async function POST(req: Request) {
     }
 
     const session = createSession({
-      title: body.title?.slice(0, 80) || (body.mode === "review" ? "复习" : "新的学习"),
-      mode: body.mode ?? "free",
+      title: body.title?.slice(0, 80) || (mode === "review" ? "复习" : "新的学习"),
+      mode,
       goalId: body.goalId,
       planId,
       planItemId,

@@ -204,6 +204,66 @@ function migrate(db: Database.Database) {
         ensureColumn(db, "exercises", "verification_note", "verification_note text");
       },
     },
+    {
+      id: "20261023_dual_mode_courses",
+      run: () => {
+        ensureColumn(db, "concepts", "course_id", "course_id text");
+        db.exec("create index if not exists ix_concepts_course on concepts(course_id)");
+
+        // 旧「自由学习」统一并入无限学习；复习与目标学习保持不变
+        db.exec(`
+          update sessions set mode = 'infinite'
+          where mode is null or mode = 'free' or mode not in ('infinite', 'goal', 'review')
+        `);
+
+        // 旧计划默认是正式计划；新计划由 createPlan 显式写成 draft
+        db.exec(`
+          update plans set status = 'active'
+          where status is null or status = '' or status not in ('draft', 'active', 'paused')
+        `);
+
+        // 旧计划步骤只有一个 concept_id：把它还原成课程的归属知识点。
+        // 同一个知识点被多个步骤引用时，归到最近更新的计划下的第一个步骤。
+        db.exec(`
+          update concepts set course_id = (
+            select pi.id from plan_items pi join plans p on p.id = pi.plan_id
+             where pi.concept_id = concepts.id
+             order by p.updated_at desc, pi.order_index asc limit 1
+          )
+          where course_id is null
+            and exists (select 1 from plan_items pi where pi.concept_id = concepts.id)
+        `);
+        db.exec("create index if not exists ix_plan_items_concept on plan_items(concept_id)");
+      },
+    },
+    {
+      id: "20261023_course_evidence_backfill",
+      run: () => {
+        // 旧步骤在完成时可能验证了多个知识点，但 plan_items 只存了一个 concept_id。
+        // 有明确会话步骤证据的概念归回该课程；没有证据、无法确认归属的保持待整理。
+        db.exec(`
+          update concepts set course_id = (
+            select s.plan_item_id from evidence e
+              join sessions s on s.id = e.session_id
+              join plan_items pi on pi.id = s.plan_item_id
+             where e.concept_id = concepts.id
+               and e.voided = 0
+               and s.plan_item_id is not null
+             order by e.created_at desc limit 1
+          )
+          where course_id is null
+            and exists (
+              select 1 from evidence e join sessions s on s.id = e.session_id
+               where e.concept_id = concepts.id and e.voided = 0 and s.plan_item_id is not null
+            )
+        `);
+        // 旧 free 会话如果明确绑定了计划，它实际是目标学习；没有计划的才是无限学习。
+        db.exec(`
+          update sessions set mode = 'goal'
+          where mode = 'infinite' and plan_id is not null
+        `);
+      },
+    },
   ];
   for (const b of batches) {
     if (applied.has(b.id)) continue;

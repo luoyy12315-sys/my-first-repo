@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   CheckCircle2,
+  ChevronDown,
   ExternalLink,
   Globe,
   Pencil,
@@ -27,6 +28,16 @@ import {
   inputClass,
 } from "@/components/ui/kit";
 import type { AiModelPublic, WebConfigPublic } from "@/lib/types";
+import {
+  DEFAULT_TEACHING_PROFILE,
+  PRESET_HINT,
+  PRESET_LABEL,
+  SUBJECT_LABEL,
+  TEACHING_PRESETS,
+  TEACHING_SUBJECTS,
+  isDefaultTeachingProfile,
+  type TeachingProfile,
+} from "@/lib/teaching/profile";
 
 interface AiLegacyStatus {
   configured: boolean;
@@ -109,12 +120,40 @@ export default function SettingsPage() {
     null,
   );
 
+  // ── 讲解风格 ──
+  const [teaching, setTeaching] = useState<TeachingProfile>(DEFAULT_TEACHING_PROFILE);
+  const [teachingSaving, setTeachingSaving] = useState(false);
+  const teachingIsDefault = isDefaultTeachingProfile(teaching);
+
+  const saveTeaching = useCallback(async () => {
+    setTeachingSaving(true);
+    try {
+      const res = await fetch("/api/settings/teaching", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(teaching),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? "保存失败");
+      }
+      const data = (await res.json()) as { profile?: TeachingProfile };
+      if (data.profile) setTeaching(data.profile);
+      toast.success("讲解风格已保存");
+    } catch (e) {
+      toast.error((e as Error).message || "保存失败");
+    } finally {
+      setTeachingSaving(false);
+    }
+  }, [teaching]);
+
   const load = useCallback(async () => {
-    const [mRes, aRes, sRes, wRes] = await Promise.all([
+    const [mRes, aRes, sRes, wRes, tRes] = await Promise.all([
       fetch("/api/models", { cache: "no-store" }),
       fetch("/api/settings/ai", { cache: "no-store" }),
       fetch("/api/system", { cache: "no-store" }),
       fetch("/api/settings/web", { cache: "no-store" }),
+      fetch("/api/settings/teaching", { cache: "no-store" }),
     ]);
     if (mRes.ok) {
       const data = (await mRes.json()) as { models: AiModelPublic[] };
@@ -139,6 +178,10 @@ export default function SettingsPage() {
         maxSearchesPerSession: w.maxSearchesPerSession,
         allowPrivateProvider: w.allowPrivateProvider,
       });
+    }
+    if (tRes.ok) {
+      const data = (await tRes.json()) as { profile?: TeachingProfile };
+      if (data.profile) setTeaching(data.profile);
     }
     setLoading(false);
   }, []);
@@ -304,6 +347,8 @@ export default function SettingsPage() {
       const data = (await res.json()) as WebConfigPublic & { error?: string };
       if (!res.ok || data.error) {
         toast.error(data.error ?? "保存失败");
+        // 保存失败时把开关退回服务端状态：否则页面上会出现"已勾选 + 徽标写关闭"的自相矛盾
+        setWebDraft((d) => ({ ...d, enabled: web?.enabled ?? false }));
         return;
       }
       setWeb(data);
@@ -347,14 +392,23 @@ export default function SettingsPage() {
   };
 
   const defaultModel = models.find((m) => m.isDefault) ?? models[0];
+  const healthBadge = defaultModel?.configured
+    ? defaultModel.lastError
+      ? { tone: "bad" as const, text: "上次连接失败" }
+      : defaultModel.lastOkAt
+        ? { tone: "ok" as const, text: "可用" }
+        : { tone: "neutral" as const, text: "已配置 · 未测试" }
+    : legacy?.configured && legacy.source === "env"
+      ? { tone: "ok" as const, text: "可用" }
+      : { tone: "warn" as const, text: "待配置" };
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-8 md:py-10">
+    <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-serif text-[26px] tracking-tight text-ink">设置</h1>
           <p className="mt-1 text-[13px] text-ink2">
-            可以配置多个模型，在对话里随时切换。Key 只保存在本机数据库，不会下发给浏览器。
+            可配置多个模型，不同会话可以各用一个。
           </p>
         </div>
         <Button size="sm" icon={<Plus className="size-3.5" />} onClick={openAdd}>
@@ -373,13 +427,10 @@ export default function SettingsPage() {
                 : "尚未配置"
           }
           action={
-            defaultModel?.configured || (legacy?.configured && legacy.source === "env") ? (
-              <Badge tone="ok">
-                <CheckCircle2 className="size-3" /> 可用
-              </Badge>
-            ) : (
-              <Badge tone="warn">待配置</Badge>
-            )
+            <Badge tone={healthBadge.tone}>
+              {healthBadge.tone === "ok" ? <CheckCircle2 className="size-3" /> : null}
+              {healthBadge.text}
+            </Badge>
           }
         />
 
@@ -395,7 +446,7 @@ export default function SettingsPage() {
                 : "还没有添加任何模型。"}
             </p>
             <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink3">
-              添加后可以在对话框左下角切换；不同会话可以各用一个模型。本地 Ollama 不需要填 Key。
+              添加后可以在对话框左下角切换；不同会话可以各用一个模型。Ollama 不需要填 Key。
             </p>
             <Button className="mt-3" size="sm" icon={<Plus className="size-3.5" />} onClick={openAdd}>
               添加第一个模型
@@ -421,20 +472,19 @@ export default function SettingsPage() {
                       )}
                       {m.lastOkAt ? (
                         <Badge tone="neutral">上次正常 {m.lastTestMs ?? 0}ms</Badge>
-                      ) : m.lastError ? (
-                        <Badge tone="bad">上次失败</Badge>
                       ) : null}
+                      {m.lastError ? <Badge tone="bad">上次失败</Badge> : null}
                     </div>
-                    <p className="mt-1 truncate font-mono text-[11.5px] text-ink3">
+                    <p className="mt-1 truncate font-mono text-[12px] text-ink3">
                       {m.model} · {m.baseUrl}
                     </p>
-                    <p className="mt-0.5 text-[11px] text-ink3">
+                    <p className="mt-0.5 text-[12px] text-ink3">
                       {m.provider === "anthropic" ? "Anthropic 协议" : "OpenAI 兼容"} · 温度{" "}
                       {m.temperature.toFixed(1)}
                       {m.keyMasked ? ` · ${m.keyMasked}` : " · 无 Key"}
                     </p>
                     {m.lastError ? (
-                      <p className="mt-1 line-clamp-2 rounded-lg bg-badsoft/40 px-2 py-1 text-[11px] leading-relaxed text-bad">
+                      <p className="mt-1 line-clamp-2 rounded-lg bg-badsoft/40 px-2 py-1 text-[12px] leading-relaxed text-bad">
                         {m.lastError}
                       </p>
                     ) : null}
@@ -462,7 +512,7 @@ export default function SettingsPage() {
                     ) : null}
                     <button
                       onClick={() => openEdit(m)}
-                      className="rounded-full p-1.5 text-ink3 transition-colors hover:bg-panel2 hover:text-ink"
+                      className="rounded-full p-2 text-ink3 transition-colors hover:bg-panel2 hover:text-ink"
                       aria-label={`编辑 ${m.label}`}
                       title="编辑"
                     >
@@ -470,7 +520,7 @@ export default function SettingsPage() {
                     </button>
                     <button
                       onClick={() => setPendingDelete(m)}
-                      className="rounded-full p-1.5 text-ink3 transition-colors hover:bg-badsoft hover:text-bad"
+                      className="rounded-full p-2 text-ink3 transition-colors hover:bg-badsoft hover:text-bad"
                       aria-label={`删除 ${m.label}`}
                       title="删除"
                     >
@@ -480,8 +530,8 @@ export default function SettingsPage() {
                 </div>
               </Card>
             ))}
-            <p className="mt-1 text-[11.5px] leading-relaxed text-ink3">
-              默认模型用于新会话；某个会话切换过模型后会一直沿用，可在对话框左下角改回。
+            <p className="mt-1 text-[12px] leading-relaxed text-ink3">
+              切换只影响当前会话，会被记住。
             </p>
           </div>
         )}
@@ -525,7 +575,7 @@ export default function SettingsPage() {
                       model: p.model || d.model,
                     }));
                   }}
-                  className="rounded-full border border-line bg-panel px-2.5 py-1 text-[11.5px] text-ink2 transition-colors hover:border-accent/50 hover:text-ink"
+                  className="rounded-full border border-line bg-panel px-2.5 py-1 text-[12px] text-ink2 transition-colors hover:border-accent/50 hover:text-ink"
                 >
                   {p.name}
                 </button>
@@ -579,7 +629,7 @@ export default function SettingsPage() {
               hint={
                 editing
                   ? `当前：${editing.keyMasked || "未设置"}（留空不修改）`
-                  : "仅存本机；本地 Ollama 可留空"
+                  : "Ollama 可留空"
               }
             >
               <input
@@ -633,13 +683,120 @@ export default function SettingsPage() {
         }
       >
         <p className="text-[13px] leading-relaxed text-ink2">
-          将删除「{pendingDelete?.label}」（{pendingDelete?.model}）及其保存在本机的 Key。
+          将删除「{pendingDelete?.label}」（{pendingDelete?.model}）及其 Key。
         </p>
         <p className="mt-2 rounded-xl border border-line bg-panel2/50 px-3 py-2.5 text-[12.5px] leading-relaxed text-ink2">
           已经用这个模型产生的学习记录、证据和对话都<span className="font-medium text-ink">不会</span>被删除；
           正在使用它的会话会自动回到默认模型。
         </p>
       </Modal>
+
+      <section className="mb-8">
+        <SectionHeader
+          title="讲解风格"
+          hint={teachingIsDefault ? "未设置 · 使用默认均衡风格" : "保存后，新消息会按这个风格讲解"}
+          action={
+            <Button size="sm" icon={<Save className="size-3.5" />} loading={teachingSaving} onClick={saveTeaching}>
+              保存
+            </Button>
+          }
+        />
+        <Card className="p-4">
+          <div>
+            <span className="mb-1.5 block text-[13px] font-medium text-ink">整体风格</span>
+            <div className="flex flex-wrap gap-1.5">
+              {TEACHING_PRESETS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setTeaching((t) => ({ ...t, preset: p }))}
+                  className={cx(
+                    "rounded-full border px-3 py-1.5 text-[12.5px] transition-colors",
+                    teaching.preset === p
+                      ? "border-accent bg-accentsoft text-accentink"
+                      : "border-line bg-panel text-ink2 hover:border-linestrong",
+                  )}
+                >
+                  {PRESET_LABEL[p]}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[12px] text-ink3">{PRESET_HINT[teaching.preset]}</p>
+          </div>
+
+          <div className="mt-4">
+            <span className="mb-1.5 block text-[13px] font-medium text-ink">学科</span>
+            <div className="flex flex-wrap gap-1.5">
+              {TEACHING_SUBJECTS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setTeaching((t) => ({ ...t, subject: s }))}
+                  className={cx(
+                    "rounded-full border px-3 py-1.5 text-[12.5px] transition-colors",
+                    teaching.subject === s
+                      ? "border-accent bg-accentsoft text-accentink"
+                      : "border-line bg-panel text-ink2 hover:border-linestrong",
+                  )}
+                >
+                  {SUBJECT_LABEL[s]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <Field label={`篇幅 ${teaching.verbosity}/5`} hint="1=只讲关键点，5=完整展开">
+              <input
+                type="range"
+                min={1}
+                max={5}
+                step={1}
+                value={teaching.verbosity}
+                onChange={(e) => setTeaching((t) => ({ ...t, verbosity: Number(e.target.value) }))}
+                className="w-full accent-[var(--accent)]"
+              />
+            </Field>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-[13px] text-ink2">
+              <input
+                type="checkbox"
+                checked={teaching.requireExample}
+                onChange={(e) => setTeaching((t) => ({ ...t, requireExample: e.target.checked }))}
+                className="size-3.5 accent-[var(--accent)]"
+              />
+              每次讲解至少给一个具体例子或数字
+            </label>
+            <label className="flex items-center gap-2 text-[13px] text-ink2">
+              <input
+                type="checkbox"
+                checked={teaching.requireCheckQuestion}
+                onChange={(e) => setTeaching((t) => ({ ...t, requireCheckQuestion: e.target.checked }))}
+                className="size-3.5 accent-[var(--accent)]"
+              />
+              讲完后用一个具体问题检验我是否跟上
+            </label>
+          </div>
+
+          <div className="mt-4">
+            <Field label="自定义偏好" hint="最多 500 字，会优先于预设生效">
+              <textarea
+                className={cx(inputClass, "min-h-[84px] resize-y")}
+                maxLength={500}
+                value={teaching.customDirective}
+                onChange={(e) => setTeaching((t) => ({ ...t, customDirective: e.target.value }))}
+                placeholder="例如：先用中文讲一遍，再给英文术语；不要用「显然」这类词。"
+              />
+            </Field>
+          </div>
+
+          <p className="mt-3 text-[12px] leading-relaxed text-ink3">
+            风格只影响讲解方式，不会覆盖事实准确性与安全约束。留空并保持默认即不额外注入。
+          </p>
+        </Card>
+      </section>
 
       <section className="mb-8">
         <SectionHeader
@@ -672,15 +829,14 @@ export default function SettingsPage() {
             />
             <span>
               启用联网检索
-              <span className="mt-0.5 block text-[11.5px] leading-relaxed text-ink3">
-                关闭时不会产生任何外部请求。手动模式下，只把本轮问题（脱敏后）发送给你配置的搜索服务；
-                不会发送你的材料原文、会话历史或作答记录。
+              <span className="mt-0.5 block text-[12px] leading-relaxed text-ink3">
+                关闭时不发请求；手动模式只发本轮问题，不发材料、历史与作答记录。
               </span>
             </span>
           </label>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="搜索服务" hint="自建 SearXNG / Tavily / Brave">
+            <Field label="搜索服务" hint="选一个可用的后端">
               <select
                 value={webDraft.provider}
                 onChange={(e) =>
@@ -712,55 +868,48 @@ export default function SettingsPage() {
               value={webDraft.apiKey}
               onChange={(e) => setWebDraft((d) => ({ ...d, apiKey: e.target.value }))}
               className={cx(inputClass, "font-mono text-[12.5px]")}
-              placeholder="仅保存在本机数据库，不会下发给浏览器"
+              placeholder="可留空"
               autoComplete="off"
             />
           </Field>
 
-          <div className="grid gap-3 sm:grid-cols-4">
-            <Field label={`最大来源 ${webDraft.maxSources}`} hint="1–5">
-              <input
-                type="range"
-                min={1}
-                max={5}
-                value={webDraft.maxSources}
-                onChange={(e) => setWebDraft((d) => ({ ...d, maxSources: Number(e.target.value) }))}
-                className="w-full accent-[var(--accent)]"
-              />
-            </Field>
-            <Field label={`超时 ${(webDraft.timeoutMs / 1000).toFixed(1)}s`} hint="2–10s">
-              <input
-                type="range"
-                min={2000}
-                max={10000}
-                step={500}
-                value={webDraft.timeoutMs}
-                onChange={(e) => setWebDraft((d) => ({ ...d, timeoutMs: Number(e.target.value) }))}
-                className="w-full accent-[var(--accent)]"
-              />
-            </Field>
-            <Field label={`缓存 ${webDraft.ttlDays} 天`} hint="1–30">
-              <input
-                type="range"
-                min={1}
-                max={30}
-                value={webDraft.ttlDays}
-                onChange={(e) => setWebDraft((d) => ({ ...d, ttlDays: Number(e.target.value) }))}
-                className="w-full accent-[var(--accent)]"
-              />
-            </Field>
-            <Field label={`每会话 ${webDraft.maxSearchesPerSession} 次`} hint="缓存命中不计">
-              <input
-                type="range"
-                min={1}
-                max={30}
-                value={webDraft.maxSearchesPerSession}
-                onChange={(e) =>
-                  setWebDraft((d) => ({ ...d, maxSearchesPerSession: Number(e.target.value) }))
-                }
-                className="w-full accent-[var(--accent)]"
-              />
-            </Field>
+          <div className="grid gap-4 sm:grid-cols-4">
+            <SliderField
+              label="最大来源"
+              value={webDraft.maxSources}
+              hint="每次最多采信 1–5 条"
+              min={1}
+              max={5}
+              onChange={(v) => setWebDraft((d) => ({ ...d, maxSources: v }))}
+            />
+            <SliderField
+              label="超时"
+              value={Number((webDraft.timeoutMs / 1000).toFixed(1))}
+              suffix="s"
+              hint="超 2–10 秒按未核实处理"
+              min={2}
+              max={10}
+              step={0.5}
+              onChange={(v) => setWebDraft((d) => ({ ...d, timeoutMs: Math.round(v * 1000) }))}
+            />
+            <SliderField
+              label="缓存"
+              value={webDraft.ttlDays}
+              suffix=" 天"
+              hint="1–30 天内不重复请求"
+              min={1}
+              max={30}
+              onChange={(v) => setWebDraft((d) => ({ ...d, ttlDays: v }))}
+            />
+            <SliderField
+              label="每会话检索上限"
+              value={webDraft.maxSearchesPerSession}
+              suffix=" 次"
+              hint="缓存命中不计数"
+              min={1}
+              max={30}
+              onChange={(v) => setWebDraft((d) => ({ ...d, maxSearchesPerSession: v }))}
+            />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -796,16 +945,18 @@ export default function SettingsPage() {
                 <option value="manual">手动（对话里可临时打开）</option>
               </select>
             </Field>
-            <label className="flex items-start gap-2.5 pt-6 text-[12.5px] text-ink2">
+            <label className="flex items-start gap-2.5 pt-6">
               <input
                 type="checkbox"
                 checked={webDraft.allowPrivateProvider}
                 onChange={(e) => setWebDraft((d) => ({ ...d, allowPrivateProvider: e.target.checked }))}
-                className="mt-0.5 size-4 accent-[var(--accent)]"
+                className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
               />
-              允许自建服务地址（127.0.0.1 / 内网）。
-              <span className="mt-0.5 block text-[11px] leading-relaxed text-ink3">
-                只影响你自己配置的搜索服务地址；网页正文抓取始终阻断内网。
+              <span className="min-w-0">
+                <span className="block text-[12.5px] text-ink2">允许自建服务地址（127.0.0.1 / 内网）</span>
+                <span className="mt-0.5 block text-[12px] leading-relaxed text-ink3">
+                  只影响你自己配置的搜索服务地址；网页正文抓取始终阻断内网。
+                </span>
               </span>
             </label>
           </div>
@@ -831,22 +982,21 @@ export default function SettingsPage() {
               </span>
             ) : null}
             {web && (web as unknown as { stats?: { searches?: number; cacheHits?: number } }).stats ? (
-              <span className="ml-auto text-[11px] text-ink3">
+              <span className="ml-auto text-[12px] text-ink3">
                 近 7 天：{(web as unknown as { stats: { searches: number; cacheHits: number } }).stats.searches} 次检索 · 缓存命中{" "}
                 {(web as unknown as { stats: { searches: number; cacheHits: number } }).stats.cacheHits}
               </span>
             ) : null}
           </div>
 
-          <p className="rounded-lg bg-panel2/50 px-3 py-2 text-[11.5px] leading-relaxed text-ink3">
-            判题、提示与解析路径不会触发检索（答案安全优先）。检索失败、超时或无结果时，回答会明确写“未能联网核实”，
-            不会出现来源卡片或假引用。
+          <p className="rounded-lg bg-panel2/50 px-3 py-2 text-[12px] leading-relaxed text-ink3">
+            判题与解析不走检索；失败或超时时会明说「未能联网核实」，不摆来源卡片。
           </p>
         </Card>
       </section>
 
       <section className="mb-8 mt-8">
-        <SectionHeader title="数据" hint="本地 SQLite，不上传云端" />
+        <SectionHeader title="数据" hint="SQLite 数据库" />
         <Card className="p-4">
           {system ? (
             <>
@@ -861,11 +1011,11 @@ export default function SettingsPage() {
                 ].map(([label, v]) => (
                   <div key={String(label)}>
                     <p className="font-serif text-lg tabular-nums text-ink">{v as number}</p>
-                    <p className="text-[11px] text-ink3">{label as string}</p>
+                    <p className="text-[12px] text-ink3">{label as string}</p>
                   </div>
                 ))}
               </div>
-              <p className="mt-3 break-all rounded-lg bg-panel2/60 px-2.5 py-2 font-mono text-[11px] text-ink3">
+              <p className="mt-3 break-all rounded-lg bg-panel2/60 px-2.5 py-2 font-mono text-[12px] text-ink3">
                 {system.dbPath} · {system.dbSizeKb} KB · Node {system.node}
               </p>
             </>
@@ -874,19 +1024,25 @@ export default function SettingsPage() {
               <Spinner /> 读取中…
             </div>
           )}
-          <p className="mt-2 text-[11.5px] leading-relaxed text-ink3">
-            删除数据：在「历史」中删除会话，或在「学习档案」中更正 / 删除知识点。删除会话默认保留长期证据，
-            可在删除对话框中勾选连带删除。
+          <p className="mt-2 text-[12px] leading-relaxed text-ink3">
+            删会话不删学习证据；要一起删，在删除对话框里勾选。
           </p>
         </Card>
       </section>
 
       <section>
-        <SectionHeader title="开源复用与许可" hint="保留原始版权声明" />
-        <Card className="divide-y divide-line p-0">
+        <details className="group">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl border border-line bg-panel px-4 py-3 transition-colors hover:border-linestrong [&::-webkit-details-marker]:hidden">
+            <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span className="font-serif text-[16px] text-ink">开源复用与许可</span>
+              <span className="text-[12px] text-ink3">8 项 · 保留原始版权声明</span>
+            </span>
+            <ChevronDown className="size-4 shrink-0 text-ink3 transition-transform group-open:rotate-180" />
+          </summary>
+          <Card className="mt-2 divide-y divide-line p-0">
           {[
             { name: "OpenTutor", license: "MIT", usage: "BKT 知识追踪算法移植（knowledge_tracer.py → src/lib/learning/mastery.ts）；块式教学组件注册思路", url: "https://github.com/zijinz456/OpenTutor" },
-            { name: "better-sqlite3", license: "MIT", usage: "本地持久化", url: "https://github.com/WiseLibs/better-sqlite3" },
+            { name: "better-sqlite3", license: "MIT", usage: "SQLite 持久化", url: "https://github.com/WiseLibs/better-sqlite3" },
             { name: "KaTeX", license: "MIT", usage: "公式渲染", url: "https://github.com/KaTeX/KaTeX" },
             { name: "react-markdown", license: "MIT", usage: "Markdown 渲染", url: "https://github.com/remarkjs/react-markdown" },
             { name: "Recharts", license: "MIT", usage: "图表", url: "https://github.com/recharts/recharts" },
@@ -897,9 +1053,9 @@ export default function SettingsPage() {
             <div key={l.name} className="flex items-start gap-3 px-4 py-2.5">
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] text-ink">
-                  {l.name} <span className="ml-1 text-[11px] text-ink3">{l.license}</span>
+                  {l.name} <span className="ml-1 text-[12px] text-ink3">{l.license}</span>
                 </p>
-                <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink3">{l.usage}</p>
+                <p className="mt-0.5 text-[12px] leading-relaxed text-ink3">{l.usage}</p>
               </div>
               <a
                 href={l.url}
@@ -913,10 +1069,11 @@ export default function SettingsPage() {
             </div>
           ))}
         </Card>
-        <p className="mt-2 text-[11px] leading-relaxed text-ink3">
+        </details>
+        <p className="mt-2 text-[12px] leading-relaxed text-ink3">
           本项目自身以 MIT 发布。第三方源码的完整许可证见仓库 THIRD_PARTY_NOTICES.md。
         </p>
-        <p className="mt-2 text-[11px] text-ink3">
+        <p className="mt-2 text-[12px] text-ink3">
           想删掉某个模型只是不想再用它？删配置不会删学习记录。
           <Link href="/library" className="ml-1 underline">
             去学习档案
@@ -924,5 +1081,48 @@ export default function SettingsPage() {
         </p>
       </section>
     </div>
+  );
+}
+
+/** 滑块字段：标签 / 当前值 / 说明三层分开，别把三种语义挤在一行 */
+function SliderField({
+  label,
+  value,
+  suffix = "",
+  hint,
+  min,
+  max,
+  step = 1,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  suffix?: string;
+  hint: string;
+  min: number;
+  max: number;
+  step?: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="flex items-baseline justify-between gap-2">
+        <span className="text-[12.5px] text-ink2">{label}</span>
+        <span className="font-mono text-[13px] tabular-nums text-ink">
+          {value}
+          {suffix}
+        </span>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="mt-2 w-full accent-[var(--accent)]"
+      />
+      <span className="mt-1 block text-[12px] leading-relaxed text-ink3">{hint}</span>
+    </label>
   );
 }

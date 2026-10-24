@@ -1,0 +1,106 @@
+{
+  "total": 10,
+  "ok": 10,
+  "results": [
+    {
+      "id": "revenue",
+      "chartTypes": [
+        "combo"
+      ],
+      "charts": 1,
+      "overflow": 0,
+      "titleVisible": true,
+      "errors": []
+    },
+    {
+      "id": "pie",
+      "chartTypes": [
+        "pie"
+      ],
+      "charts": 1,
+      "overflow": 0,
+      "titleVisible": true,
+      "errors": []
+    },
+    {
+      "id": "monthly",
+      "chartTypes": [
+        "line"
+      ],
+      "charts": 1,
+      "overflow": 0,
+      "titleVisible": true,
+      "errors": []
+    },
+    {
+      "id": "waterfall",
+      "chartTypes": [
+        "waterfall"
+      ],
+      "charts": 1,
+      "overflow": 0,
+      "titleVisible": true,
+      "errors": []
+    },
+    {
+      "id": "compound",
+      "chartTypes": [
+        "line"
+      ],
+      "charts": 1,
+      "overflow": 0,
+      "titleVisible": true,
+      "errors": []
+    },
+    {
+      "id": "dual-axis",
+      "chartTypes": [
+        "combo"
+      ],
+      "charts": 1,
+      "overflow": 0,
+      "titleVisible": true,
+      "errors": []
+    },
+    {
+      "id": "cvp",
+      "chartTypes": [
+        "combo"
+      ],
+      "charts": 1,
+      "overflow": 0,
+      "titleVisible": true,
+      "errors": []
+    },
+    {
+      "id": "npv-irr",
+      "chartTypes": [
+        "combo"
+      ],
+      "charts": 1,
+      "overflow": 0,
+      "titleVisible": true,
+      "errors": []
+    },
+    {
+      "id": "candlestick",
+      "chartTypes": [
+        "candlestick"
+      ],
+      "charts": 1,
+      "overflow": 0,
+      "titleVisible": true,
+      "errors": []
+    },
+    {
+      "id": "trial-balance",
+      "chartTypes": [
+        "bar"
+      ],
+      "charts": 1,
+      "overflow": 0,
+      "titleVisible": true,
+      "errors": []
+    }
+  ]
+}

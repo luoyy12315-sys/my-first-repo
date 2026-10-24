@@ -8,7 +8,8 @@
   --panel-2: #f4f1ea;
   --ink: #1a1917;
   --ink-2: #57534b;
-  --ink-3: #8b8579;
+  /* 次级文字：曾在 #faf8f4 上只有 3.46:1，低于 WCAG AA。加深后约 5.1:1 */
+  --ink-3: #6f6a5f;
   --line: #e7e2d7;
   --line-strong: #d6cfc0;
   --accent: #1f6f63;
@@ -18,7 +19,7 @@
   --ok-soft: #e6f3ec;
   --bad: #b0382c;
   --bad-soft: #faeae7;
-  --warn: #9a6415;
+  --warn: #8a5a10;
   --warn-soft: #f8f0de;
   --shadow: 0 1px 2px rgba(26, 25, 23, 0.04), 0 8px 24px -12px rgba(26, 25, 23, 0.14);
   --shadow-lg: 0 2px 4px rgba(26, 25, 23, 0.05), 0 24px 60px -24px rgba(26, 25, 23, 0.22);
@@ -35,7 +36,8 @@
   --panel-2: #202320;
   --ink: #eceae3;
   --ink-2: #a9a59b;
-  --ink-3: #7a766d;
+  /* 深色下一次到位：原 #7a766d 在 #121312 上约 4.1:1 */
+  --ink-3: #8b877d;
   --line: #2b2f2b;
   --line-strong: #3a3f3a;
   --accent: #5fbfae;
@@ -76,8 +78,11 @@
   --radius-2xl: 20px;
 }
 
-* {
-  border-color: var(--line);
+/* 放进 base 层：无层级的通配符规则会盖掉所有 border-* 工具类（选中/正确/危险态的边框全部失效） */
+@layer base {
+  * {
+    border-color: var(--line);
+  }
 }
 
 html {
@@ -123,8 +128,9 @@ body {
 
 /* ── 文本排版 ─────────────────────────────────────────── */
 .md {
-  font-size: 15.5px;
-  line-height: 1.78;
+  /* 中文阅读：16px × 656px ≈ 41 字/行，比原来的 46 字更省眼 */
+  font-size: 16px;
+  line-height: 1.75;
   color: var(--ink);
   word-break: break-word;
 }

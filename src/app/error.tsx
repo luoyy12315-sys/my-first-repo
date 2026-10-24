@@ -27,7 +27,7 @@ export default function RouteError({
       <p className="text-[13px] leading-relaxed text-ink2">
         通常是某个教学内容的结构异常导致的。你的会话和学习数据都还在数据库里，不会因此丢失。
       </p>
-      <p className="max-w-full break-words rounded-lg bg-panel2 px-3 py-2 font-mono text-[11px] text-ink3">
+      <p className="max-w-full break-words rounded-lg bg-panel2 px-3 py-2 font-mono text-[12px] text-ink3">
         {error.message.slice(0, 200)}
       </p>
       <div className="flex gap-2">

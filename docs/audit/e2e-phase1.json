@@ -1,0 +1,68 @@
+{
+  "ranAt": "2026-10-24T02:38:47.118Z",
+  "base": "http://127.0.0.1:3212",
+  "cases": [
+    {
+      "id": "kline",
+      "acceptance": "不再返回空正文（允许模型说明不支持并给替代方案）",
+      "chars": 237,
+      "blocks": [
+        {
+          "kind": "table",
+          "title": "5 天示例数据（含蜡烛体与影线）"
+        },
+        {
+          "kind": "chart",
+          "title": "5 天最高 / 最低 / 收盘走势"
+        }
+      ],
+      "textAfterBlock": true,
+      "reasoningChars": 2419,
+      "reasoningEvents": 1,
+      "finishReason": "stop",
+      "usage": {
+        "promptTokens": 9343,
+        "completionTokens": 1647
+      },
+      "errors": [],
+      "preview": "我的绘图工具只能画折线/柱状/散点，画不出真正带实体的蜡烛图。所以我换一种方式：先把 5 天 OHLC 数据列清楚，再用「最高/最低/收盘」三条线画出每天的波动区间，你可以自己把它转成蜡烛图。现在先看表格里的数据：把“实体区间”对应的那一竖段画成方块，颜色取决于收盘价高于还是低于开盘价；再在方块上下各延伸一条细线，到最高价和最低价。这样 5 根蜡烛就出来了。自己动手画一遍，比我直接给你图更像真的学会了——需要我用 ASCII 字符逐根拼一版，或者出两道判断题帮你检验吗？"
+    },
+    {
+      "id": "table-continuation",
+      "acceptance": "出现 table 组件，且组件之后仍有正文（textAfterBlock=true）",
+      "chars": 749,
+      "blocks": [],
+      "textAfterBlock": false,
+      "reasoningChars": 708,
+      "reasoningEvents": 3,
+      "finishReason": "stop",
+      "usage": {
+        "promptTokens": 14035,
+        "completionTokens": 1438
+      },
+      "errors": [],
+      "preview": "核心差别就一句话：**什么时候“记”，看的不是钱到没到手，而是“权利、义务有没有发生”**。用表格把两者的差别逐项对照：刚才的表格没能正确生成，是我参数格式写错了，我重新发一次：表格组件连续两次调用失败（工具端参数解析出错，不是内容问题），我直接用文字给你对照表：\n\n| 对比维度 | 权责发生制（应收应付制） | 收付实现制（实收实付制） |\n|---|---|---|\n| 确认收入的时点 | 取得收款权利时（货已交、服务已提供） | 实际收到现金时 |\n| 确认费用的时点 | 承担付款义务时（费用已发生、受益期已到） | 实际支付现金时 |\n| 判断依据 | 权利与义务是否发生 | 现金是否收付 |\n| 是否用到应收/应付科目 | 需要：应收账款、应付账款、预收、预付 | 不需要，直接记现金进出 |\n| 利润的含义 | 收入与对应费用配比，更反映经营实绩 | 利润取决于现金收付时点，可大"
+    },
+    {
+      "id": "chart-continuation",
+      "acceptance": "出现 chart 组件，且组件之后仍有正文",
+      "chars": 120,
+      "blocks": [
+        {
+          "kind": "chart",
+          "title": "复利增长曲线（本金 10000 元，年利率 5%，20 年）"
+        }
+      ],
+      "textAfterBlock": true,
+      "reasoningChars": 1197,
+      "reasoningEvents": 1,
+      "finishReason": "stop",
+      "usage": {
+        "promptTokens": 9000,
+        "completionTokens": 986
+      },
+      "errors": [],
+      "preview": "按 $A = 10000 \\times 1.05^n$ 逐年计算：曲线为什么向上弯曲：每一年的利息都按“本金＋已赚的利息”计算，所以第10年一年的利息约880元，而第1年只有500元；年增长量本身也在逐年变大，所以曲线呈指数增长，越来越陡。"
+    }
+  ]
+}

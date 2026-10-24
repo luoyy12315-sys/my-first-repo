@@ -51,7 +51,7 @@ function fromRow(row: AiModelRow): AiConfig {
     model: row.model,
     temperature: row.temperature,
     timeoutMs: envNum("AI_TIMEOUT_MS", 120000),
-    maxTokens: envNum("AI_MAX_TOKENS", 4000),
+    maxTokens: envNum("AI_MAX_TOKENS", 12000),
     source: "settings",
   };
 }
@@ -71,7 +71,7 @@ function fromEnv(): AiConfig {
     model: process.env.AI_MODEL || "",
     temperature: envNum("AI_TEMPERATURE", 0.6),
     timeoutMs: envNum("AI_TIMEOUT_MS", 120000),
-    maxTokens: envNum("AI_MAX_TOKENS", 4000),
+    maxTokens: envNum("AI_MAX_TOKENS", 12000),
     source: apiKey ? "env" : "none",
   };
 }
@@ -106,6 +106,7 @@ export function aiStatus(modelId?: string | null): AiStatus {
   const c = resolveAiConfig(modelId);
   // 本地端点允许不填 Key（Ollama 等默认不校验）
   const configured = Boolean((c.apiKey || isLocalEndpoint(c.baseUrl)) && c.model);
+  const row = c.id ? getAiModel(c.id) : null;
   return {
     configured,
     provider: c.provider,
@@ -119,6 +120,8 @@ export function aiStatus(modelId?: string | null): AiStatus {
       : !c.apiKey
         ? "尚未配置模型服务的 API Key"
         : "尚未指定模型名称",
+    lastOkAt: row?.lastOkAt ?? null,
+    lastError: row?.lastError ?? null,
   };
 }
 

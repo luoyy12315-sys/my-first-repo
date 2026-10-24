@@ -1,0 +1,367 @@
+{
+  "ranAt": "2026-10-24T03:15:20.151Z",
+  "base": "http://127.0.0.1:3212",
+  "cases": [
+    {
+      "id": "revenue",
+      "expect": [
+        "bar",
+        "combo",
+        "line"
+      ],
+      "required": false,
+      "sessionId": "s_a52276cc487e48319bae",
+      "matched": true,
+      "chartTypes": [
+        "combo"
+      ],
+      "blocks": [
+        {
+          "kind": "chart",
+          "title": "某公司 2022–2024 营业收入与净利润对比（示意数据）",
+          "chartType": "combo",
+          "dataKind": "illustrative",
+          "dataNote": "示意数据，非真实财报，仅用于演示图表读法",
+          "seriesCount": 2,
+          "candleCount": 0,
+          "xKinds": [
+            "string"
+          ]
+        }
+      ],
+      "chars": 135,
+      "textAfterBlock": true,
+      "reasoningChars": 328,
+      "finishReason": "stop",
+      "errors": [],
+      "preview": "示意数据，我特意把两个量级差很多放在双轴上，避免净利润被压扁看不出变化。这张图演示的是「量级差很大的两个指标怎么放在一张图里」：收入用柱、净利润用线并挂到右轴，否则净利润那条线会贴着底部看不出起伏。上面的数字全是示意值，如果你有真实报表数字，换成真实数据我再帮你调一次。"
+    },
+    {
+      "id": "pie",
+      "expect": [
+        "pie"
+      ],
+      "required": true,
+      "sessionId": "s_485512e0db494a49810b",
+      "matched": true,
+      "chartTypes": [
+        "pie"
+      ],
+      "blocks": [
+        {
+          "kind": "chart",
+          "title": "某公司资产结构",
+          "chartType": "pie",
+          "dataKind": "illustrative",
+          "dataNote": "示意数据，非真实财报；占比来自提问中给定的数值",
+          "seriesCount": 1,
+          "candleCount": 0,
+          "xKinds": [
+            "string"
+          ]
+        }
+      ],
+      "chars": 108,
+      "textAfterBlock": true,
+      "reasoningChars": 855,
+      "finishReason": "stop",
+      "errors": [],
+      "preview": "饼图适合展示这种“各部分构成整体、合计 100%”的结构数据。已为你画好：图中一眼能看出流动资产占了大头，固定资产次之，无形资产占比最小。如果你还想比较不同公司的资产结构，或者想改成柱状图来对比绝对金额，可以告诉我。"
+    },
+    {
+      "id": "monthly",
+      "expect": [
+        "line",
+        "area",
+        "bar"
+      ],
+      "required": false,
+      "sessionId": "s_b487feb625a149fdbd6c",
+      "matched": true,
+      "chartTypes": [
+        "line"
+      ],
+      "blocks": [
+        {
+          "kind": "chart",
+          "title": "2024 年应收账款余额月度趋势（示意）",
+          "chartType": "line",
+          "dataKind": "illustrative",
+          "dataNote": "示意数据，非真实财报；仅用于演示趋势形态",
+          "seriesCount": 1,
+          "candleCount": 0,
+          "xKinds": [
+            "string"
+          ]
+        }
+      ],
+      "chars": 163,
+      "textAfterBlock": true,
+      "reasoningChars": 584,
+      "finishReason": "stop",
+      "errors": [],
+      "preview": "下面用一条折线图展示，并特意做成年底冲高型变化：这种变化在收入确认高峰和回款滞后同时出现的公司里很常见。图的重点不在具体每个月多少，而在形态：全年缓慢上行 + 年末陡增 21%，这是应收账款最典型的“回款跟不上收入确认”信号。如果你想让它更贴合实际场景，比如制造业淡旺季或电商大促，请告诉我，我可以调整季节性鼓包的位置和幅度。"
+    },
+    {
+      "id": "waterfall",
+      "expect": [
+        "waterfall"
+      ],
+      "required": true,
+      "sessionId": "s_e9058071888e42f2b63b",
+      "matched": true,
+      "chartTypes": [
+        "waterfall"
+      ],
+      "blocks": [
+        {
+          "kind": "chart",
+          "title": "从营业收入到净利润的构成（瀑布图）",
+          "chartType": "waterfall",
+          "dataKind": "real",
+          "seriesCount": 1,
+          "candleCount": 0,
+          "xKinds": [
+            "string"
+          ]
+        }
+      ],
+      "chars": 178,
+      "textAfterBlock": true,
+      "reasoningChars": 379,
+      "finishReason": "stop",
+      "errors": [],
+      "preview": "从营业收入到净利润是一条逐项扣减的链条：营业收入 → 减成本、减费用、减税 → 净利润。用瀑布图能把每一步扣减单独显示出来，比单看一组数字更直观。你给的数据正好能对上：$1000-600-200-50=150$。瀑布图让每项扣减自成一段，各段的长度也便于比较，能直观看出成本是最大的一项消耗。需要的话，我还可以把成本和费用继续往下拆解成细分科目，再画一层。"
+    },
+    {
+      "id": "compound",
+      "expect": [
+        "line",
+        "area"
+      ],
+      "required": false,
+      "sessionId": "s_35a72df2071f4b70af26",
+      "matched": true,
+      "chartTypes": [
+        "line"
+      ],
+      "blocks": [
+        {
+          "kind": "chart",
+          "title": "复利增长曲线：本金 10000 元，年利率 5%，20 年",
+          "chartType": "line",
+          "dataKind": "real",
+          "dataNote": "按 A = 10000×1.05^n 逐年计算（年复利）",
+          "seriesCount": 1,
+          "candleCount": 0,
+          "xKinds": [
+            "number"
+          ]
+        }
+      ],
+      "chars": 179,
+      "textAfterBlock": true,
+      "reasoningChars": 621,
+      "finishReason": "stop",
+      "errors": [],
+      "preview": "按每年复利一次计算，第 $n$ 年末的金额为\n\n$$A_n = 10000 \\times 1.05^n$$\n\n我已把 20 年逐年的数据画出来：这条曲线和直线的直观区别是：它向上弯曲，前期增长缓慢，后期增长加快。20 年总金额约 26,533 元，其中约 16,533 元是利息。如果你希望，我还可以加入一条“单利”作为对照，让你更直观地看出复利多出了多少。"
+    },
+    {
+      "id": "dual-axis",
+      "expect": [
+        "combo"
+      ],
+      "required": true,
+      "sessionId": "s_2bf524b609f64f37a071",
+      "matched": true,
+      "chartTypes": [
+        "combo"
+      ],
+      "blocks": [
+        {
+          "kind": "chart",
+          "title": "某公司三年营业收入与毛利率对比（示意数据）",
+          "chartType": "combo",
+          "dataKind": "illustrative",
+          "dataNote": "示意数据，非真实财报数据",
+          "seriesCount": 2,
+          "candleCount": 0,
+          "xKinds": [
+            "string"
+          ]
+        }
+      ],
+      "chars": 205,
+      "textAfterBlock": true,
+      "reasoningChars": 435,
+      "finishReason": "stop",
+      "errors": [],
+      "preview": "我用柱形表示营业收入（左轴），用折线表示毛利率（右轴）。因为两者量级差别大，所以把它们放在双轴上，才能同时看清趋势。这张图主要说明：只把这两个指标分开看时，你会以为公司在稳定扩张；放在双轴上一起看，才会发现“收入增长、毛利率下降”的背离。这是财务分析中双轴图的典型用法：把规模指标和比率指标放在同一张图上，同时观察这两个维度，而不是只看绝对值。如果你愿意，可以告诉我你手上真实的三年数据，我可以帮你重新画一版。"
+    },
+    {
+      "id": "cvp",
+      "expect": [
+        "line",
+        "combo",
+        "area"
+      ],
+      "required": false,
+      "sessionId": "s_40d302150a0b4f8a9fb8",
+      "matched": true,
+      "chartTypes": [
+        "combo"
+      ],
+      "blocks": [
+        {
+          "kind": "chart",
+          "title": "本量利分析图（固定成本 50000，单价 20，单位变动成本 12）",
+          "chartType": "combo",
+          "dataKind": "real",
+          "dataNote": "按题目给定参数计算：收入=20×Q，总成本=50000+12×Q，利润=8×Q−50000",
+          "seriesCount": 4,
+          "candleCount": 0,
+          "xKinds": [
+            "number"
+          ]
+        }
+      ],
+      "chars": 173,
+      "textAfterBlock": true,
+      "reasoningChars": 2489,
+      "finishReason": "stop",
+      "errors": [],
+      "preview": "先把关键结构算清楚：单位边际贡献 $20-12=8$ 元，所以盈亏平衡点 $=50000/8=6250$ 件。收入线和总成本线的交点就落在这里。看图时注意两点：亏损区和利润区由两条线的交点分开，两条线的缺口宽度是单位边际贡献，固定成本线则决定了这一点落在横轴多远处。你可以试着把交点对应的销量平移，看固定成本或单位变动成本变一下，交点会怎么移动。"
+    },
+    {
+      "id": "npv-irr",
+      "expect": [
+        "bar",
+        "combo"
+      ],
+      "required": false,
+      "sessionId": "s_ab96f13300c44e62bf6b",
+      "matched": true,
+      "chartTypes": [
+        "combo"
+      ],
+      "blocks": [
+        {
+          "kind": "chart",
+          "title": "A、B 方案 NPV 与 IRR 对比（双轴）",
+          "chartType": "combo",
+          "dataKind": "real",
+          "dataNote": "数值取自题目给定：A 方案 NPV 120 万、IRR 18%；B 方案 NPV 90 万、IRR 24%。",
+          "seriesCount": 2,
+          "candleCount": 0,
+          "xKinds": [
+            "string"
+          ]
+        }
+      ],
+      "chars": 249,
+      "textAfterBlock": true,
+      "reasoningChars": 1432,
+      "finishReason": "stop",
+      "errors": [],
+      "preview": "如果 NPV 和 IRR 这两个指标单位不同，一根柱子量不出可比性；所以我把 NPV 放在左轴，把 IRR 放在右轴，用双轴柱状图展示。这张图想说明的是：两个指标的单位和含义不同（一个看绝对财富增量，一个看资金效率），因此必须分轴展示，否则柱高会误导比较。图上呈现的排序分歧本身就是接下来的关键问题：如果 A、B 是两个互斥且只能选一个的方案，且不存在资金限额，那么该选 NPV 高的；如果资金有限，需要比较单位资金效率（如 PI），IRT 才有参考价值。具体要选哪个方案，还要看你的资金约束条件。"
+    },
+    {
+      "id": "candlestick",
+      "expect": [
+        "candlestick"
+      ],
+      "required": true,
+      "sessionId": "s_230659efe78149b889ab",
+      "matched": true,
+      "chartTypes": [
+        "candlestick"
+      ],
+      "blocks": [
+        {
+          "kind": "chart",
+          "title": "5 日 K 线示例（示意数据）",
+          "chartType": "candlestick",
+          "dataKind": "illustrative",
+          "dataNote": "示意数据，非真实标的行情",
+          "seriesCount": 0,
+          "candleCount": 5,
+          "xKinds": []
+        }
+      ],
+      "chars": 140,
+      "textAfterBlock": true,
+      "reasoningChars": 746,
+      "finishReason": "stop",
+      "errors": [],
+      "preview": "读 K 线图的要点是：实体上沿和上影线顶端之间的位置对应开盘价和收盘价的关系，如果实体是绿色或红色，就看你使用的行情软件是哪种配色习惯；细线的两端分别是当天开盘到收盘之外的极端价。试着在第 3 天和第 5 天之间做比较，看看哪根蜡烛的实体更长，以及这意味着多空双方哪一方更占优势。"
+    },
+    {
+      "id": "trial-balance",
+      "expect": [
+        "bar",
+        "waterfall",
+        "pie"
+      ],
+      "required": false,
+      "sessionId": "s_bda1064c9ada403b909e",
+      "matched": true,
+      "chartTypes": [
+        "bar"
+      ],
+      "blocks": [
+        {
+          "kind": "chart",
+          "title": "试算平衡表：借方与贷方构成",
+          "chartType": "bar",
+          "dataKind": "real",
+          "dataNote": "数据来自你给出的试算平衡表",
+          "seriesCount": 4,
+          "candleCount": 0,
+          "xKinds": [
+            "string"
+          ]
+        }
+      ],
+      "chars": 149,
+      "textAfterBlock": true,
+      "reasoningChars": 605,
+      "finishReason": "stop",
+      "errors": [],
+      "preview": "这两类科目正好分居借贷两方，最常见的是把两边“叠起来”对比——能一眼看出总额相等。这张图把四个科目按借贷方向分别叠在一起，左右两柱的等高关系就是试算平衡的直观含义：总额相等，并不代表每笔分录都记对了\n\n如果你更想看的不是「借贷两柱对比」，而是「每个科目占总金额的比重」，那可以改成饼图，这样更直观。"
+    }
+  ],
+  "style": {
+    "profile": {
+      "preset": "socratic",
+      "subject": "accounting",
+      "verbosity": 4,
+      "requireExample": true,
+      "requireCheckQuestion": true,
+      "customDirective": "不要一上来就给定义"
+    },
+    "sessionId": "s_d7b91fc094ad4f4b9249",
+    "chars": 672,
+    "questions": 0,
+    "hasDefinitionLeak": false,
+    "preview": "先不急着给定义。看一个具体场景。\n\n你朋友开了家奶茶店，现在的家底大致是这些：\n\n| # | 项目 |\n|---|---|\n| 1 | 收银台里的现金 3 万元 |\n| 2 | 去年花 2.8 万买的封口机，还能用三年 |\n| 3 | 从供应商赊的奶粉 1.5 万，货已到，钱还没付 |\n| 4 | 租的店面，月租 8000，租约还剩两年 |\n| 5 | “充 500 送 100”的会员卡，顾客已充了 4 万元 |\n| 6 | 老板自己考下的会计证 |\n| 7 | 一个还没申请下来的商标 |\n\n先自己判断：你认为哪些算资产。判断不出来也没关系；关键是说说你凭什么判断。\n\n我示范前三个的判断过程：\n\n封口机：去年买的，属于过去发生的事；所有权在店里；未来三年靠它一杯杯出奶茶收钱。因此算资产。\n\n会员卡那 4 万比较有意思。要分两件事看：顾客交的 4 万现金进了收银台，这是资产；但这 4 万不是"
+  },
+  "representation": {
+    "sessionId": "s_22cdcc450e8249d39772",
+    "chars": 370,
+    "blocks": [
+      {
+        "kind": "table",
+        "title": "权责发生制 vs 收付实现制：逐项对照",
+        "seriesCount": 0,
+        "candleCount": 0,
+        "xKinds": []
+      }
+    ],
+    "preview": "先不急着背定义。你用一个具体场景判断一次：\n\n> 你在小区开了家烘焙工作室。1 月 10 日给一家公司做了 30 场下午茶，谈好总价 12 万元；3 月才开票，4 月 15 日才收到这笔钱。\n\n**1 月你算不算\"赚了 12 万\"？** 你心里先选一个答案。\n\n这个分歧的关键在于：两套制度用不同标准记录同一笔业务。所以我把它拆成一张对照表来比较：这张表要说明一句话：这两套制度记录的是同一笔业务在不同时间点的状态；它们衡量的是两件事——权责发生制衡量“业务是否完成”，收付实现制衡量“现金是否到账”；它们并不是一对互相对错的规则。\n\n现在先回到开头那个场景，给出你的判断：**如果 1 月按收付实现制记账，账上会显示“收入 0 万”而不是“12 万”，那它是不是就把 1 月记成一个亏钱的月份了？** 说出你的理由，我看看你卡在哪个环节。"
+  },
+  "summary": {
+    "required": "4/4",
+    "matched": "10/10",
+    "emptyResponses": 0
+  }
+}

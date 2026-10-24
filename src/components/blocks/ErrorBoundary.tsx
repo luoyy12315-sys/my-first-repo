@@ -43,7 +43,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
         <p className="mt-1 text-ink2">
           其他内容不受影响。可以刷新页面重试，或让 AI 重新生成。
         </p>
-        <p className="mt-1 font-mono text-[11px] text-ink3">{error.message.slice(0, 160)}</p>
+        <p className="mt-1 font-mono text-[12px] text-ink3">{error.message.slice(0, 160)}</p>
       </div>
     );
   }

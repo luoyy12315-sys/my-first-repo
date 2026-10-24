@@ -5,10 +5,8 @@
  * 不做全量历史塞入——既控制成本，也避免旧话题污染当前判断。
  */
 import {
-  listConcepts,
   listBlocks,
   listMessages,
-  listTopics,
   searchMaterialChunks,
   getSession,
   getPlan,
@@ -17,8 +15,19 @@ import {
   conceptErrorProfile,
   recentExerciseFeedback,
 } from "@/lib/db/repo";
-import { ERROR_LABEL, type ErrorType, type SourceDTO } from "@/lib/types";
+import {
+  DISPLAY_STATUS_LABEL,
+  ERROR_LABEL,
+  type ErrorType,
+  type LearningMode,
+  type SourceDTO,
+} from "@/lib/types";
 import type { LlmMessage } from "./provider";
+import { currentStyleBlock } from "./teaching-profile";
+import {
+  buildRepresentationBlock,
+  type Representation,
+} from "@/lib/teaching/representation";
 
 const MAX_HISTORY_MESSAGES = 14;
 const MAX_CHARS_PER_MESSAGE = 2200;
@@ -42,14 +51,19 @@ export const SYSTEM_PROMPT = `你是 Lumina，一名真正会教人的私人导�
 - 不确定的内容要说不确定；用户材料与你的通用知识冲突时，指出差异，不要混为一谈。
 - 不编造页码、原文、引用、统计数据。没有依据就说没有依据。
 
+# 两种学习模式（服务端会告诉你是哪一种）
+- 无限学习：学生在对话里直接学。你可以连续讲解、追问、举例、出练习，但不创建正式计划、不写入学习档案、不展示课程完成率。练习只用于当下理解。
+- 目标学习：学生在一条已确认的计划里，按「课程 → 知识点」逐步学习。一次只聚焦一个知识点；出题证据会更新课程与计划进度。未确认的计划草稿不能开始教学。
+- 复习：只检验已有知识点，不新建计划或知识点。
+
 # 工具（重要）
 你能调用的工具是你输出"可交互教学内容"的唯一方式：
-- save_concepts：讲解涉及具体知识点时调用，登记到学习档案（去重、建立前置关系）。
-- present_exercise：需要验证理解时出一道题。答案写在 answer 参数里（只给系统），绝不要写进正文。
-- present_quiz：学生要求「小测 / 一套题 / 阶段验收」时，一次出 2–5 道确定性题；可以是同一知识点或一组相关知识点（每题可用 concept 单独指定）。答案同样只给系统，不要用 open 题。
-- present_chart / present_table / present_steps：可视化对比、数据、流程。数据必须真实。
+- save_concepts：仅目标学习且已绑定课程时调用；把本轮涉及、且已在当前课程中的知识点标记为已讲解并关联会话。不要用它扩课程目录，新知识点由用户在计划页添加。
+- present_exercise：需要验证理解时出一道题。答案写在 answer 参数里（只给系统），绝不要写进正文。无限学习中它只产生即时练习，不写档案。目标学习中 concept 必须是当前课程已有知识点。
+- present_quiz：学生要求「小测 / 一套题 / 阶段验收」时，一次出 2–5 道确定性题；每题可指定当前课程中的知识点。答案同样只给系统，不要用 open 题。
+- present_chart / present_table / present_steps：可视化对比、数据、流程。有真实数字就用真实数字；教学举例可以用示意数据，但必须标注；不要因为"没有真实数据"就拒绝画图。
 - open_simulator：需要"动手调参数观察规律"时用。公式变量名必须与参数 key 一致。
-- save_plan：学生给出目标/时间，或要求系统化学习时用。每一步尽量填写对应概念，便于和学习档案绑定。
+- save_plan：只在学生明确要求制定/调整目标学习计划时调用。生成的是待确认的计划草稿（计划 → 课程 → 知识点），不会直接开始教学；生成后必须引导用户去确认。
 - write_summary：本次学习结束或阶段总结时用，progress 只能写真实发生的事。
 
 工具是"展示"，不是"替代讲解"：先给一两句人话解释你为什么这么做，再调用工具。
@@ -86,96 +100,128 @@ export function findMaterialSources(userText: string, limit = 3, planId: string 
 
 export interface LearnerContextOptions {
   userText: string;
-  mode?: "free" | "goal" | "review";
+  mode?: LearningMode;
   /** 本轮注入的材料来源（已带 m1..mN 编号） */
   materialSources?: SourceDTO[];
   /** 本轮注入的网络来源（已带 w1..wN 编号） */
   webSources?: SourceDTO[];
   availableMinutes?: number | null;
   goal?: string | null;
+  /** 本轮指定讲法（来自「换个讲法」的结构化选择） */
+  representation?: Representation | null;
+  /** 本会话已经用过的讲法，避免重复 */
+  avoidRepresentations?: Representation[];
 }
 
 /** 组装"与当前问题相关"的学习者上下文 */
 export function buildLearnerContext(sessionId: string, opts: LearnerContextOptions): string {
   const session = getSession(sessionId);
   const blocks: string[] = [];
+  const mode: LearningMode = opts.mode ?? session?.mode ?? "infinite";
 
-  if (opts.mode === "review" || session?.mode === "review") {
+  if (mode === "review") {
     blocks.push(
       `【本轮是结构化复习】必须先调用 present_exercise 检测（同一知识点：同型题 1 道 + 变式题 1 道），拿到有效作答后再决定讲不讲。
 不要用大段讲解代替检测；不要生成学习计划；学生答对后才算这次复习完成。`,
     );
-  } else if (opts.mode === "goal" || session?.mode === "goal") {
-    const parts = [`本次是目标学习${opts.availableMinutes ? `，学生可用时间约 ${opts.availableMinutes} 分钟` : ""}`];
-    if (opts.goal) parts.push(`目标：${opts.goal}`);
-    blocks.push(`【学习方式】${parts.join("；")}。合理安排顺序，但不要为了凑时长注水。`);
-  } else {
-    blocks.push("【学习方式】自由学习：学生可随时追问或换主题，不要强制走课程流程。");
-  }
-
-  // 计划即目标：让模型知道这段对话属于哪条路线，避免讲着讲着跑题
-  const plan = session?.planId ? getPlan(session.planId) : null;
-  if (plan) {
-    const steps = plan.items
-      .slice(0, 8)
-      .map((it, i) => `${i + 1}. ${it.title}${it.status === "done" ? "（已完成）" : it.status === "in_progress" ? "（进行中）" : ""}`)
-      .join("；");
+  } else if (mode === "goal") {
     blocks.push(
-      `【所属学习计划】${plan.title}${plan.note ? `：${plan.note.slice(0, 160)}` : ""}。${steps ? `步骤：${steps}。` : ""}本轮对话属于这个计划，讲解与出题围绕它；除非学生明确换主题，不要另起一条路线。`,
+      `【学习方式】目标学习${opts.availableMinutes ? `，学生可用时间约 ${opts.availableMinutes} 分钟` : ""}。按已确认的课程目录逐个知识点教学${opts.goal ? `；目标：${opts.goal}` : ""}。一次只聚焦一个知识点，讲清后出题验证，不要跳课或另起计划。`,
+    );
+  } else {
+    blocks.push(
+      `【学习方式】无限学习：学生可以直接追问、换讲法、举例或要求练习，不需要先建计划。你可以持续陪他学，但不要调用 save_concepts 写正式档案，不要展示课程完成率或计划进度，也不要把一次练习当成正式掌握证据。只有学生明确要求「整理成学习计划」时，才调用 save_plan 生成待确认的草稿。`,
     );
   }
 
-  if (session?.focusConceptId) {
-    const focus = getConcept(session.focusConceptId);
+  if (opts.representation) {
+    blocks.push(buildRepresentationBlock(opts.representation, opts.avoidRepresentations ?? []));
+  }
+
+  const plan = session?.planId ? getPlan(session.planId) : null;
+
+  if (mode === "goal") {
+    if (!plan) {
+      blocks.push(
+        `【规划阶段】当前还没有正式计划。先根据学生的目标调用 save_plan 生成计划草稿（计划 → 课程 → 知识点），只生成结构，不要直接开始教学；生成后告诉学生去「目标学习」确认或修改。`,
+      );
+    } else if (plan.status === "draft") {
+      blocks.push(
+        `【计划草稿待确认】「${plan.title}」还没有确认。不要按这份草稿开始教学；请引导学生到 /plan/${plan.id} 检查课程与知识点，确认后再从课程进入学习。`,
+      );
+    } else {
+      const statusLabel = plan.status === "paused" ? "已暂停" : "进行中";
+      blocks.push(
+        `【所属学习计划】${plan.title}（${statusLabel}）${plan.note ? `：${plan.note.slice(0, 160)}` : ""}。总体进度 ${plan.progress.percent}%（已掌握 ${plan.progress.conceptsMastered}/${plan.progress.conceptsTotal} 个知识点，完成 ${plan.progress.coursesDone}/${plan.progress.coursesTotal} 门课程）。`,
+      );
+      if (plan.progress.unconfiguredCourses > 0) {
+        blocks.push(
+          `【目录缺口】有 ${plan.progress.unconfiguredCourses} 门课程还没有配置知识点，它们不计入完成率。不要用已有知识点倒推这些课程已完成。`,
+        );
+      }
+      const courseLines = plan.items
+        .slice(0, 12)
+        .map(
+          (item) =>
+            `- ${item.title}（${item.status === "done" ? "已完成" : item.status === "skipped" ? "已跳过" : item.status === "in_progress" ? "进行中" : item.status === "unconfigured" ? "未配置知识点" : "待开始"}，${item.progress.mastered}/${item.progress.total}）`,
+        )
+        .join("\n");
+      if (courseLines) blocks.push(`【课程目录】\n${courseLines}`);
+
+      const course = plan.items.find((item) => item.id === session?.planItemId) ?? null;
+      if (course) {
+        const conceptLines = course.concepts
+          .map((c) => `- ${c.name}（${DISPLAY_STATUS_LABEL[c.displayStatus]}${c.introducedAt && c.status === "untouched" ? "，已讲解待验证" : ""}）`)
+          .join("\n");
+        blocks.push(
+          `【当前课程】${course.title}（${course.progress.mastered}/${course.progress.total}）。${course.description ? `课程说明：${course.description.slice(0, 240)}。` : ""}${conceptLines ? `\n知识点：\n${conceptLines}` : "\n这门课还没有配置知识点，不要开始教学，先请用户补充。"}`,
+        );
+        if (course.nextConceptName) {
+          blocks.push(
+            `【本轮优先知识点】${course.nextConceptName}。先确认学生是否理解，再讲下一个；出题时 concept 使用这个名称。不要一次覆盖整门课。`,
+          );
+        } else if (course.concepts.length > 0) {
+          blocks.push(`【本课程已完成】所有知识点都已掌握。请建议学生回到课程页进入下一门课程。`);
+        }
+      } else if (plan.currentCourseId) {
+        blocks.push(
+          `【当前课程未绑定】计划当前在「${plan.currentCourseTitle}」。不要自行挑一门课开讲；请引导学生从课程页进入具体课程。`,
+        );
+      }
+      if (plan.status === "paused") {
+        blocks.push(`【计划已暂停】不要推进新课程；先请学生决定恢复计划或继续当前对话。`);
+      }
+    }
+  }
+
+  if (mode === "review" && plan) {
+    const course = plan.items.find((item) => item.id === session?.planItemId) ?? null;
+    blocks.push(
+      `【复习位置】计划「${plan.title}」${course ? ` · 课程「${course.title}」` : ""}。复习只更新这个知识点的证据，不改变课程顺序。`,
+    );
+  }
+
+  const focusId =
+    session?.focusConceptId ??
+    (mode === "goal"
+      ? plan?.items.find((item) => item.id === session?.planItemId)?.nextConceptId ?? null
+      : null);
+  if (focusId) {
+    const focus = getConcept(focusId);
     if (focus) {
       blocks.push(
-        `【本轮聚焦知识点】${focus.name}（${focus.topicName}）：状态=${focus.status}，p(掌握)=${focus.pMastery.toFixed(2)}，证据 ${focus.evidenceCount} 次，独立正确 ${focus.independentCorrect} 次，用提示 ${focus.hintUses} 次，连续错误 ${focus.wrongStreak} 次。讲解、出题与收尾都围绕它，不要扩散。`,
+        `【本轮聚焦知识点】${focus.name}（${focus.courseTitle ?? focus.topicName}）：状态=${DISPLAY_STATUS_LABEL[focus.displayStatus]}，p(掌握)=${focus.pMastery.toFixed(2)}，证据 ${focus.evidenceCount} 次，独立正确 ${focus.independentCorrect} 次，用提示 ${focus.hintUses} 次，连续错误 ${focus.wrongStreak} 次。讲解、出题与收尾都围绕它，不要扩散。`,
       );
-    }
-  }
-
-  const topics = listTopics().slice(0, 6);
-  if (topics.length) {
-    blocks.push(
-      `【已有主题】${topics
-        .map((t) => `${t.name}（${t.concept_count} 个知识点，其中 ${t.solid_count} 个有掌握证据）`)
-        .join("；")}`,
-    );
-  }
-
-  // 相关知识点：优先按当前输入匹配，其次取最近学习的
-  const all = listConcepts({ limit: 400 });
-  const hit = all.filter((c) => opts.userText.includes(c.name) || c.name.length >= 2 && opts.userText.includes(c.name.slice(0, 3)));
-  const relevant = (hit.length ? hit : all.filter((c) => c.status !== "untouched")).slice(0, 6);
-  if (relevant.length) {
-    blocks.push(
-      `【相关知识点状态】\n${relevant
-        .map(
-          (c) =>
-            `- ${c.name}（${c.topicName}）：状态=${c.status}，p(掌握)=${c.pMastery.toFixed(2)}，证据 ${c.evidenceCount} 次，独立正确 ${c.independentCorrect} 次，用提示 ${c.hintUses} 次，连续错误 ${c.wrongStreak} 次`,
-        )
-        .join("\n")}`,
-    );
-  }
-
-  // 错因画像（A1）：告诉模型"为什么错"，而不只是"错了"
-  if (relevant.length) {
-    const lines: string[] = [];
-    for (const c of relevant.slice(0, 4)) {
-      const prof = conceptErrorProfile(c.id);
-      if (!prof.top.length && !prof.recent.length) continue;
-      const top = prof.top
-        .map((t) => `${ERROR_LABEL[t.error_type as ErrorType] ?? t.error_type}×${t.n}`)
-        .join("、");
-      const last = prof.recent[0];
-      lines.push(
-        `- ${c.name}：${top || "暂无分类"}${last ? `；最近一次错答「${last.prompt}」写成了「${last.answer}」` : ""}`,
-      );
-    }
-    if (lines.length) {
-      blocks.push(
-        `【错因画像】只用于决定怎么教，不要据此下调掌握度：\n${lines.join("\n")}`,
-      );
+      const prof = conceptErrorProfile(focus.id);
+      if (prof.top.length || prof.recent.length) {
+        const top = prof.top
+          .map((t) => `${ERROR_LABEL[t.error_type as ErrorType] ?? t.error_type}×${t.n}`)
+          .join("、");
+        const last = prof.recent[0];
+        blocks.push(
+          `【错因画像】只用于决定怎么教，不要据此下调掌握度：${top || "暂无分类"}${last ? `；最近一次错答「${last.prompt}」写成了「${last.answer}」` : ""}`,
+        );
+      }
     }
   }
 
@@ -202,16 +248,6 @@ export function buildLearnerContext(sessionId: string, opts: LearnerContextOptio
           return `- ${String(a.type)}｜${prompt}｜${ok ? "正确" : "错误"}${hint}${viewed}`;
         })
         .join("\n")}`,
-    );
-  }
-
-  const weak = all
-    .filter((c) => c.status === "needs_work" || c.wrongStreak > 0)
-    .sort((a, b) => b.wrongStreak - a.wrongStreak)
-    .slice(0, 3);
-  if (weak.length) {
-    blocks.push(
-      `【薄弱点】${weak.map((c) => `${c.name}（连续错误 ${c.wrongStreak}，用提示 ${c.hintUses} 次）`).join("；")}。若本轮内容相关，可优先用不同题型复测。`,
     );
   }
 
@@ -259,10 +295,12 @@ export function buildLearnerContext(sessionId: string, opts: LearnerContextOptio
 export function buildHistory(sessionId: string, opts: { excludeMessageId?: string } = {}): LlmMessage[] {
   const messages = listMessages(sessionId).filter(
     (m) =>
-      m.status !== "error" &&
       m.id !== opts.excludeMessageId &&
       // 跳过"正在流式生成、内容为空"的助手占位，否则模型会看到一条空回复
-      !(m.role === "assistant" && !m.content.trim() && m.parts.length === 0 && m.status === "streaming"),
+      !(m.role === "assistant" && !m.content.trim() && m.parts.length === 0 && m.status === "streaming") &&
+      // 失败/中止的回答只要已经讲出了内容，就必须留在上下文里：
+      // 否则用户说「继续」时模型看不到上半段，会从头重复。
+      (m.status !== "error" || m.content.trim().length > 0),
   );
   const recent = messages.slice(-MAX_HISTORY_MESSAGES);
   const blocksById = new Map(listBlocks(sessionId).map((b) => [b.id, b]));
@@ -275,7 +313,9 @@ export function buildHistory(sessionId: string, opts: { excludeMessageId?: strin
         return `（此前展示过${p.kind ?? "组件"}${label}）`;
       })
       .join(" ");
-    const content = `${m.content.slice(0, MAX_CHARS_PER_MESSAGE)}${blockNotes ? `\n${blockNotes}` : ""}`.trim();
+    const partialNote =
+      m.status === "error" ? "（上一条回答没讲完，以下是已经讲出的部分）\n" : "";
+    const content = `${partialNote}${m.content.slice(0, MAX_CHARS_PER_MESSAGE)}${blockNotes ? `\n${blockNotes}` : ""}`.trim();
     return { role: m.role === "system" ? "system" : m.role, content: content || "（空）" } as LlmMessage;
   });
 }
@@ -283,7 +323,7 @@ export function buildHistory(sessionId: string, opts: { excludeMessageId?: strin
 export function buildTeachingMessages(args: {
   sessionId: string;
   userText: string;
-  mode?: "free" | "goal" | "review";
+  mode?: LearningMode;
   availableMinutes?: number | null;
   goal?: string | null;
   /** 已经落库的当前用户消息 id，避免在历史里再出现一次 */
@@ -291,6 +331,8 @@ export function buildTeachingMessages(args: {
   /** 本轮来源：由调用方一次性算好，保证注入编号与落库编号一致 */
   materialSources?: SourceDTO[];
   webSources?: SourceDTO[];
+  representation?: Representation | null;
+  avoidRepresentations?: Representation[];
 }): LlmMessage[] {
   const context = buildLearnerContext(args.sessionId, {
     userText: args.userText,
@@ -299,12 +341,16 @@ export function buildTeachingMessages(args: {
     goal: args.goal,
     materialSources: args.materialSources,
     webSources: args.webSources,
+    representation: args.representation,
+    avoidRepresentations: args.avoidRepresentations,
   });
   const history = buildHistory(args.sessionId, { excludeMessageId: args.excludeMessageId }).filter(
     (m) => m.role !== "system",
   );
+  const style = currentStyleBlock();
   return [
     { role: "system", content: SYSTEM_PROMPT },
+    ...(style ? [{ role: "system" as const, content: style }] : []),
     { role: "system", content: `# 当前学习者上下文\n${context}` },
     ...history,
     { role: "user", content: args.userText },

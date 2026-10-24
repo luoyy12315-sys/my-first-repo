@@ -1,16 +1,34 @@
 export type ConceptStatus =
   | "untouched" // 尚未接触
   | "learning" // 正在学习
-  | "needs_work" // 需要巩固
+  | "needs_work" // 需要巩固 / 待复习
   | "initial" // 有初步掌握证据
-  | "mastered"; // 暂时掌握
+  | "mastered"; // 已掌握
 
+/** 普通界面统一使用这四种状态；initial/learning 都显示为「学习中」 */
+export type ConceptDisplayStatus = "todo" | "learning" | "review" | "mastered";
+
+export const DISPLAY_STATUS_LABEL: Record<ConceptDisplayStatus, string> = {
+  todo: "待学习",
+  learning: "学习中",
+  review: "待复习",
+  mastered: "已掌握",
+};
+
+export const DISPLAY_STATUS_ORDER: ConceptDisplayStatus[] = [
+  "todo",
+  "learning",
+  "review",
+  "mastered",
+];
+
+/** 内部状态的历史文案；普通列表请用 DISPLAY_STATUS_LABEL */
 export const STATUS_LABEL: Record<ConceptStatus, string> = {
-  untouched: "尚未接触",
-  learning: "正在学习",
-  needs_work: "需要巩固",
-  initial: "有初步掌握证据",
-  mastered: "暂时掌握",
+  untouched: "待学习",
+  learning: "学习中",
+  needs_work: "待复习",
+  initial: "学习中",
+  mastered: "已掌握",
 };
 
 export const STATUS_ORDER: ConceptStatus[] = [
@@ -20,6 +38,10 @@ export const STATUS_ORDER: ConceptStatus[] = [
   "initial",
   "mastered",
 ];
+
+export type LearningMode = "infinite" | "goal" | "review";
+export type PlanStatus = "draft" | "active" | "paused";
+export type CourseStatus = "pending" | "in_progress" | "done" | "skipped" | "unconfigured";
 
 export type ExerciseType =
   | "single"
@@ -164,12 +186,14 @@ export interface AttemptDTO {
 export interface SessionSummary {
   id: string;
   title: string;
-  mode: "free" | "goal" | "review";
+  mode: LearningMode;
   /** 本会话固定使用的模型配置；null 表示跟随默认 */
   modelId?: string | null;
-  /** 归属的学习计划（计划即“目标”）；null 表示未归类 */
+  /** 归属的学习计划；null 表示无限学习或未归类 */
   planId?: string | null;
   planTitle?: string | null;
+  planItemId?: string | null;
+  courseTitle?: string | null;
   updatedAt: number;
   messageCount: number;
   summary?: string | null;
@@ -187,6 +211,8 @@ export interface ConceptDTO {
   name: string;
   definition?: string | null;
   status: ConceptStatus;
+  /** 普通界面用的四态显示 */
+  displayStatus: ConceptDisplayStatus;
   pMastery: number;
   evidenceCount: number;
   independentCorrect: number;
@@ -201,6 +227,11 @@ export interface ConceptDTO {
   lastStudiedAt?: number | null;
   /** 是否已经讲解/出题接触过；不等于有作答证据 */
   introducedAt?: number | null;
+  /** 唯一所属课程（计划步骤）；null 表示尚未归属，普通界面标为待整理 */
+  courseId?: string | null;
+  courseTitle?: string | null;
+  planId?: string | null;
+  planTitle?: string | null;
   prerequisites: { id: string; name: string; status: ConceptStatus }[];
 }
 
@@ -210,6 +241,8 @@ export interface EvidenceDTO {
   score: number | null;
   independent: boolean;
   hintUsed: boolean;
+  /** 0 表示保留审计但不计入掌握度（例如查看解析后作答） */
+  weight: number;
   voided: boolean;
   voidReason?: string | null;
   note?: string | null;
@@ -228,6 +261,8 @@ export interface TodayPlan {
   sessionId?: string | null;
   planId?: string | null;
   planTitle?: string | null;
+  courseId?: string | null;
+  courseTitle?: string | null;
 }
 
 export interface ReviewItemDTO {
@@ -237,6 +272,8 @@ export interface ReviewItemDTO {
   topicName: string;
   planId: string | null;
   planTitle: string | null;
+  courseId: string | null;
+  courseName: string | null;
   reason: string;
   priority: number;
   dueAt: number | null;
@@ -244,21 +281,44 @@ export interface ReviewItemDTO {
   createdAt: number;
 }
 
+export interface CourseConceptDTO {
+  id: string;
+  name: string;
+  status: ConceptStatus;
+  displayStatus: ConceptDisplayStatus;
+  introducedAt: number | null;
+}
+
+export interface CourseProgress {
+  mastered: number;
+  total: number;
+  percent: number;
+}
+
 export interface PlanItemDTO {
   id: string;
   planId: string;
   title: string;
-  rationale?: string | null;
-  conceptId?: string | null;
-  conceptName?: string | null;
-  conceptStatus?: ConceptStatus | null;
-  /** 本步已独立答对的不同知识点数量（未看解析、未用提示） */
-  verifiedConcepts?: number;
-  /** 本步自动完成所需的不同知识点数量 */
-  requiredConcepts?: number;
-  verifiedConceptNames?: string[];
+  /** 课程说明 */
+  description?: string | null;
   orderIndex: number;
-  status: "pending" | "in_progress" | "done" | "skipped";
+  status: CourseStatus;
+  concepts: CourseConceptDTO[];
+  progress: CourseProgress;
+  /** 课程内下一个尚未掌握的知识点，用于「继续学习」 */
+  nextConceptId?: string | null;
+  nextConceptName?: string | null;
+  /** 没有配置知识点：不计入完成率，界面必须明确标出 */
+  unconfigured: boolean;
+}
+
+export interface PlanProgress {
+  conceptsMastered: number;
+  conceptsTotal: number;
+  percent: number;
+  coursesDone: number;
+  coursesTotal: number;
+  unconfiguredCourses: number;
 }
 
 export interface PlanDTO {
@@ -266,10 +326,16 @@ export interface PlanDTO {
   goalId: string | null;
   title: string;
   note: string | null;
-  status: string;
+  status: PlanStatus;
   createdAt: number;
+  updatedAt: number;
   items: PlanItemDTO[];
-  progress: { done: number; total: number };
+  progress: PlanProgress;
+  /** 当前学习位置：进行中的课程，其次第一门待开始且有知识点的课程 */
+  currentCourseId: string | null;
+  currentCourseTitle: string | null;
+  currentConceptId: string | null;
+  currentConceptName: string | null;
   counts: { sessions: number; materials: number; reviews: number };
 }
 
@@ -315,6 +381,10 @@ export interface AiStatus {
   modelId?: string | null;
   source: "env" | "settings" | "none";
   reason?: string;
+  /** 最近一次成功调用/测试；用于首页健康提示 */
+  lastOkAt?: number | null;
+  /** 最近一次失败原因；成功后清空 */
+  lastError?: string | null;
 }
 
 /** 多模型配置（对外脱敏形态，绝不含明文 Key） */

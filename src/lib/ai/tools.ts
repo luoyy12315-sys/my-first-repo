@@ -5,9 +5,11 @@
  * 所有参数都要通过 zod 校验，答案与评分规则落在服务端。
  */
 import {
+  CHART_TYPES,
   chartInputSchema,
   conceptsInputSchema,
   exerciseInputSchema,
+  normalizeText,
   planInputSchema,
   quizInputSchema,
   simulatorInputSchema,
@@ -24,18 +26,18 @@ import {
   addConceptEdge,
   createBlock,
   createExercise,
-  appendPlanItems,
+  appendPlanCourses,
   createPlan,
   findPlanByTitle,
   findConceptByName,
   ensureConcept,
-  ensureTopic,
+  getPlan,
   getSession,
   linkSessionTopic,
   saveSummary,
   setSessionPlan,
 } from "@/lib/db/repo";
-import type { BlockDTO } from "@/lib/types";
+import type { BlockDTO, PlanDTO, PlanItemDTO } from "@/lib/types";
 import { stripInlineMarkdown } from "@/lib/text";
 
 export interface ToolContext {
@@ -59,14 +61,22 @@ const obj = (properties: Record<string, unknown>, required: string[]) => ({
   additionalProperties: false,
 });
 
+/** 把 zod 校验错误压成一句话：既要让用户看懂，也要让模型知道该改哪 */
+function zodIssues(err: { issues: { path: PropertyKey[]; message: string }[] }, max = 4): string {
+  return err.issues
+    .slice(0, max)
+    .map((i) => `${i.path.join(".") || "(根)"}：${i.message}`)
+    .join("；");
+}
+
 export const TEACHING_TOOLS = [
   {
     name: "save_concepts",
     description:
-      "把本次讲解涉及的知识点登记到学习档案（自动去重、建立主题与前置关系）。讲到具体知识点时调用，一次覆盖本次涉及的 1-8 个知识点。",
+      "把本轮讲解涉及、且已经属于当前课程的知识点关联到会话（不创建新知识点）。目标学习中课程结构由用户确认；无限学习不要调用。",
     parameters: obj(
       {
-        topic: { type: "string", description: "知识主题，例如「导数」「复式记账」「Python 列表」" },
+        topic: { type: "string", description: "本次讲解的主题（仅作说明）" },
         topicDescription: { type: "string", description: "主题的一句话说明（可选）" },
         concepts: {
           type: "array",
@@ -74,12 +84,12 @@ export const TEACHING_TOOLS = [
           maxItems: 8,
           items: obj(
             {
-              name: { type: "string", description: "知识点名称，尽量具体（如「链式法则」而不是「求导」）" },
+              name: { type: "string", description: "知识点名称，必须是当前课程已有知识点" },
               definition: { type: "string", description: "一句话定义（可选）" },
               prerequisites: {
                 type: "array",
                 items: { type: "string" },
-                description: "前置知识点名称（可选，需是真实前置关系）",
+                description: "前置知识点名称（可选，需是当前课程已有知识点）",
               },
             },
             ["name"],
@@ -92,10 +102,13 @@ export const TEACHING_TOOLS = [
   {
     name: "present_exercise",
     description:
-      "给学生出一道可交互练习。答案只提交给系统、不能写进对话文字里。题型按教学目标选：single=单选 multi=多选 blank=填空 judge=判断 order=排序 numeric=计算 steps=分步骤 open=开放题。",
+      "给学生出一道可交互练习。答案只提交给系统、不能写进对话文字里。目标学习中 concept 应对应本课程已有知识点；无限学习中的练习只用于当下理解，不写入正式档案。",
     parameters: obj(
       {
-        concept: { type: "string", description: "这道题考查的知识点名称（用于把作答计入该知识点的掌握度）" },
+        concept: {
+          type: "string",
+          description: "目标学习中这道题考查的课程知识点名称（可选；无限学习中会被忽略）",
+        },
         topic: { type: "string", description: "所属知识主题（可选）" },
         type: {
           type: "string",
@@ -135,7 +148,7 @@ export const TEACHING_TOOLS = [
           description: "open 题型的评分维度",
         },
       },
-      ["concept", "type", "prompt", "answer"],
+      ["type", "prompt", "answer"],
     ),
   },
   {
@@ -185,31 +198,63 @@ export const TEACHING_TOOLS = [
   {
     name: "present_chart",
     description:
-      "用真实数据画图（折线/柱状/散点）。数据必须来自题目条件或可靠计算，不得编造。适合展示趋势、函数形状、对比关系。",
+      "用结构化数据画图。支持：line 折线、bar 柱状、area 面积、scatter 散点、pie 饼图（只能一个 series）、radar 雷达、waterfall 瀑布（points 用 kind=delta/total）、candlestick K线（用 candles，不要用 series）、combo 组合/双轴（每条 series 指定 type 和/或 axis=left|right）。x 可以是数字或字符串：月份、年份、资产类别直接写字符串，不要硬编码成 1/2/3。数据规则：题目或材料给出的数字用 dataKind=\"real\"；教学举例必须用 dataKind=\"illustrative\" 并在 dataNote 说明。缺少数值时可以给示意数据，不要因此拒绝画图。",
     parameters: obj(
       {
         title: { type: "string" },
-        chartType: { type: "string", enum: ["line", "bar", "scatter"] },
+        chartType: { type: "string", enum: [...CHART_TYPES] },
         xLabel: { type: "string" },
         yLabel: { type: "string" },
+        xType: { type: "string", enum: ["category", "number", "time"] },
+        stacked: { type: "boolean", description: "柱状/面积图是否堆叠" },
         series: {
           type: "array",
           minItems: 1,
+          maxItems: 8,
           items: obj(
             {
               name: { type: "string" },
+              type: { type: "string", enum: ["line", "bar", "area"] },
+              axis: { type: "string", enum: ["left", "right"] },
               points: {
                 type: "array",
                 minItems: 1,
-                items: obj({ x: { type: "number" }, y: { type: "number" } }, ["x", "y"]),
+                items: obj(
+                  {
+                    x: { anyOf: [{ type: "number" }, { type: "string" }] },
+                    y: { type: "number" },
+                    kind: { type: "string", enum: ["delta", "total"] },
+                  },
+                  ["x", "y"],
+                ),
               },
             },
             ["name", "points"],
           ),
         },
+        candles: {
+          type: "array",
+          minItems: 1,
+          items: obj(
+            {
+              label: { type: "string" },
+              open: { type: "number" },
+              high: { type: "number" },
+              low: { type: "number" },
+              close: { type: "number" },
+            },
+            ["label", "open", "high", "low", "close"],
+          ),
+        },
+        dataKind: {
+          type: "string",
+          enum: ["real", "illustrative"],
+          description: "real=题目/材料中的真实数字；illustrative=教学示意数据（界面会标注）",
+        },
+        dataNote: { type: "string", description: "数据来源说明，例如「示意数据，非真实财报」" },
         note: { type: "string", description: "一句话解读，说明该图的结论" },
       },
-      ["title", "series"],
+      ["title", "chartType"],
     ),
   },
   {
@@ -300,29 +345,38 @@ export const TEACHING_TOOLS = [
   },
   {
     name: "save_plan",
-    description: "当学生设定了学习目标/时间，或明确要求系统化学习时，生成可编辑的学习路线（3-12 步）。",
+    description:
+      "仅在目标学习、且学生明确要求制定/调整学习计划时调用。生成的是待确认的计划草稿：计划 → 课程（courses）→ 知识点（concepts），不会直接开始教学，也不会自动把当前会话绑到计划。",
     parameters: obj(
       {
-        title: { type: "string" },
-        goal: { type: "string" },
-        items: {
+        title: { type: "string", description: "学习计划名称" },
+        goal: { type: "string", description: "学习目标（一句话）" },
+        courses: {
           type: "array",
           minItems: 1,
-          maxItems: 20,
+          maxItems: 12,
           items: obj(
             {
-              title: { type: "string" },
-              rationale: { type: "string" },
-              concept: {
-                type: "string",
-                description: "这一步对应的知识点名称（尽量填写，用于和档案/作答证据绑定）",
+              title: { type: "string", description: "课程/学习单元名称" },
+              description: { type: "string", description: "这门课学什么（可选）" },
+              concepts: {
+                type: "array",
+                minItems: 1,
+                maxItems: 12,
+                items: obj(
+                  {
+                    name: { type: "string", description: "知识点名称，具体而可教" },
+                    definition: { type: "string", description: "一句话定义（可选）" },
+                  },
+                  ["name"],
+                ),
               },
             },
-            ["title"],
+            ["title", "concepts"],
           ),
         },
       },
-      ["title", "items"],
+      ["title", "courses"],
     ),
   },
   {
@@ -343,60 +397,225 @@ export const TEACHING_TOOLS = [
   },
 ] as const;
 
-function parseArgs(raw: string): unknown {
-  if (!raw || !raw.trim()) return {};
+/**
+ * 模型生成的 JSON 常见问题：字符串里有裸换行、尾逗号、外面包了 Markdown、
+ * 被 max_tokens 截断。能修就修；修不了再把明确原因回传给模型重试。
+ */
+function tryParseJson(s: string): unknown {
   try {
-    return JSON.parse(raw);
+    return JSON.parse(s);
   } catch {
-    // 有些模型会把 JSON 包在 ```json 里
-    const m = raw.match(/\{[\s\S]*\}/);
-    if (m) {
-      try {
-        return JSON.parse(m[0]);
-      } catch {
-        /* ignore */
-      }
-    }
+    return undefined;
   }
+}
+
+function repairJson(raw: string): unknown {
+  let s = raw.trim();
+  const fenced = s.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenced) s = fenced[1];
+  const start = s.indexOf("{");
+  if (start === -1) return undefined;
+  s = s.slice(start);
+
+  let out = "";
+  let inString = false;
+  let escaped = false;
+  let completeAt = 0;
+  const stack: string[] = [];
+
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (escaped) {
+      out += ch;
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\") {
+      out += ch;
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      out += ch;
+      continue;
+    }
+    if (inString) {
+      const code = ch.charCodeAt(0);
+      if (ch === "\n") out += "\\n";
+      else if (ch === "\r") out += "\\r";
+      else if (ch === "\t") out += "\\t";
+      else if (code < 0x20) out += `\\u${code.toString(16).padStart(4, "0")}`;
+      else out += ch;
+      continue;
+    }
+    if (ch === "{") stack.push("}");
+    else if (ch === "[") stack.push("]");
+    else if (ch === "}" || ch === "]") {
+      stack.pop();
+      out += ch;
+      if (!stack.length) completeAt = out.length;
+      continue;
+    }
+    if (ch === ",") {
+      let j = i + 1;
+      while (j < s.length && /\s/.test(s[j])) j++;
+      if (s[j] === "}" || s[j] === "]") continue;
+    }
+    out += ch;
+  }
+
+  // 被截断：先补上未闭合的字符串（注意结尾是单个反斜杠时要先转义），再补括号
+  if (inString) {
+    if (escaped) out += "\\";
+    out += '"';
+  }
+  while (stack.length) out += stack.pop();
+  if (completeAt > 0) out = out.slice(0, completeAt);
+  return tryParseJson(out);
+}
+
+export function parseToolArgs(raw: string): unknown {
+  if (!raw || !raw.trim()) return {};
+  const direct = tryParseJson(raw);
+  if (direct !== undefined) return direct;
+  const repaired = repairJson(raw);
+  if (repaired !== undefined) {
+    console.warn("[tool] 参数 JSON 已自动修复");
+    return repaired;
+  }
+  console.warn("[tool] 参数 JSON 解析失败:", raw.slice(0, 240).replace(/\s+/g, " "));
   throw new Error("工具参数不是合法 JSON");
 }
 
+interface ToolLearningContext {
+  session: ReturnType<typeof getSession>;
+  plan: PlanDTO | null;
+  course: PlanItemDTO | null;
+}
+
+function learningContext(sessionId: string): ToolLearningContext {
+  const session = getSession(sessionId);
+  const plan = session?.planId ? getPlan(session.planId) : null;
+  const course = plan?.items.find((item) => item.id === session?.planItemId) ?? null;
+  return { session, plan, course };
+}
+
+/**
+ * 解析一道题应该计入哪个知识点。
+ * 无限学习永远返回 null；目标学习只认本课程已有知识点，绝不临场造档案。
+ */
+function resolveExerciseConcept(
+  sessionId: string,
+  requested?: string,
+): {
+  conceptId: string | null;
+  conceptName: string | null;
+  reason?: "not_in_course" | "not_bound" | "infinite";
+} {
+  const { session, plan, course } = learningContext(sessionId);
+  if (!session) return { conceptId: null, conceptName: null, reason: "not_bound" };
+  if (session.mode === "infinite") return { conceptId: null, conceptName: null, reason: "infinite" };
+  if (session.mode === "review") {
+    return session.focusConceptId
+      ? { conceptId: session.focusConceptId, conceptName: session.focusConceptName }
+      : { conceptId: null, conceptName: null, reason: "not_bound" };
+  }
+  if (!plan || plan.status === "draft") {
+    return { conceptId: null, conceptName: null, reason: "not_bound" };
+  }
+  if (!course) return { conceptId: null, conceptName: null, reason: "not_bound" };
+  if (requested?.trim()) {
+    const wanted = normalizeText(requested);
+    const match = course.concepts.find((c) => normalizeText(c.name) === wanted);
+    if (match) return { conceptId: match.id, conceptName: match.name };
+    // 模型点名的知识点不在本课程：宁可不计入，也不要错记到别的知识点上
+    return { conceptId: null, conceptName: null, reason: "not_in_course" };
+  }
+  return {
+    conceptId: course.nextConceptId ?? session.focusConceptId ?? null,
+    conceptName: course.nextConceptName ?? session.focusConceptName ?? null,
+  };
+}
+
 export async function executeTool(name: string, rawArgs: string, ctx: ToolContext): Promise<ToolOutcome> {
-  const args = parseArgs(rawArgs);
+  const args = parseToolArgs(rawArgs);
 
   switch (name) {
     case "save_concepts": {
       const parsed = conceptsInputSchema.safeParse(args);
-      if (!parsed.success) return { ok: false, result: "参数校验失败，未登记知识点", blocks: [] };
-      const topic = ensureTopic(parsed.data.topic, parsed.data.topicDescription);
-      const created: { id: string; name: string; status: string }[] = [];
+      if (!parsed.success) {
+        return {
+          ok: false,
+          result: `知识点参数不合法（${zodIssues(parsed.error)}）。`,
+          blocks: [],
+          notice: "知识点参数不合法，本次未登记。",
+        };
+      }
+      const { session, plan, course } = learningContext(ctx.sessionId);
+      if (!session || session.mode === "infinite") {
+        return {
+          ok: true,
+          result: "无限学习不写入正式学习档案。本次知识点未登记；如学生明确要求整理，请先调用 save_plan 生成待确认的计划草稿。",
+          blocks: [],
+        };
+      }
+      if (session.mode !== "goal") {
+        return { ok: true, result: "复习会话不新建知识点；请直接检验当前知识点。", blocks: [] };
+      }
+      if (!plan || plan.status !== "active" || !course) {
+        return {
+          ok: false,
+          result: "当前会话没有绑定已确认的课程，不能登记知识点。请先让用户在计划页确认计划并从课程进入。",
+          blocks: [],
+          notice: "计划尚未确认或未绑定课程，本次未写入档案。",
+        };
+      }
+      const linked: { id: string; name: string }[] = [];
+      const skipped: string[] = [];
       const idByName = new Map<string, string>();
       for (const c of parsed.data.concepts) {
-        const concept = ensureConcept({
-          topicId: topic.id,
-          name: c.name,
-          definition: c.definition,
+        const existing = findConceptByName(c.name);
+        // 目标学习的课程结构由用户确认；这里只关联课程里已有的知识点，不临场扩目录
+        if (!existing || existing.courseId !== course.id) {
+          skipped.push(c.name);
+          continue;
+        }
+        // 只标记“已讲解”，不改变课程结构；仍然要等作答证据才算掌握
+        ensureConcept({
+          topicId: existing.topicId,
+          name: existing.name,
+          courseId: course.id,
           introduced: true,
         });
-        // 复用已有概念时，把该概念实际所属的主题也关联到本会话
-        linkSessionTopic(ctx.sessionId, concept.topicId, 0.7);
-        idByName.set(c.name, concept.id);
+        linkSessionTopic(ctx.sessionId, existing.topicId, 0.7);
+        idByName.set(c.name, existing.id);
+        linked.push({ id: existing.id, name: existing.name });
       }
       for (const c of parsed.data.concepts) {
-        const from = idByName.get(c.name)!;
+        const from = idByName.get(c.name);
+        if (!from) continue;
         for (const p of c.prerequisites ?? []) {
-          const pid =
-            idByName.get(p) ??
-            ensureConcept({ topicId: topic.id, name: p, introduced: true }).id;
-          addConceptEdge(pid, from, "prereq");
+          const pid = idByName.get(p);
+          if (pid) addConceptEdge(pid, from, "prereq");
         }
       }
-      for (const c of parsed.data.concepts) created.push({ id: idByName.get(c.name)!, name: c.name, status: "ok" });
+      if (!linked.length) {
+        return {
+          ok: true,
+          result: `这些知识点不在当前课程中，未自动写入：${skipped.join("、")}。如需加入，请在计划页编辑课程目录。`,
+          blocks: [],
+          notice: "知识点不在当前课程，未改动档案。",
+        };
+      }
       return {
         ok: true,
-        result: `已登记知识点：${created.map((c) => c.name).join("、")}（主题：${parsed.data.topic}）`,
+        result: `已关联课程「${course.title}」中的知识点：${linked.map((c) => c.name).join("、")}。`,
         blocks: [],
-        notice: `已关联 ${created.length} 个知识点 · ${parsed.data.topic}`,
+        notice:
+          skipped.length > 0
+            ? `已关联 ${linked.length} 个课程知识点；${skipped.length} 个不在当前课程中，未自动加入。`
+            : `已关联 ${linked.length} 个课程知识点 · ${course.title}`,
       };
     }
 
@@ -448,15 +667,11 @@ export async function executeTool(name: string, rawArgs: string, ctx: ToolContex
           notice: "这道题的答案键未通过二次校验，已降级为文字练习（不计入掌握度）。",
         };
       }
-      let conceptId: string | null = null;
-      if (parsed.data.concept) {
-        // 知识点已存在时沿用它的主题；只有新概念才创建/使用模型给的主题。
-        const existing = findConceptByName(parsed.data.concept);
-        const topicId = existing ? existing.topicId : ensureTopic(parsed.data.topic || "未分类").id;
-        linkSessionTopic(ctx.sessionId, topicId, 0.6);
-        conceptId = existing
-          ? existing.id
-          : ensureConcept({ topicId, name: parsed.data.concept, introduced: true }).id;
+      const resolved = resolveExerciseConcept(ctx.sessionId, parsed.data.concept);
+      const conceptId = resolved.conceptId;
+      if (conceptId && resolved.conceptName) {
+        const concept = findConceptByName(resolved.conceptName);
+        if (concept) linkSessionTopic(ctx.sessionId, concept.topicId, 0.6);
       }
       const block = createBlock({
         sessionId: ctx.sessionId,
@@ -479,24 +694,36 @@ export async function executeTool(name: string, rawArgs: string, ctx: ToolContex
         verification: verification.status,
         verificationNote: verification.note,
       });
-      const verifyNotice =
-        verification.status === "ambiguous"
-          ? `题目口径可能有歧义（${verification.note ?? "已标注"}），本次作答不计入掌握度。`
-          : verification.status === "unverified"
-            ? verification.note ?? "本题未完成二次校验，不计入掌握度。"
-            : undefined;
+      const notices: string[] = [];
+      if (verification.status === "ambiguous") {
+        notices.push(`题目口径可能有歧义（${verification.note ?? "已标注"}），本次作答不计入掌握度。`);
+      } else if (verification.status === "unverified") {
+        notices.push(verification.note ?? "本题未完成二次校验，不计入掌握度。");
+      }
+      if (resolved.reason === "infinite") {
+        notices.push("无限学习中的练习只用于即时反馈，不写入正式学习档案。");
+      } else if (resolved.reason === "not_in_course") {
+        notices.push("本题知识点不在当前课程中，未计入课程进度。");
+      } else if (resolved.reason === "not_bound") {
+        notices.push("当前会话未绑定已确认课程，本题不计入课程进度。");
+      }
       return {
         ok: true,
-        result: `练习已展示（id=${exercise.id}，题型=${parsed.data.type}，校验=${verification.status}）。答案解析已保存在服务端，请在对话里引导学生作答，不要直接说出答案。`,
+        result: `练习已展示（id=${exercise.id}，题型=${parsed.data.type}，校验=${verification.status}${conceptId ? `，知识点=${resolved.conceptName}` : "，未关联课程知识点"}）。答案解析已保存在服务端，请在对话里引导学生作答，不要直接说出答案。`,
         blocks: [block],
-        notice: verifyNotice,
+        notice: notices.length ? notices.join(" ") : undefined,
       };
     }
 
     case "present_quiz": {
       const parsed = quizInputSchema.safeParse(args);
       if (!parsed.success) {
-        return { ok: false, result: "小测结构不合法，未创建。", blocks: [] };
+        return {
+          ok: false,
+          result: `小测结构不合法（${zodIssues(parsed.error)}）。`,
+          blocks: [],
+          notice: "小测结构不合法，已跳过。",
+        };
       }
       const questions: { input: ExerciseInput; spec: AnswerSpec }[] = [];
       for (let i = 0; i < parsed.data.questions.length; i++) {
@@ -546,29 +773,19 @@ export async function executeTool(name: string, rawArgs: string, ctx: ToolContex
         };
       }
 
-      // 每题可以用自己的 concept/topic 覆盖整套默认值；用于多知识点混合小测
-      const resolved: { conceptId: string; conceptName: string }[] = [];
-      for (let i = 0; i < questions.length; i++) {
-        const q = questions[i];
-        const conceptName = (q.input.concept ?? parsed.data.concept ?? "").trim();
-        if (!conceptName) {
-          return {
-            ok: false,
-            result: `第 ${i + 1} 题没有指定知识点，整套小测未创建。`,
-            blocks: [],
-            notice: "每道题都需要知识点（可用整套默认值）。",
-          };
-        }
-        const topicName = (q.input.topic ?? parsed.data.topic ?? "未分类").trim() || "未分类";
-        const existing = findConceptByName(conceptName);
-        const topicId = existing ? existing.topicId : ensureTopic(topicName).id;
-        linkSessionTopic(ctx.sessionId, topicId, 0.6);
-        const conceptId = existing
-          ? existing.id
-          : ensureConcept({ topicId, name: conceptName, introduced: true }).id;
-        resolved.push({ conceptId, conceptName });
+      // 每题可以用自己的 concept 覆盖整套默认值；只认课程里已有的知识点
+      const resolved = questions.map((q) =>
+        resolveExerciseConcept(ctx.sessionId, q.input.concept ?? parsed.data.concept),
+      );
+      for (const r of resolved) {
+        if (!r.conceptName) continue;
+        const concept = findConceptByName(r.conceptName);
+        if (concept) linkSessionTopic(ctx.sessionId, concept.topicId, 0.6);
       }
-      const conceptNames = [...new Set(resolved.map((r) => r.conceptName))];
+      const conceptNames = [
+        ...new Set(resolved.map((r) => r.conceptName).filter((n): n is string => Boolean(n))),
+      ];
+      const unlinked = resolved.filter((r) => !r.conceptId).length;
 
       const block = createBlock({
         sessionId: ctx.sessionId,
@@ -577,7 +794,7 @@ export async function executeTool(name: string, rawArgs: string, ctx: ToolContex
         title: stripInlineMarkdown(parsed.data.title).slice(0, 80),
         payload: {
           title: parsed.data.title,
-          concept: parsed.data.concept ?? conceptNames.join("、"),
+          concept: conceptNames.join("、") || null,
           concepts: conceptNames,
           count: questions.length,
         },
@@ -601,19 +818,33 @@ export async function executeTool(name: string, rawArgs: string, ctx: ToolContex
         });
       });
       const uncertain = verifications.filter((v) => v.status !== "passed").length;
+      const notes: string[] = [];
+      if (uncertain) notes.push(`其中 ${uncertain} 题未通过二次校验，不计入掌握度`);
+      if (unlinked) notes.push(`${unlinked} 题未关联课程知识点，不计入课程进度`);
+      if (resolved.every((r) => r.reason === "infinite")) {
+        notes.push("无限学习中的小测只用于即时反馈，不写入正式学习档案");
+      }
       return {
         ok: true,
-        result: `小测已展示（${questions.length} 题，覆盖 ${conceptNames.length} 个知识点，id=${block.id}）。答案已保存在服务端，请在对话里引导学生逐题作答，不要直接说出答案。`,
+        result: `小测已展示（${questions.length} 题，关联 ${conceptNames.length} 个知识点，id=${block.id}）。答案已保存在服务端，请在对话里引导学生逐题作答，不要直接说出答案。`,
         blocks: [block],
-        notice: uncertain
-          ? `已生成 ${questions.length} 题小测（${conceptNames.length} 个知识点），其中 ${uncertain} 题未通过二次校验，不计入掌握度`
+        notice: notes.length
+          ? `已生成 ${questions.length} 题小测：${notes.join("；")}`
           : `已生成 ${questions.length} 题小测（${conceptNames.length} 个知识点）`,
       };
     }
 
     case "present_chart": {
       const parsed = chartInputSchema.safeParse(args);
-      if (!parsed.success) return { ok: false, result: "图表数据不合法", blocks: [] };
+      if (!parsed.success) {
+        const detail = zodIssues(parsed.error);
+        return {
+          ok: false,
+          result: `图表数据不合法（${detail}）。请修正参数后重新调用 present_chart；当前不支持这个图型时改用 present_table。`,
+          blocks: [],
+          notice: "这张图这次没生成好，我换一种方式讲。",
+        };
+      }
       const block = createBlock({
         sessionId: ctx.sessionId,
         messageId: ctx.messageId,
@@ -626,7 +857,15 @@ export async function executeTool(name: string, rawArgs: string, ctx: ToolContex
 
     case "present_table": {
       const parsed = tableInputSchema.safeParse(args);
-      if (!parsed.success) return { ok: false, result: "表格结构不合法", blocks: [] };
+      if (!parsed.success) {
+        const detail = zodIssues(parsed.error);
+        return {
+          ok: false,
+          result: `表格结构不合法（${detail}）。请修正后重新调用 present_table。`,
+          blocks: [],
+          notice: "这张表这次没生成好，我换一种方式讲。",
+        };
+      }
       const block = createBlock({
         sessionId: ctx.sessionId,
         messageId: ctx.messageId,
@@ -639,7 +878,15 @@ export async function executeTool(name: string, rawArgs: string, ctx: ToolContex
 
     case "present_steps": {
       const parsed = stepsInputSchema.safeParse(args);
-      if (!parsed.success) return { ok: false, result: "步骤结构不合法", blocks: [] };
+      if (!parsed.success) {
+        const detail = zodIssues(parsed.error);
+        return {
+          ok: false,
+          result: `步骤结构不合法（${detail}）。请修正后重新调用 present_steps。`,
+          blocks: [],
+          notice: "这一步的格式没生成好，我重新组织一下。",
+        };
+      }
       const block = createBlock({
         sessionId: ctx.sessionId,
         messageId: ctx.messageId,
@@ -674,7 +921,7 @@ export async function executeTool(name: string, rawArgs: string, ctx: ToolContex
           ok: false,
           result: `模拟器表达式无法计算（${err}），请修正后重试。`,
           blocks: [],
-          notice: `模拟器表达式有误，已降级为文字说明：${err}`,
+          notice: "这个模拟器暂时没搭好，我改用文字说明。",
         };
       }
       const block = createBlock({
@@ -690,48 +937,91 @@ export async function executeTool(name: string, rawArgs: string, ctx: ToolContex
 
     case "save_plan": {
       const parsed = planInputSchema.safeParse(args);
-      if (!parsed.success) return { ok: false, result: "计划结构不合法", blocks: [] };
-      // 同一个目标被重复生成时，补步骤而不是再开一条同名路线。
-      // 只绑定档案里已经存在的知识点；不为未来课程预建空壳概念。
-      const items = parsed.data.items.map((i) => {
-        let conceptId: string | null = null;
-        if (i.concept) {
-          const existingConcept = findConceptByName(i.concept);
-          if (existingConcept) {
-            conceptId = existingConcept.id;
-            linkSessionTopic(ctx.sessionId, existingConcept.topicId, 0.5);
+      if (!parsed.success) {
+        return {
+          ok: false,
+          result: `计划结构不合法（${zodIssues(parsed.error)}）。`,
+          blocks: [],
+          notice: "计划结构不合法，本次未生成计划。",
+        };
+      }
+      const { session } = learningContext(ctx.sessionId);
+      if (!session || session.mode === "review") {
+        return {
+          ok: false,
+          result: "复习会话不能生成学习计划。",
+          blocks: [],
+          notice: "复习会话不能生成学习计划。",
+        };
+      }
+      const existing = findPlanByTitle(parsed.data.title);
+      if (existing && existing.status !== "draft") {
+        return {
+          ok: false,
+          result: `已有同名计划「${existing.title}」。如需调整，请在计划页编辑；要新建计划请换一个名称。`,
+          blocks: [],
+          notice: "同名正式计划已存在，本次未生成重复计划。",
+        };
+      }
+      const plan = existing
+        ? (appendPlanCourses(existing.id, parsed.data.courses) ?? existing)
+        : createPlan({
+            title: parsed.data.title,
+            note: parsed.data.goal,
+            status: "draft",
+            courses: parsed.data.courses,
+          });
+      // 规划对话归属于它生成的计划；否则历史会显示「未归计划」，计划详情也不统计这次对话。
+      // 已是课程会话（planId 指向另一门课）时不抢绑定，避免破坏当前学习上下文。
+      if (!session.planId) setSessionPlan(ctx.sessionId, plan.id);
+      const conceptCount = plan.items.reduce((n, item) => n + item.concepts.length, 0);
+      const missing: string[] = [];
+      for (const course of parsed.data.courses) {
+        const target = plan.items.find(
+          (item) => normalizeText(item.title) === normalizeText(course.title),
+        );
+        for (const concept of course.concepts) {
+          if (!target?.concepts.some((c) => normalizeText(c.name) === normalizeText(concept.name))) {
+            missing.push(concept.name);
           }
         }
-        return {
-          title: i.title,
-          rationale: i.rationale,
-          conceptId,
-        };
-      });
-      const existing = findPlanByTitle(parsed.data.title);
-      const plan = existing
-        ? (appendPlanItems(existing.id, items) ?? existing)
-        : createPlan({ title: parsed.data.title, note: parsed.data.goal, items });
-      // 目标学习会话自动归到刚生成的计划下；已有归属则不改
-      if (!getSession(ctx.sessionId)?.planId) setSessionPlan(ctx.sessionId, plan.id);
+      }
       const block = createBlock({
         sessionId: ctx.sessionId,
         messageId: ctx.messageId,
         kind: "steps",
-        title: `学习路线：${parsed.data.title}`,
-        payload: { planId: plan.id, items: parsed.data.items, note: parsed.data.goal },
+        title: `计划草稿：${plan.title}`,
+        payload: {
+          planId: plan.id,
+          draft: true,
+          title: `计划草稿：${plan.title}`,
+          items: plan.items.map((item) => ({
+            title: item.title,
+            rationale: item.description,
+          })),
+          note: "这是待确认的计划草稿。确认课程与知识点后，才会进入正式学习。",
+        },
       });
       return {
         ok: true,
-        result: `已生成学习路线（${plan.items.length} 步），用户可在「学习计划」中调整。`,
+        result: `已生成计划草稿（${plan.items.length} 门课程，${conceptCount} 个知识点，id=${plan.id}）。现在不要直接开始教学；请引导用户到「目标学习」确认或修改课程目录。`,
         blocks: [block],
-        notice: "学习路线已保存，可在「学习计划」中修改",
+        notice: missing.length
+          ? `计划草稿已生成；${missing.length} 个知识点已属于其他课程，未重复加入：${missing.join("、")}`
+          : "计划草稿已生成，待确认后开始学习",
       };
     }
 
     case "write_summary": {
       const parsed = summaryInputSchema.safeParse(args);
-      if (!parsed.success) return { ok: false, result: "小结结构不合法", blocks: [] };
+      if (!parsed.success) {
+        return {
+          ok: false,
+          result: `小结结构不合法（${zodIssues(parsed.error)}）。`,
+          blocks: [],
+          notice: "小结结构不合法，本次未保存。",
+        };
+      }
       saveSummary(ctx.sessionId, parsed.data);
       const block = createBlock({
         sessionId: ctx.sessionId,
@@ -744,6 +1034,11 @@ export async function executeTool(name: string, rawArgs: string, ctx: ToolContex
     }
 
     default:
-      return { ok: false, result: `未知工具：${name}`, blocks: [] };
+      return {
+        ok: false,
+        result: `未知工具：${name}`,
+        blocks: [],
+        notice: "有一个工具调用没成功，我换一种方式继续。",
+      };
   }
 }

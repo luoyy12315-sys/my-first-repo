@@ -3,6 +3,7 @@
 > 生成时间：2026-10-23 · 基于当前仓库代码与实际运行结果
 > 适用范围：本地单用户模式（Next.js 16 + SQLite）。图中「文件:函数」是代码落点，便于对照阅读。
 > 约定：红色节点表示**当前实现与产品承诺不一致或已被实测证实有缺陷**的环节；黄色节点表示重要但有边界条件的环节。
+> **2026-10-23 双模式改造**：第 9、20、21 节里关于「计划步骤至少 3 个知识点独立答对才完成」的旧规则已被第 22 节取代。当前模型是「计划 → 课程（plan_items）→ 知识点（concepts.course_id）」，并且分为无限学习与目标学习两种模式。
 
 ## 目录
 
@@ -25,6 +26,9 @@
 17. [启动、构建与测试](#17-启动构建与测试)
 18. [鉴权与安全边界](#18-鉴权与安全边界)
 19. [代码落点索引](#19-代码落点索引)
+20. [教完 / 答完后的下一步操作](#20-教完--答完后的下一步操作2026-10-23-新增)
+21. [多题小测（第一版）](#21-多题小测第一版)
+22. [双模式与计划 → 课程 → 知识点（2026-10-23 重构）](#22-双模式与计划--课程--知识点2026-10-23-重构)
 
 ---
 
@@ -373,15 +377,15 @@ flowchart TD
 
   Switch --> T1["save_concepts"]
   T1 --> T1a["conceptsInputSchema"]
-  T1a --> T1b["ensureTopic + ensureConcept(主题内去重)"]
-  T1b --> T1c["linkSessionTopic + addConceptEdge"]
-  T1c --> R1["notice: 已关联 N 个知识点，无 block"]
+  T1a --> T1b["无限学习：跳过<br/>目标学习：只匹配当前课程已有知识点"]
+  T1b --> T1c["linkSessionTopic + addConceptEdge<br/>不创建新知识点"]
+  T1c --> R1["notice: 已关联 N 个课程知识点，无 block"]
 
   Switch --> T2["present_exercise"]
   T2 --> T2a["exerciseInputSchema + buildAnswerSpec"]
-  T2a --> T2b["ensureTopic/ensureConcept(topic 缺省=未分类)"]
+  T2a --> T2b["解析概念：无限学习=null<br/>目标学习=当前课程内知识点"]
   T2b --> T2c["createBlock + createExercise(答案只落服务端)"]
-  T2c --> R2["block: exercise"]
+  T2c --> R2["block: exercise（未关联时不计课程进度）"]
 
   Switch --> T3["present_chart / present_table / present_steps"]
   T3 --> T3a["对应 zod schema"]
@@ -395,13 +399,14 @@ flowchart TD
   T4c --> R4["block: simulator"]
 
   Switch --> T5["save_plan"]
-  T5 --> T5a["planInputSchema"]
+  T5 --> T5a["planInputSchema：courses → concepts"]
   T5a --> T5b{"findPlanByTitle 已存在?"}
-  T5b -- 是 --> T5c["appendPlanItems 去重追加"]
-  T5b -- 否 --> T5d["createPlan"]
-  T5c & T5d --> T5e["会话无 plan 时自动归入"]
-  T5e --> T5f["createBlock(steps, planId)"]
-  T5f --> R5["block: steps + notice"]
+  T5b -- "draft" --> T5c["appendPlanCourses 追加/补概念"]
+  T5b -- "active" --> T5c2["拒绝重复生成同名正式计划"]
+  T5b -- "不存在" --> T5d["createPlan(status=draft)"]
+  T5c & T5d --> T5e["不绑定会话；返回待确认计划草稿"]
+  T5e --> T5f["createBlock(steps, planId, draft=true)"]
+  T5f --> R5["block: steps + notice 待确认"]
 
   Switch --> T6["write_summary"]
   T6 --> T6a["summaryInputSchema"]
@@ -670,7 +675,7 @@ flowchart LR
 
 ---
 
-## 9. 计划（目标）工作流
+## 9. 计划（目标）工作流（旧版，当前口径见第 22 节）
 
 ```mermaid
 flowchart TD
@@ -1149,3 +1154,72 @@ flowchart TD
 - 暂不支持：每题独立提示/查看解析、逐题分步提交、自定义插图。
 
 **代码落点**：`src/lib/ai/tools.ts`（present_quiz）、`src/app/api/quizzes/[blockId]/attempts/route.ts`、`src/components/blocks/QuizBlock.tsx`、`src/components/blocks/AnswerInput.tsx`、`src/lib/api/serialize.ts`。
+
+---
+
+## 22. 双模式与计划 → 课程 → 知识点（2026-10-23 重构）
+
+### 22.1 两种学习模式
+
+```mermaid
+flowchart TD
+  H["首页：今天想怎么学？"] --> I["无限学习：直接输入想学的内容"]
+  H --> G["目标学习：输入学习目标"]
+  I --> I1["POST /api/sessions mode=infinite<br/>不要求计划 / 课程"]
+  I1 --> I2["对话式教学：追问 / 换讲法 / 练习"]
+  I2 --> I3["练习可判题，但 concept_id=null<br/>不写 evidence / 掌握度 / 复习"]
+  I3 --> I4["历史中独立显示为「无限学习」"]
+  I2 -. 用户明确要求整理 .-> I5["save_plan 生成计划草稿"]
+  G --> G1["POST /api/sessions mode=goal（未绑定计划）"]
+  G1 --> G2["AI 调用 save_plan：计划 → 课程 → 知识点"]
+  G2 --> G3["plans.status=draft<br/>不绑定会话、不产生进度"]
+  G3 --> G4["/plan/[id] 编辑课程 / 知识点 / 顺序"]
+  G4 --> G5["用户确认：plans.status=active"]
+  G5 --> G6["/plan/[id]/course/[courseId] 开始学习"]
+  G6 --> G7["mode=goal + planId + planItemId<br/>concepts.course_id 唯一归属课程"]
+  G7 --> G8["作答证据 → 课程/计划进度统一重算"]
+```
+
+### 22.2 目标学习：草稿必须先确认
+
+- `save_plan` 只创建 `status='draft'` 的计划；同一标题的草稿再次生成会追加课程，不会重复建计划。同名正式计划存在时拒绝重复生成。
+- AI 不会自动把规划会话绑定到计划，也不会在草稿阶段开始教学。
+- 草稿页支持：修改计划名称/目标、增删课程、修改课程名称/说明、调整课程顺序、增删/改名知识点、暂停/恢复计划、跳过课程。
+- 确认前 API 拒绝从该计划创建学习会话；确认要求至少一门课程且至少一个知识点。
+- 知识点只能归属一门课程（`concepts.course_id`）。已属于其他课程的知识点不会被静默复制，计划草稿会提示冲突，用户可先在档案中合并/移除。
+
+### 22.3 课程与计划进度
+
+- 课程 = `plan_items`（一个学习单元），计划 = `plans`，知识点 = `concepts`。
+- 知识点状态内部仍有 5 档，普通界面统一为：待学习 / 学习中 / 待复习 / 已掌握。
+- 学习进度按知识点状态加权：已掌握 1、学习中 0.4、待复习 0.2、待学习 0；只有**课程内全部知识点已掌握**才算课程完成。
+- 计划学习进度 = 所有未跳过课程的知识点加权汇总；`coursesDone/coursesTotal` 只统计真正完成的课程。
+- 没有知识点的课程标为「未配置知识点」，不计入完成率；界面会单独提示。
+- 首页、计划列表、计划详情、课程页、档案页使用同一套 `PlanDTO.progress / PlanItemDTO.progress`，没有各自计算。
+
+### 22.4 无限学习的隔离规则
+
+- 服务端按会话 `mode` 强制：`save_concepts` 不创建正式知识点；`present_exercise/present_quiz` 只创建练习，`concept_id=null`，不写证据、不推进课程/复习。
+- 无限学习会话不展示课程完成率、计划步骤或正式进度；历史页单独归组。
+- 只有用户明确要求整理时，才允许调用 `save_plan` 生成待确认草稿；普通提问、练习、聊天都不会自动建档。
+- 旧版 free 会话迁移：没有计划的改为 infinite；明确绑定了计划的旧会话改为 goal，避免无限学习残留正式计划绑定。
+
+### 22.5 数据迁移与兼容
+
+- `sessions.mode`：`free → infinite`；有 `plan_id` 的旧 free 会话改为 `goal`。
+- `concepts.course_id`：新增列 + 索引；旧 `plan_items.concept_id` 迁入课程归属。
+- 旧步骤完成时可能验证过多个知识点，但只存了一个 `concept_id`；迁移会按「有明确会话步骤证据」把其余概念补回课程。无法确认归属的保持 `course_id=null`，档案显示「待整理」，不自动猜测。
+- `plans.status`：旧计划补为 active；新草稿为 draft。旧测试/演示数据不需要保留时可直接重建数据库。
+- 已保留：历史会话、消息、作答、证据、复习记录；删除计划/课程只解除归属，不删除知识点与证据。
+
+### 22.6 页面与 API 落点
+
+- 首页：`src/app/page.tsx`（双模式入口、目标计划卡片、无限学习历史）。
+- 计划列表/详情/课程：`src/app/plan/page.tsx`、`src/app/plan/[id]/page.tsx`、`src/app/plan/[id]/course/[courseId]/page.tsx`。
+- 计划 API：`src/app/api/plans/route.ts`、`src/app/api/plans/[id]/route.ts`（confirm/pause/resume/update/addCourse/updateCourse/deleteCourse/moveCourse/skipCourse/addConcept/removeConcept/renameConcept）。
+- 会话 API：`src/app/api/sessions/route.ts`、`src/app/api/sessions/[id]/route.ts`（模式校验、无限学习禁止自动挂计划）。
+- 档案：`src/app/library/page.tsx`（按计划/课程分组，指标进详情）。
+- 复习/历史：`src/app/review/page.tsx`、`src/app/history/page.tsx`（课程归属、无限学习独立分组）。
+- 进度与状态：`src/lib/learning/progress.ts`；数据层：`src/lib/db/repo.ts`；模式提示词：`src/lib/ai/prompt.ts`；工具：`src/lib/ai/tools.ts`。
+
+**验收**：单元/集成测试 112 项通过；API 冒烟 81 项通过；浏览器回归 69 项通过；生产构建通过；桌面与 390px 移动端页面无横向溢出。

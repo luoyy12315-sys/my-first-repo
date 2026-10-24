@@ -1,0 +1,2065 @@
+{
+  "routes": {
+    "home-desktop": {
+      "path": "/",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina／学习工作台",
+          "w": 207,
+          "h": 32
+        },
+        {
+          "tag": "a",
+          "txt": "规划：从零系统学习 SQL 数据库基础",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "a",
+          "txt": "从零讲讲什么是机会成本",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "a",
+          "txt": "查看计划",
+          "w": 48,
+          "h": 18
+        },
+        {
+          "tag": "a",
+          "txt": "全部计划",
+          "w": 48,
+          "h": 16
+        },
+        {
+          "tag": "a",
+          "txt": "继续学习",
+          "w": 88,
+          "h": 26
+        },
+        {
+          "tag": "a",
+          "txt": "全部历史",
+          "w": 48,
+          "h": 16
+        }
+      ],
+      "smallCount": 7,
+      "fontSizes": {
+        "10": 2,
+        "11": 16,
+        "12": 16,
+        "13": 15,
+        "14": 7,
+        "16": 7,
+        "17": 4,
+        "18": 2,
+        "21": 1,
+        "38": 1
+      },
+      "mainWidth": 1192,
+      "bodyText": 683,
+      "scrollHeight": 1119,
+      "consoleErrors": []
+    },
+    "materials-desktop": {
+      "path": "/materials",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina／学习工作台",
+          "w": 207,
+          "h": 32
+        },
+        {
+          "tag": "a",
+          "txt": "规划：从零系统学习 SQL 数据库基础",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "a",
+          "txt": "从零讲讲什么是机会成本",
+          "w": 223,
+          "h": 31
+        }
+      ],
+      "smallCount": 3,
+      "fontSizes": {
+        "10": 2,
+        "11": 8,
+        "12": 12,
+        "13": 7,
+        "14": 8,
+        "16": 6,
+        "17": 1,
+        "18": 1,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 1192,
+      "bodyText": 602,
+      "scrollHeight": 900,
+      "consoleErrors": []
+    },
+    "plan-desktop": {
+      "path": "/plan",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina／学习工作台",
+          "w": 207,
+          "h": 32
+        },
+        {
+          "tag": "a",
+          "txt": "规划：从零系统学习 SQL 数据库基础",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "a",
+          "txt": "从零讲讲什么是机会成本",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "button",
+          "txt": "删除计划 SQL 数据库基础：从零到独立写查询",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "a",
+          "txt": "继续学习",
+          "w": 88,
+          "h": 26
+        },
+        {
+          "tag": "a",
+          "txt": "历史",
+          "w": 23,
+          "h": 15
+        }
+      ],
+      "smallCount": 6,
+      "fontSizes": {
+        "10": 2,
+        "11": 9,
+        "12": 10,
+        "13": 8,
+        "14": 6,
+        "16": 7,
+        "17": 1,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 1192,
+      "bodyText": 387,
+      "scrollHeight": 900,
+      "consoleErrors": []
+    },
+    "history-desktop": {
+      "path": "/history",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina／学习工作台",
+          "w": 207,
+          "h": 32
+        },
+        {
+          "tag": "a",
+          "txt": "规划：从零系统学习 SQL 数据库基础",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "a",
+          "txt": "从零讲讲什么是机会成本",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "input",
+          "txt": "按标题搜索（不含消息内容）",
+          "w": 399,
+          "h": 20
+        },
+        {
+          "tag": "button",
+          "txt": "删除会话 从零讲讲什么是机会成本",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "select",
+          "txt": "未归类SQL 数据库基础：从零到独立写查询",
+          "w": 130,
+          "h": 27
+        },
+        {
+          "tag": "button",
+          "txt": "删除会话 课程：第一课：数据库与表的基本概念",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "select",
+          "txt": "未归类SQL 数据库基础：从零到独立写查询",
+          "w": 130,
+          "h": 27
+        },
+        {
+          "tag": "button",
+          "txt": "删除会话 复习：视图 VIEW",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "select",
+          "txt": "未归类SQL 数据库基础：从零到独立写查询",
+          "w": 130,
+          "h": 27
+        },
+        {
+          "tag": "button",
+          "txt": "删除会话 规划：从零系统学习 SQL 数据库基础",
+          "w": 26,
+          "h": 26
+        }
+      ],
+      "smallCount": 11,
+      "fontSizes": {
+        "10": 2,
+        "11": 14,
+        "12": 16,
+        "13": 7,
+        "14": 10,
+        "16": 6,
+        "17": 4,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 1192,
+      "bodyText": 584,
+      "scrollHeight": 900,
+      "consoleErrors": []
+    },
+    "library-desktop": {
+      "path": "/library",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina／学习工作台",
+          "w": 207,
+          "h": 32
+        },
+        {
+          "tag": "a",
+          "txt": "规划：从零系统学习 SQL 数据库基础",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "a",
+          "txt": "从零讲讲什么是机会成本",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "button",
+          "txt": "全部",
+          "w": 46,
+          "h": 28
+        },
+        {
+          "tag": "button",
+          "txt": "待学习",
+          "w": 58,
+          "h": 28
+        },
+        {
+          "tag": "button",
+          "txt": "学习中",
+          "w": 58,
+          "h": 28
+        },
+        {
+          "tag": "button",
+          "txt": "待复习",
+          "w": 58,
+          "h": 28
+        },
+        {
+          "tag": "button",
+          "txt": "已掌握",
+          "w": 58,
+          "h": 28
+        },
+        {
+          "tag": "select",
+          "txt": "全部计划SQL 数据库基础：从零到独立写查询未归类",
+          "w": 220,
+          "h": 28
+        }
+      ],
+      "smallCount": 9,
+      "fontSizes": {
+        "10": 2,
+        "11": 17,
+        "12": 78,
+        "13": 7,
+        "14": 36,
+        "16": 6,
+        "17": 9,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 1192,
+      "bodyText": 2021,
+      "scrollHeight": 2926,
+      "consoleErrors": []
+    },
+    "review-desktop": {
+      "path": "/review",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina／学习工作台",
+          "w": 207,
+          "h": 32
+        },
+        {
+          "tag": "a",
+          "txt": "规划：从零系统学习 SQL 数据库基础",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "a",
+          "txt": "从零讲讲什么是机会成本",
+          "w": 223,
+          "h": 31
+        }
+      ],
+      "smallCount": 3,
+      "fontSizes": {
+        "10": 2,
+        "11": 8,
+        "12": 5,
+        "13": 7,
+        "14": 8,
+        "16": 6,
+        "17": 1,
+        "18": 1,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 1192,
+      "bodyText": 329,
+      "scrollHeight": 900,
+      "consoleErrors": []
+    },
+    "settings-desktop": {
+      "path": "/settings",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina／学习工作台",
+          "w": 207,
+          "h": 32
+        },
+        {
+          "tag": "a",
+          "txt": "规划：从零系统学习 SQL 数据库基础",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "a",
+          "txt": "从零讲讲什么是机会成本",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "button",
+          "txt": "编辑 deepseek-v4-1-flash-261017",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "button",
+          "txt": "删除 deepseek-v4-1-flash-261017",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 14,
+          "h": 16
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 159,
+          "h": 16
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 159,
+          "h": 16
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 159,
+          "h": 16
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 159,
+          "h": 16
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 13,
+          "h": 16
+        },
+        {
+          "tag": "a",
+          "txt": "打开 OpenTutor",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 better-sqlite3",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 KaTeX",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 react-markdown",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 Recharts",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 Next.js / React",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 lucide-react",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 sonner",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "去学习档案",
+          "w": 55,
+          "h": 15
+        }
+      ],
+      "smallCount": 20,
+      "fontSizes": {
+        "10": 2,
+        "11": 29,
+        "12": 32,
+        "13": 31,
+        "14": 12,
+        "16": 6,
+        "17": 5,
+        "18": 2,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 1192,
+      "bodyText": 1489,
+      "scrollHeight": 1914,
+      "consoleErrors": []
+    },
+    "home-tablet": {
+      "path": "/",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina／学习工作台",
+          "w": 207,
+          "h": 32
+        },
+        {
+          "tag": "a",
+          "txt": "规划：从零系统学习 SQL 数据库基础",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "a",
+          "txt": "从零讲讲什么是机会成本",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "a",
+          "txt": "查看计划",
+          "w": 48,
+          "h": 18
+        },
+        {
+          "tag": "a",
+          "txt": "全部计划",
+          "w": 48,
+          "h": 16
+        },
+        {
+          "tag": "a",
+          "txt": "继续学习",
+          "w": 88,
+          "h": 26
+        },
+        {
+          "tag": "a",
+          "txt": "全部历史",
+          "w": 48,
+          "h": 16
+        }
+      ],
+      "smallCount": 7,
+      "fontSizes": {
+        "10": 2,
+        "11": 16,
+        "12": 16,
+        "13": 15,
+        "14": 7,
+        "16": 7,
+        "17": 4,
+        "18": 2,
+        "21": 1,
+        "38": 1
+      },
+      "mainWidth": 586,
+      "bodyText": 683,
+      "scrollHeight": 1214,
+      "consoleErrors": []
+    },
+    "materials-tablet": {
+      "path": "/materials",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina／学习工作台",
+          "w": 207,
+          "h": 32
+        },
+        {
+          "tag": "a",
+          "txt": "规划：从零系统学习 SQL 数据库基础",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "a",
+          "txt": "从零讲讲什么是机会成本",
+          "w": 223,
+          "h": 31
+        }
+      ],
+      "smallCount": 3,
+      "fontSizes": {
+        "10": 2,
+        "11": 8,
+        "12": 12,
+        "13": 7,
+        "14": 8,
+        "16": 6,
+        "17": 1,
+        "18": 1,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 586,
+      "bodyText": 602,
+      "scrollHeight": 1112,
+      "consoleErrors": []
+    },
+    "plan-tablet": {
+      "path": "/plan",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina／学习工作台",
+          "w": 207,
+          "h": 32
+        },
+        {
+          "tag": "a",
+          "txt": "规划：从零系统学习 SQL 数据库基础",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "a",
+          "txt": "从零讲讲什么是机会成本",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "button",
+          "txt": "删除计划 SQL 数据库基础：从零到独立写查询",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "a",
+          "txt": "继续学习",
+          "w": 88,
+          "h": 26
+        },
+        {
+          "tag": "a",
+          "txt": "历史",
+          "w": 23,
+          "h": 15
+        }
+      ],
+      "smallCount": 6,
+      "fontSizes": {
+        "10": 2,
+        "11": 9,
+        "12": 10,
+        "13": 8,
+        "14": 6,
+        "16": 7,
+        "17": 1,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 586,
+      "bodyText": 387,
+      "scrollHeight": 1112,
+      "consoleErrors": []
+    },
+    "history-tablet": {
+      "path": "/history",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina／学习工作台",
+          "w": 207,
+          "h": 32
+        },
+        {
+          "tag": "a",
+          "txt": "规划：从零系统学习 SQL 数据库基础",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "a",
+          "txt": "从零讲讲什么是机会成本",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "input",
+          "txt": "按标题搜索（不含消息内容）",
+          "w": 217,
+          "h": 20
+        },
+        {
+          "tag": "button",
+          "txt": "删除会话 从零讲讲什么是机会成本",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "select",
+          "txt": "未归类SQL 数据库基础：从零到独立写查询",
+          "w": 130,
+          "h": 27
+        },
+        {
+          "tag": "button",
+          "txt": "删除会话 课程：第一课：数据库与表的基本概念",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "select",
+          "txt": "未归类SQL 数据库基础：从零到独立写查询",
+          "w": 130,
+          "h": 27
+        },
+        {
+          "tag": "button",
+          "txt": "删除会话 复习：视图 VIEW",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "select",
+          "txt": "未归类SQL 数据库基础：从零到独立写查询",
+          "w": 130,
+          "h": 27
+        },
+        {
+          "tag": "button",
+          "txt": "删除会话 规划：从零系统学习 SQL 数据库基础",
+          "w": 26,
+          "h": 26
+        }
+      ],
+      "smallCount": 11,
+      "fontSizes": {
+        "10": 2,
+        "11": 14,
+        "12": 16,
+        "13": 7,
+        "14": 10,
+        "16": 6,
+        "17": 4,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 586,
+      "bodyText": 584,
+      "scrollHeight": 1112,
+      "consoleErrors": []
+    },
+    "library-tablet": {
+      "path": "/library",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina／学习工作台",
+          "w": 207,
+          "h": 32
+        },
+        {
+          "tag": "a",
+          "txt": "规划：从零系统学习 SQL 数据库基础",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "a",
+          "txt": "从零讲讲什么是机会成本",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "button",
+          "txt": "全部",
+          "w": 46,
+          "h": 28
+        },
+        {
+          "tag": "button",
+          "txt": "待学习",
+          "w": 58,
+          "h": 28
+        },
+        {
+          "tag": "button",
+          "txt": "学习中",
+          "w": 58,
+          "h": 28
+        },
+        {
+          "tag": "button",
+          "txt": "待复习",
+          "w": 58,
+          "h": 28
+        },
+        {
+          "tag": "button",
+          "txt": "已掌握",
+          "w": 58,
+          "h": 28
+        },
+        {
+          "tag": "select",
+          "txt": "全部计划SQL 数据库基础：从零到独立写查询未归类",
+          "w": 220,
+          "h": 28
+        }
+      ],
+      "smallCount": 9,
+      "fontSizes": {
+        "10": 2,
+        "11": 17,
+        "12": 78,
+        "13": 7,
+        "14": 36,
+        "16": 6,
+        "17": 9,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 586,
+      "bodyText": 2021,
+      "scrollHeight": 2991,
+      "consoleErrors": []
+    },
+    "review-tablet": {
+      "path": "/review",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina／学习工作台",
+          "w": 207,
+          "h": 32
+        },
+        {
+          "tag": "a",
+          "txt": "规划：从零系统学习 SQL 数据库基础",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "a",
+          "txt": "从零讲讲什么是机会成本",
+          "w": 223,
+          "h": 31
+        }
+      ],
+      "smallCount": 3,
+      "fontSizes": {
+        "10": 2,
+        "11": 8,
+        "12": 5,
+        "13": 7,
+        "14": 8,
+        "16": 6,
+        "17": 1,
+        "18": 1,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 586,
+      "bodyText": 329,
+      "scrollHeight": 1112,
+      "consoleErrors": []
+    },
+    "settings-tablet": {
+      "path": "/settings",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina／学习工作台",
+          "w": 207,
+          "h": 32
+        },
+        {
+          "tag": "a",
+          "txt": "规划：从零系统学习 SQL 数据库基础",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "a",
+          "txt": "从零讲讲什么是机会成本",
+          "w": 223,
+          "h": 31
+        },
+        {
+          "tag": "button",
+          "txt": "编辑 deepseek-v4-1-flash-261017",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "button",
+          "txt": "删除 deepseek-v4-1-flash-261017",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 13,
+          "h": 16
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 113,
+          "h": 16
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 113,
+          "h": 16
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 113,
+          "h": 16
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 113,
+          "h": 16
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 13,
+          "h": 16
+        },
+        {
+          "tag": "a",
+          "txt": "打开 OpenTutor",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 better-sqlite3",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 KaTeX",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 react-markdown",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 Recharts",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 Next.js / React",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 lucide-react",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 sonner",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "去学习档案",
+          "w": 55,
+          "h": 15
+        }
+      ],
+      "smallCount": 20,
+      "fontSizes": {
+        "10": 2,
+        "11": 29,
+        "12": 32,
+        "13": 31,
+        "14": 12,
+        "16": 6,
+        "17": 5,
+        "18": 2,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 586,
+      "bodyText": 1489,
+      "scrollHeight": 2067,
+      "consoleErrors": []
+    },
+    "home-mobile": {
+      "path": "/",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina",
+          "w": 82,
+          "h": 26
+        },
+        {
+          "tag": "a",
+          "txt": "查看计划",
+          "w": 48,
+          "h": 18
+        },
+        {
+          "tag": "a",
+          "txt": "全部计划",
+          "w": 48,
+          "h": 16
+        },
+        {
+          "tag": "a",
+          "txt": "继续学习",
+          "w": 88,
+          "h": 26
+        },
+        {
+          "tag": "a",
+          "txt": "全部历史",
+          "w": 48,
+          "h": 16
+        }
+      ],
+      "smallCount": 5,
+      "fontSizes": {
+        "10": 2,
+        "11": 16,
+        "12": 16,
+        "13": 15,
+        "14": 7,
+        "16": 7,
+        "17": 4,
+        "18": 2,
+        "21": 1,
+        "30": 1
+      },
+      "mainWidth": 390,
+      "bodyText": 563,
+      "scrollHeight": 1713,
+      "consoleErrors": []
+    },
+    "materials-mobile": {
+      "path": "/materials",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina",
+          "w": 82,
+          "h": 26
+        }
+      ],
+      "smallCount": 1,
+      "fontSizes": {
+        "10": 2,
+        "11": 8,
+        "12": 12,
+        "13": 7,
+        "14": 8,
+        "16": 6,
+        "17": 1,
+        "18": 1,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 390,
+      "bodyText": 482,
+      "scrollHeight": 1081,
+      "consoleErrors": []
+    },
+    "plan-mobile": {
+      "path": "/plan",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina",
+          "w": 82,
+          "h": 26
+        },
+        {
+          "tag": "button",
+          "txt": "删除计划 SQL 数据库基础：从零到独立写查询",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "a",
+          "txt": "继续学习",
+          "w": 88,
+          "h": 26
+        },
+        {
+          "tag": "a",
+          "txt": "历史",
+          "w": 23,
+          "h": 15
+        }
+      ],
+      "smallCount": 4,
+      "fontSizes": {
+        "10": 2,
+        "11": 9,
+        "12": 10,
+        "13": 8,
+        "14": 6,
+        "16": 7,
+        "17": 1,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 390,
+      "bodyText": 267,
+      "scrollHeight": 844,
+      "consoleErrors": []
+    },
+    "history-mobile": {
+      "path": "/history",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina",
+          "w": 82,
+          "h": 26
+        },
+        {
+          "tag": "input",
+          "txt": "按标题搜索（不含消息内容）",
+          "w": 311,
+          "h": 20
+        },
+        {
+          "tag": "button",
+          "txt": "删除会话 从零讲讲什么是机会成本",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "select",
+          "txt": "未归类SQL 数据库基础：从零到独立写查询",
+          "w": 120,
+          "h": 27
+        },
+        {
+          "tag": "button",
+          "txt": "删除会话 课程：第一课：数据库与表的基本概念",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "select",
+          "txt": "未归类SQL 数据库基础：从零到独立写查询",
+          "w": 120,
+          "h": 27
+        },
+        {
+          "tag": "button",
+          "txt": "删除会话 复习：视图 VIEW",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "select",
+          "txt": "未归类SQL 数据库基础：从零到独立写查询",
+          "w": 120,
+          "h": 27
+        },
+        {
+          "tag": "button",
+          "txt": "删除会话 规划：从零系统学习 SQL 数据库基础",
+          "w": 26,
+          "h": 26
+        }
+      ],
+      "smallCount": 9,
+      "fontSizes": {
+        "10": 2,
+        "11": 14,
+        "12": 16,
+        "13": 7,
+        "14": 10,
+        "16": 6,
+        "17": 4,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 390,
+      "bodyText": 463,
+      "scrollHeight": 977,
+      "consoleErrors": []
+    },
+    "library-mobile": {
+      "path": "/library",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina",
+          "w": 82,
+          "h": 26
+        },
+        {
+          "tag": "button",
+          "txt": "全部",
+          "w": 46,
+          "h": 28
+        },
+        {
+          "tag": "button",
+          "txt": "待学习",
+          "w": 58,
+          "h": 28
+        },
+        {
+          "tag": "button",
+          "txt": "学习中",
+          "w": 58,
+          "h": 28
+        },
+        {
+          "tag": "button",
+          "txt": "待复习",
+          "w": 58,
+          "h": 28
+        },
+        {
+          "tag": "button",
+          "txt": "已掌握",
+          "w": 58,
+          "h": 28
+        },
+        {
+          "tag": "select",
+          "txt": "全部计划SQL 数据库基础：从零到独立写查询未归类",
+          "w": 220,
+          "h": 28
+        }
+      ],
+      "smallCount": 7,
+      "fontSizes": {
+        "10": 2,
+        "11": 17,
+        "12": 78,
+        "13": 7,
+        "14": 36,
+        "16": 6,
+        "17": 9,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 390,
+      "bodyText": 1901,
+      "scrollHeight": 3095,
+      "consoleErrors": []
+    },
+    "review-mobile": {
+      "path": "/review",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina",
+          "w": 82,
+          "h": 26
+        }
+      ],
+      "smallCount": 1,
+      "fontSizes": {
+        "10": 2,
+        "11": 8,
+        "12": 5,
+        "13": 7,
+        "14": 8,
+        "16": 6,
+        "17": 1,
+        "18": 1,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 390,
+      "bodyText": 208,
+      "scrollHeight": 844,
+      "consoleErrors": []
+    },
+    "settings-mobile": {
+      "path": "/settings",
+      "overflowX": 0,
+      "offenders": [],
+      "small": [
+        {
+          "tag": "a",
+          "txt": "Lumina",
+          "w": 82,
+          "h": 26
+        },
+        {
+          "tag": "button",
+          "txt": "编辑 deepseek-v4-1-flash-261017",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "button",
+          "txt": "删除 deepseek-v4-1-flash-261017",
+          "w": 26,
+          "h": 26
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 13,
+          "h": 16
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 324,
+          "h": 16
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 324,
+          "h": 16
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 324,
+          "h": 16
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 324,
+          "h": 16
+        },
+        {
+          "tag": "input",
+          "txt": "",
+          "w": 13,
+          "h": 16
+        },
+        {
+          "tag": "a",
+          "txt": "打开 OpenTutor",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 better-sqlite3",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 KaTeX",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 react-markdown",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 Recharts",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 Next.js / React",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 lucide-react",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "打开 sonner",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "a",
+          "txt": "去学习档案",
+          "w": 55,
+          "h": 15
+        }
+      ],
+      "smallCount": 18,
+      "fontSizes": {
+        "10": 2,
+        "11": 29,
+        "12": 32,
+        "13": 31,
+        "14": 12,
+        "16": 6,
+        "17": 5,
+        "18": 2,
+        "21": 1,
+        "26": 1
+      },
+      "mainWidth": 390,
+      "bodyText": 1369,
+      "scrollHeight": 2813,
+      "consoleErrors": []
+    }
+  },
+  "console": [],
+  "failedRequests": [
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/plan/p_43d5b8f4d9f848a095bb/course/pi_a7f280d335504aaaa512?_rsc=p37cr",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1r34m",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=1r34m",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1r34m",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=1r34m",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=p37cr",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=p37cr",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=p37cr",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=p37cr",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/materials",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=9qu7t",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/materials",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=9qu7t",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/materials",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=9qu7t",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/materials",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=9qu7t",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/materials",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1w4bm",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/materials",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=1w4bm",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/materials",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=1w4bm",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/materials",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1w4bm",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=3hj8j",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=3hj8j",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=3hj8j",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=3hj8j",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/plan/p_43d5b8f4d9f848a095bb/course/pi_a7f280d335504aaaa512?_rsc=3hj8j",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=dtdum",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=dtdum",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/plan/p_43d5b8f4d9f848a095bb/course/pi_a7f280d335504aaaa512?_rsc=dtdum",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=1kt3g",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1kt3g",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=1kt3g",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1kt3g",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=1cwv7",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=1cwv7",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1cwv7",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1cwv7",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/library",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1yvjz",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/library",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1yvjz",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/library",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1qzbq",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/library",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=1qzbq",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/library",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1qzbq",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/library",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=1qzbq",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/review",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=xy2e0",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/review",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=xy2e0",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/review",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=xy2e0",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/review",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=xy2e0",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/review",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1njb9",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/review",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=1njb9",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/review",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1njb9",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/review",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=1njb9",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/settings",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=ovqpc",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/settings",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=ovqpc",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/settings",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=ovqpc",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/settings",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=ovqpc",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/settings",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1cgn3",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/settings",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=1cgn3",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/settings",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1cgn3",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/settings",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=1cgn3",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1r34m",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=1r34m",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1r34m",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=1r34m",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=p37cr",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=p37cr",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=p37cr",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/plan/p_43d5b8f4d9f848a095bb/course/pi_a7f280d335504aaaa512?_rsc=p37cr",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=p37cr",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/materials",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=9qu7t",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/materials",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=9qu7t",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/materials",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=9qu7t",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/materials",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=9qu7t",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/materials",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1w4bm",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/materials",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1w4bm",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/materials",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=1w4bm",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=3hj8j",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=3hj8j",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=3hj8j",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=dtdum",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=dtdum",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=dtdum",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=dtdum",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1kt3g",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=1kt3g",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1kt3g",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1cwv7",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=1cwv7",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1cwv7",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/library",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1yvjz",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/library",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=1yvjz",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/library",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1yvjz",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/library",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=1yvjz",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/library",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=1qzbq",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/library",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1qzbq",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/library",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=1qzbq",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/library",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1qzbq",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/review",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=xy2e0",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/review",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=xy2e0",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/review",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=xy2e0",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/review",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=1njb9",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/review",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1njb9",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/review",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=1njb9",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/review",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1njb9",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/settings",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=ovqpc",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/settings",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=ovqpc",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/settings",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=ovqpc",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/settings",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1cgn3",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/settings",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=1cgn3",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/settings",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1cgn3",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/settings",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=1cgn3",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1r34m",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=p37cr",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/plan/p_43d5b8f4d9f848a095bb/course/pi_a7f280d335504aaaa512?_rsc=3hj8j",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/plan",
+      "url": "http://127.0.0.1:3210/plan/p_43d5b8f4d9f848a095bb/course/pi_a7f280d335504aaaa512?_rsc=dtdum",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=1kt3g",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1kt3g",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=1kt3g",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_a8e4d29289f74c1dbc33?_rsc=1cwv7",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_ecc569e6135d421e96d2?_rsc=1cwv7",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_58e69d50a1334531ba4f?_rsc=1cwv7",
+      "err": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/history",
+      "url": "http://127.0.0.1:3210/s/s_487aaa52b559438daf5b?_rsc=1cwv7",
+      "err": "net::ERR_ABORTED"
+    }
+  ]
+}

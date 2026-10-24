@@ -66,31 +66,115 @@ export const quizInputSchema = z.object({
 
 export type QuizInput = z.infer<typeof quizInputSchema>;
 
-const pointSchema = z.object({ x: z.number(), y: z.number() });
+export const CHART_TYPES = [
+  "line",
+  "bar",
+  "area",
+  "scatter",
+  "pie",
+  "radar",
+  "waterfall",
+  "candlestick",
+  "combo",
+] as const;
 
-export const chartInputSchema = z.object({
-  title: z.string().min(1).max(160),
-  chartType: z.enum(["line", "bar", "scatter"]).default("line"),
-  xLabel: z.string().max(60).optional(),
-  yLabel: z.string().max(60).optional(),
-  series: z
-    .array(
-      z.object({
-        name: z.string().min(1).max(60),
-        points: z.array(pointSchema).min(1).max(200),
-      }),
-    )
-    .min(1)
-    .max(6),
-  note: z.string().max(600).optional(),
+export type ChartType = (typeof CHART_TYPES)[number];
+
+/** x 允许类目/日期字符串，金融图里"1月""资产/负债"很常见 */
+const chartPointSchema = z.object({
+  x: z.union([z.number(), z.string().min(1).max(60)]),
+  y: z.number(),
+  /** 瀑布图：delta=增减量，total=合计柱 */
+  kind: z.enum(["delta", "total"]).optional(),
 });
 
-export const tableInputSchema = z.object({
-  title: z.string().min(1).max(160),
-  columns: z.array(z.string().min(1).max(80)).min(2).max(8),
-  rows: z.array(z.array(z.string().max(400)).min(2).max(8)).min(1).max(60),
-  note: z.string().max(600).optional(),
+const chartSeriesSchema = z.object({
+  name: z.string().min(1).max(60),
+  /** combo 图里每条系列自己的形态 */
+  type: z.enum(["line", "bar", "area"]).optional(),
+  /** 双轴：左轴或右轴 */
+  axis: z.enum(["left", "right"]).optional(),
+  points: z.array(chartPointSchema).min(1).max(500),
 });
+
+const candleSchema = z.object({
+  label: z.string().min(1).max(40),
+  open: z.number(),
+  high: z.number(),
+  low: z.number(),
+  close: z.number(),
+});
+
+export const chartInputSchema = z
+  .object({
+    title: z.string().min(1).max(160),
+    chartType: z.enum(CHART_TYPES).default("line"),
+    xLabel: z.string().max(60).optional(),
+    yLabel: z.string().max(60).optional(),
+    /** 类目轴（默认）/数值轴/时间轴；时间轴按字符串标签展示 */
+    xType: z.enum(["category", "number", "time"]).optional(),
+    series: z.array(chartSeriesSchema).min(1).max(8).optional(),
+    candles: z.array(candleSchema).min(1).max(300).optional(),
+    stacked: z.boolean().optional(),
+    /** 数据性质：真实数据 / 教学示意数据（界面会显式标注） */
+    dataKind: z.enum(["real", "illustrative"]).default("illustrative"),
+    dataNote: z.string().max(300).optional(),
+    note: z.string().max(600).optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.chartType === "candlestick") {
+      if (!v.candles?.length) {
+        ctx.addIssue({ code: "custom", message: "K 线图必须提供 candles（label/open/high/low/close）" });
+      }
+    } else if (!v.series?.length) {
+      ctx.addIssue({ code: "custom", message: `${v.chartType} 图必须提供 series` });
+    }
+
+    if (v.chartType === "pie" && (v.series?.length ?? 0) > 1) {
+      ctx.addIssue({ code: "custom", message: "饼图只能有一个 series（多个系列请改用柱状/组合图）" });
+    }
+
+    if (v.chartType === "waterfall") {
+      const points = v.series?.flatMap((s) => s.points) ?? [];
+      if (!points.length) {
+        ctx.addIssue({ code: "custom", message: "瀑布图必须提供 series.points" });
+      }
+    }
+
+    if (v.chartType === "combo") {
+      const hasTyped = v.series?.some((s) => s.type);
+      const hasRight = v.series?.some((s) => s.axis === "right");
+      if (!hasTyped && !hasRight) {
+        ctx.addIssue({ code: "custom", message: "combo 图至少要为一条系列指定 type 或 axis" });
+      }
+    }
+
+    for (const [i, c] of (v.candles ?? []).entries()) {
+      if (c.high < Math.max(c.open, c.close) || c.low > Math.min(c.open, c.close)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `第 ${i + 1} 根 K 线的 high/low 必须覆盖 open/close`,
+        });
+      }
+    }
+  });
+
+export type ChartInput = z.infer<typeof chartInputSchema>;
+export type ChartSeriesInput = z.infer<typeof chartSeriesSchema>;
+export type ChartPointInput = z.infer<typeof chartPointSchema>;
+export type CandleInput = z.infer<typeof candleSchema>;
+
+export const tableInputSchema = z
+  .object({
+    title: z.string().min(1).max(160),
+    columns: z.array(z.string().min(1).max(80)).min(2).max(8),
+    rows: z.array(z.array(z.string().max(400)).min(2).max(8)).min(1).max(60),
+    note: z.string().max(600).optional(),
+  })
+  .refine((t) => t.rows.every((row) => row.length === t.columns.length), {
+    message: "每一行的单元格数必须与列数一致",
+    path: ["rows"],
+  });
 
 export const stepsInputSchema = z.object({
   title: z.string().min(1).max(160),
@@ -179,16 +263,24 @@ export const conceptsInputSchema = z.object({
 export const planInputSchema = z.object({
   title: z.string().min(1).max(160),
   goal: z.string().max(400).optional(),
-  items: z
+  courses: z
     .array(
       z.object({
         title: z.string().min(1).max(160),
-        rationale: z.string().max(400).optional(),
-        concept: z.string().max(120).optional(),
+        description: z.string().max(600).optional(),
+        concepts: z
+          .array(
+            z.object({
+              name: z.string().min(1).max(120),
+              definition: z.string().max(600).optional(),
+            }),
+          )
+          .min(1)
+          .max(12),
       }),
     )
     .min(1)
-    .max(20),
+    .max(12),
 });
 
 export const summaryInputSchema = z.object({

@@ -1,5 +1,5 @@
 import { getExercise, markSolutionViewed } from "@/lib/db/repo";
-import { describeAnswer, type AnswerSpec } from "@/lib/learning/exercise";
+import { describeAnswer, describeReveal, type AnswerSpec } from "@/lib/learning/exercise";
 import { fail, handleError, ok } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
@@ -21,6 +21,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     markSolutionViewed(id);
     return ok({
       correctDisplay: describeAnswer(spec),
+      reveal: describeReveal(spec),
       explanation: exercise.explanation,
       rubric: exercise.rubric,
       notice: "已查看解析：本次作答将标记为非独立完成，不计入掌握度。",

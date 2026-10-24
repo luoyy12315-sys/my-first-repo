@@ -1,0 +1,197 @@
+{
+ "containers": {
+  "main": {
+   "left": 248,
+   "right": 1440,
+   "w": 1192
+  },
+  "container": {
+   "left": 396,
+   "right": 1292,
+   "w": 896
+  },
+  "h1": {
+   "left": 428,
+   "right": 1100,
+   "w": 672
+  }
+ },
+ "homeGrid": {
+  "cards": [
+   {
+    "href": "/plan/p_43d5b8f4d9f848a095bb/course/pi_a7f280d335504aaaa512",
+    "left": 734,
+    "right": 822,
+    "w": 88,
+    "h": 26
+   }
+  ],
+  "two": [
+   {
+    "cols": "406px 406px",
+    "left": 428,
+    "right": 1260,
+    "w": 832
+   }
+  ],
+  "thirds": []
+ },
+ "planAlign": {
+  "btnRight": 1196,
+  "cardRight": 1196,
+  "cardLeft": 492
+ },
+ "historySelect": [
+  {
+   "w": 220,
+   "h": 32,
+   "scrollW": 218,
+   "clientW": 218,
+   "value": "all",
+   "text": "全部计划"
+  },
+  {
+   "w": 130,
+   "h": 27,
+   "scrollW": 128,
+   "clientW": 128,
+   "value": "p_43d5b8f4d9f848a095bb",
+   "text": "SQL 数据库基础：从零到独立写查询"
+  },
+  {
+   "w": 130,
+   "h": 27,
+   "scrollW": 128,
+   "clientW": 128,
+   "value": "p_43d5b8f4d9f848a095bb",
+   "text": "SQL 数据库基础：从零到独立写查询"
+  },
+  {
+   "w": 130,
+   "h": 27,
+   "scrollW": 128,
+   "clientW": 128,
+   "value": "",
+   "text": "未归类"
+  }
+ ],
+ "settingsAlign": {
+  "btnRight": 1196,
+  "cards": [
+   {
+    "left": 492,
+    "right": 1196,
+    "w": 704
+   },
+   {
+    "left": 492,
+    "right": 1196,
+    "w": 704
+   },
+   {
+    "left": 492,
+    "right": 1196,
+    "w": 704
+   },
+   {
+    "left": 492,
+    "right": 1196,
+    "w": 704
+   }
+  ]
+ },
+ "dupes": [
+  [
+   "待学习",
+   28
+  ],
+  [
+   "待开始",
+   12
+  ],
+  [
+   "已掌握",
+   8
+  ],
+  [
+   "进入课程",
+   6
+  ],
+  [
+   "进行中",
+   5
+  ]
+ ],
+ "dupesLibrary": [
+  [
+   "待学习",
+   29
+  ],
+  [
+   "SQL 数据库基础：从零到独立写查询",
+   9
+  ],
+  [
+   "计划：",
+   8
+  ]
+ ],
+ "readWidth": {
+  "w": 720,
+  "fontSize": 15.5,
+  "cpl": 46
+ },
+ "tinyText": {
+  "count": 21,
+  "sample": [
+   {
+    "fs": 11,
+    "t": "OpenAI 兼容· 温度0.6· ark-****d2b2"
+   },
+   {
+    "fs": 11,
+    "t": "只影响你自己配置的搜索服务地址；网页正文抓取始终阻断内网。"
+   },
+   {
+    "fs": 11,
+    "t": "近 7 天：0次检索 · 缓存命中0"
+   },
+   {
+    "fs": 11,
+    "t": "会话"
+   },
+   {
+    "fs": 11,
+    "t": "消息"
+   },
+   {
+    "fs": 11,
+    "t": "知识点"
+   },
+   {
+    "fs": 11,
+    "t": "练习"
+   },
+   {
+    "fs": 11,
+    "t": "作答"
+   },
+   {
+    "fs": 11,
+    "t": "证据"
+   },
+   {
+    "fs": 11,
+    "t": "data/audit-ui/lumina.db·432KB · Nodev22."
+   },
+   {
+    "fs": 11,
+    "t": "MIT"
+   },
+   {
+    "fs": 11,
+    "t": "MIT"
+   }
+  ]
+ }
+}

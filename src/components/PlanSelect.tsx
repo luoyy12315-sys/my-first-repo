@@ -51,6 +51,8 @@ export function PlanSelect({
   ariaLabel?: string;
   title?: string;
 }) {
+  // 草稿还没有正式生效，不能被会话/材料误挂上去
+  const options = mode === "assign" ? plans.filter((p) => p.status !== "draft") : plans;
   return (
     <select
       value={value}
@@ -60,9 +62,10 @@ export function PlanSelect({
       aria-label={ariaLabel ?? "学习计划"}
     >
       {mode === "filter" ? <option value="all">全部计划</option> : <option value="">未归类</option>}
-      {plans.map((p) => (
+      {options.map((p) => (
         <option key={p.id} value={p.id}>
           {p.title}
+          {p.status === "draft" ? "（草稿）" : p.status === "paused" ? "（暂停）" : ""}
         </option>
       ))}
       {mode === "filter" ? <option value="none">未归类</option> : null}

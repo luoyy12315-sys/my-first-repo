@@ -81,7 +81,8 @@ export default function WorkspaceView({ blockId }: { blockId: string }) {
 
   return (
     <div className="flex min-h-dvh flex-col bg-bg">
-      <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-bg/85 px-3 backdrop-blur-md md:px-6">
+      <header className="sticky top-0 z-20 border-b border-line bg-bg/85 backdrop-blur-md">
+        <div className="mx-auto flex h-14 w-full max-w-4xl items-center gap-3 px-3 md:px-6">
         <button
           onClick={back}
           className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[13px] text-ink2 transition-colors hover:bg-panel2 hover:text-ink"
@@ -97,11 +98,12 @@ export default function WorkspaceView({ blockId }: { blockId: string }) {
         <Badge tone="neutral">
           {block.kind === "simulator" ? "互动模拟器" : block.kind === "exercise" ? "练习" : block.kind}
         </Badge>
+        </div>
       </header>
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-3 py-5 md:px-6">
         <BlockRenderer block={block} expanded onAsk={(t) => setAsk(t)} />
-        <p className="mt-4 text-[11.5px] leading-relaxed text-ink3">
+        <p className="mt-4 text-[12px] leading-relaxed text-ink3">
           工作区状态会自动保存（参数、作答草稿），刷新或离开再回来可继续。注意：临时调参和草稿不会计入掌握度，只有正式提交的作答才会。
         </p>
       </main>

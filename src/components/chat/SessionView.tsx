@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, ArrowDown, BookMarked, Check, Copy, FileText, FolderOpen, Sparkles, Trash2, User } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, BookMarked, Check, Copy, FileText, FolderOpen, Sparkles, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
 import Composer from "./Composer";
 import NextActions from "./NextActions";
@@ -12,19 +12,28 @@ import Markdown from "@/components/Markdown";
 import SourceCards from "@/components/chat/SourceCards";
 import ErrorBoundary from "@/components/blocks/ErrorBoundary";
 import { Badge, Button, EmptyState, Modal, Spinner, cx } from "@/components/ui/kit";
-import { PlanSelect, usePlans } from "@/components/PlanSelect";
+import { usePlans } from "@/components/PlanSelect";
 import type { BlockWithExercise } from "@/lib/api/serialize";
-import type { AiModelPublic, AiStatus, MessageDTO, MessagePart, PlanDTO, SourceDTO } from "@/lib/types";
+import type {
+  AiModelPublic,
+  AiStatus,
+  LearningMode,
+  MessageDTO,
+  MessagePart,
+  SourceDTO,
+} from "@/lib/types";
 import { stripPartialCitation } from "@/lib/ai/citations";
+import { REPRESENTATIONS } from "@/lib/teaching/representation";
 
 interface SessionData {
   id: string;
   title: string;
-  mode: "free" | "goal" | "review";
-  /** 归属的学习计划；为空表示未归类 */
+  mode: LearningMode;
+  /** 归属的学习计划；无限学习为空 */
   planId?: string | null;
   planTitle?: string | null;
   planItemId?: string | null;
+  courseTitle?: string | null;
   focusConceptId?: string | null;
   focusConceptName?: string | null;
   /** 本会话固定使用的模型；null 表示跟随默认 */
@@ -59,17 +68,41 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
   const [webConfigured, setWebConfigured] = useState(false);
   const [webStatusLine, setWebStatusLine] = useState<string | null>(null);
   const [liveSources, setLiveSources] = useState<SourceDTO[]>([]);
-  const [advancing, setAdvancing] = useState(false);
-  const advancingRef = useRef(false);
+  const [reasoningActive, setReasoningActive] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
   const autoSent = useRef(false);
   const sendingRef = useRef(false);
   const initialScrollDone = useRef(false);
   const followLatest = useRef(true);
   const lastScrollY = useRef(0);
+  const suppressFollowUntil = useRef(0);
   const scrollFrame = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  const expandComposer = useCallback(() => {
+    setComposerExpanded(true);
+    window.setTimeout(() => {
+      document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="继续追问"]')?.focus();
+    }, 60);
+  }, []);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const [composerExpanded, setComposerExpanded] = useState(false);
+
+  // 等待时给出"已经等了多久"，避免推理型模型长时间无输出时像卡死
+  useEffect(() => {
+    if (!pending) {
+      setElapsed(0);
+      return;
+    }
+    const started = Date.now();
+    setElapsed(0);
+    const timer = window.setInterval(
+      () => setElapsed(Math.floor((Date.now() - started) / 1000)),
+      1000,
+    );
+    return () => window.clearInterval(timer);
+  }, [pending]);
 
   const load = useCallback(async () => {
     try {
@@ -178,45 +211,35 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
     () => plans.find((p) => p.id === session?.planId) ?? null,
     [plans, session?.planId],
   );
-  // 当前步骤：优先按会话聚焦的概念匹配；否则取进行中，再否则取第一个未开始
-  const activePlanStep = useMemo(() => {
+  const planningSession = Boolean(
+    session?.mode === "goal" &&
+      !session.planItemId &&
+      (session.title.startsWith("规划：") || activePlan?.status === "draft"),
+  );
+  const activeCourse = useMemo(() => {
     if (!activePlan) return null;
     if (session?.planItemId) {
-      const bound = activePlan.items.find((i) => i.id === session.planItemId);
-      // 已完成的步骤也保留：会话里要能显示“进入下一步”，但不能被“开始第一步”重新打开
-      return bound && bound.status !== "skipped" ? bound : null;
+      return activePlan.items.find((item) => item.id === session.planItemId) ?? null;
     }
-    const focused = session?.focusConceptId
-      ? activePlan.items.find(
-          (i) =>
-            i.conceptId === session.focusConceptId &&
-            (i.status === "pending" || i.status === "in_progress"),
-        )
-      : null;
     return (
-      focused ??
-      activePlan.items.find((i) => i.status === "in_progress") ??
-      activePlan.items.find((i) => i.status === "pending") ??
+      activePlan.items.find((item) => item.status === "in_progress") ??
+      activePlan.items.find((item) => item.id === activePlan.currentCourseId) ??
       null
     );
-  }, [activePlan, session?.focusConceptId, session?.planItemId]);
-  const nextPlanStep = useMemo(() => {
-    if (!activePlan || !activePlanStep) return null;
-    const idx = activePlan.items.findIndex((i) => i.id === activePlanStep.id);
-    if (idx < 0) return null;
-    return activePlan.items.slice(idx + 1).find((i) => i.status === "pending") ?? null;
-  }, [activePlan, activePlanStep]);
-  const canAdvancePlan = Boolean(activePlan && activePlanStep && session?.mode !== "review");
-  const stepVerified = activePlanStep?.verifiedConcepts ?? 0;
-  const stepRequired = activePlanStep?.requiredConcepts ?? 3;
-  const stepComplete = Boolean(
-    activePlanStep && (activePlanStep.status === "done" || stepVerified >= stepRequired),
+  }, [activePlan, session?.planItemId]);
+  const courseComplete = Boolean(
+    activeCourse &&
+      activeCourse.progress.total > 0 &&
+      activeCourse.progress.mastered === activeCourse.progress.total,
   );
-  const planActionLabel = useMemo(() => {
-    if (!activePlanStep) return "继续下一步";
-    if (!stepComplete) return `继续检验（${stepVerified}/${stepRequired}）`;
-    return nextPlanStep ? `进入 ${shortStepTitle(nextPlanStep.title)}` : "本步已完成";
-  }, [activePlanStep, nextPlanStep, stepComplete, stepRequired, stepVerified]);
+  const courseHref =
+    activePlan && activeCourse ? `/plan/${activePlan.id}/course/${activeCourse.id}` : null;
+  const continueLabel =
+    session?.mode === "goal" && activeCourse
+      ? courseComplete
+        ? "返回课程"
+        : `继续 ${activeCourse.nextConceptName ?? "本课程"}`
+      : "继续";
 
   // 在同一外壳里从会话 A 切到会话 B 时，组件可能不会重新挂载。
   useEffect(() => {
@@ -233,6 +256,16 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior });
       scrollFrame.current = null;
     });
+  }, []);
+
+  const scrollToAnswerStart = useCallback(() => {
+    const nodes = document.querySelectorAll<HTMLElement>('[data-role="assistant"]');
+    const el = nodes[nodes.length - 1];
+    if (!el) return false;
+    // 短回答不用跳；长回答（含表格/练习）从开头读起，别一上来就停在题目上。
+    if (el.getBoundingClientRect().height < window.innerHeight * 0.55) return false;
+    el.scrollIntoView({ block: "start", behavior: "smooth" });
+    return true;
   }, []);
 
   // 首次打开会话必定落到最新消息。之前这里在 loading 阶段就把"首次"消耗掉了，
@@ -252,6 +285,7 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
   // 只在用户本来就在底部附近时自动跟随；上滑阅读时不抢滚动。
   useEffect(() => {
     if (loading) return;
+    if (Date.now() < suppressFollowUntil.current) return;
     const distance = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
     if (followLatest.current || distance < 160) {
       scrollToLatest(pending ? "auto" : "smooth");
@@ -264,6 +298,10 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     const onScroll = () => {
       const y = window.scrollY;
+      if (Date.now() < suppressFollowUntil.current) {
+        lastScrollY.current = y;
+        return;
+      }
       const distance = document.documentElement.scrollHeight - y - window.innerHeight;
       // 只有"向上滑"才算用户想看旧内容；内容变高、程序滚动都不应取消跟随。
       if (y < lastScrollY.current - 4) followLatest.current = false;
@@ -293,7 +331,14 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
   }, [scrollToLatest, loading]);
 
   const send = useCallback(
-    async (text: string) => {
+    async (
+      text: string,
+      opts?: {
+        representation?: string;
+        avoidRepresentations?: string[];
+        reuseUserId?: string;
+      },
+    ) => {
       if (!text.trim() || pending || sendingRef.current) return;
       sendingRef.current = true;
       followLatest.current = true;
@@ -308,16 +353,18 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
         createdAt: Date.now(),
         seq: 9999,
       };
-      setMessages((m) => [...m, optimistic]);
+      if (!opts?.reuseUserId) setMessages((m) => [...m, optimistic]);
       setPending(true);
       setStreamText("");
       setStreamParts([]);
       setError(null);
+      // 发出去之后回到阅读态：手机上输入区收成一条窄栏，给图表/讲解腾空间。
+      setComposerExpanded(false);
       const controller = new AbortController();
       abortRef.current = controller;
+      let aborted = false;
 
       try {
-        const minutesParam = Number(new URLSearchParams(window.location.search).get("minutes"));
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -325,9 +372,11 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
             sessionId,
             text,
             mode: session?.mode,
-            availableMinutes: Number.isFinite(minutesParam) && minutesParam > 0 ? minutesParam : null,
             modelId: session?.modelId ?? null,
             webMode,
+            representation: opts?.representation,
+            avoidRepresentations: opts?.avoidRepresentations,
+            reuseUserMessageId: opts?.reuseUserId,
           }),
           signal: controller.signal,
         });
@@ -372,6 +421,10 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
                 setStreamText(acc);
                 break;
               }
+              case "thinking": {
+                setReasoningActive(evt.state === "start");
+                break;
+              }
               case "search_status": {
                 const state = String(evt.state ?? "");
                 if (state === "searching") {
@@ -390,6 +443,12 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
                 break;
               }
               case "block": {
+                // 续写时正文会出现在组件之后：先把当前这段文本定格，保证渲染顺序
+                if (acc.trim()) {
+                  parts.push({ type: "text", text: acc });
+                  acc = "";
+                  setStreamText("");
+                }
                 const block = evt.block as BlockWithExercise;
                 setBlocks((b) => ({ ...b, [block.id]: block }));
                 parts.push({ type: "block", blockId: block.id, kind: block.kind });
@@ -398,6 +457,11 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
                 break;
               }
               case "notice": {
+                if (acc.trim()) {
+                  parts.push({ type: "text", text: acc });
+                  acc = "";
+                  setStreamText("");
+                }
                 parts.push({ type: "notice", notice: String(evt.text ?? "") });
                 setStreamParts([...parts]);
                 break;
@@ -408,18 +472,22 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
               }
               case "error": {
                 setError(String(evt.message ?? "生成失败"));
+                setReasoningActive(false);
                 break;
               }
               case "done": {
                 // 消息与来源由 finally 里的 load() 统一刷新，这里不再单独更新
                 if (Array.isArray(evt.sources)) setLiveSources(evt.sources as SourceDTO[]);
+                setReasoningActive(false);
                 break;
               }
             }
           }
         }
       } catch (e) {
-        if ((e as Error).name !== "AbortError") {
+        if ((e as Error).name === "AbortError") {
+          aborted = true;
+        } else {
           setError((e as Error).message || "网络中断");
         }
       } finally {
@@ -429,147 +497,83 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
         setStreamText("");
         setStreamParts([]);
         setToolStatus(null);
+        setReasoningActive(false);
+        const wasFollowing = followLatest.current;
+        // 完成后先回到"讲解开头"，不要在长回答/练习题底部停住。
+        // 这段时间内不让 near-bottom 逻辑把页面又拉回底部。
+        if (wasFollowing) {
+          followLatest.current = false;
+          suppressFollowUntil.current = Date.now() + 1200;
+        }
         await load();
+        if (aborted) {
+          // 中断时服务端可能还在收尾落库；等它写完再拉一次，
+          // 否则会把周期性快照（例如只剩一个 **）当成最终内容。
+          await new Promise((r) => window.setTimeout(r, 700));
+          await load();
+        }
         // 首轮会自动命名会话；同步侧栏/历史，避免"正文已改名、侧栏还是新的学习"
         window.dispatchEvent(new Event("sessions:changed"));
         // 本轮可能刚生成/合并了学习计划，让计划下拉列表跟上
         window.dispatchEvent(new Event("plans:changed"));
-        if (followLatest.current) {
-          window.setTimeout(() => scrollToLatest("smooth"), 120);
+        if (wasFollowing) {
+          window.setTimeout(() => {
+            if (scrollToAnswerStart()) setShowJumpToLatest(true);
+            suppressFollowUntil.current = 0;
+          }, 160);
         }
       }
     },
     [pending, sessionId, load, session?.mode, webMode, scrollToLatest],
   );
 
-  // 计划步骤完成由证据决定：至少 N 个不同知识点独立答对才自动完成。
-  // 没达标时这里只会继续检验，不会把“手动完成”当成用户判断。
-  const goNext = useCallback(async () => {
-    if (advancingRef.current) return;
-    if (!canAdvancePlan || !activePlan || !activePlanStep) {
-      void send("继续下一步，不要重复刚才的内容。");
-      return;
-    }
-    if (!stepComplete) {
-      const names = activePlanStep.verifiedConceptNames ?? [];
-      const missing = Math.max(0, stepRequired - stepVerified);
-      const verified = names.length ? `已验证：${names.join("、")}。` : "";
+  // 目标学习不再按“3 个概念自动完成步骤”推进；课程进度完全由知识点证据决定。
+  // 这里只负责把对话带到同一门课程的下一个知识点，或回到课程页。
+  const goNext = useCallback(() => {
+    if (session?.mode === "goal" && activePlan) {
+      if (!activeCourse) {
+        router.push(`/plan/${activePlan.id}`);
+        return;
+      }
+      if (activeCourse.unconfigured) {
+        toast.message("这门课程还没有知识点", {
+          description: "先到计划里添加知识点，才能继续学习。",
+        });
+        router.push(`/plan/${activePlan.id}`);
+        return;
+      }
+      if (courseComplete || activeCourse.status === "done") {
+        router.push(courseHref ?? `/plan/${activePlan.id}`);
+        return;
+      }
+      const next = activeCourse.nextConceptName;
       void send(
-        `本步验证进度 ${stepVerified}/${stepRequired}。${verified}还差 ${missing} 个不同知识点。请针对还没验证的核心知识点出 1 道题，先别讲解。`,
+        next
+          ? `继续课程「${activeCourse.title}」的下一个知识点「${next}」。先讲清楚，再出题检验。`
+          : "继续这门课程的下一个知识点，不要重复刚才的内容。",
       );
       return;
     }
-
-    advancingRef.current = true;
-    setAdvancing(true);
-    try {
-      const currentId = activePlanStep.id;
-      // 兜底：旧会话可能还没有步骤绑定
-      if (session?.planItemId !== currentId) {
-        await fetch(`/api/sessions/${sessionId}`, {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ planItemId: currentId }),
-        }).catch(() => undefined);
-        setSession((s) => (s ? { ...s, planItemId: currentId } : s));
-      }
-      // 只有达到证据阈值才补写 done；这不是用户手动判断
-      if (activePlanStep.status !== "done") {
-        const stepDone = await fetch(`/api/plans/${activePlan.id}`, {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ itemId: currentId, status: "done" }),
-        });
-        if (!stepDone.ok) {
-          const data = (await stepDone.json().catch(() => ({}))) as { error?: string };
-          throw new Error(data.error ?? "同步计划步骤失败");
-        }
-      }
-      const planRes = await fetch(`/api/plans/${activePlan.id}`, { cache: "no-store" });
-      const planData = (await planRes.json().catch(() => ({}))) as { plan?: PlanDTO };
-      const updated = planData.plan ?? activePlan;
-      const idx = updated.items.findIndex((i) => i.id === currentId);
-      const next = updated.items.slice(idx + 1).find((i) => i.status === "pending") ?? null;
-      window.dispatchEvent(new Event("plans:changed"));
-      if (!next) {
-        toast.success("本步已完成，计划已经全部完成");
-        router.push("/plan");
-        return;
-      }
-      const sessionRes = await fetch("/api/sessions", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          mode: "goal",
-          planId: updated.id,
-          planItemId: next.id,
-          focusConceptId: next.conceptId ?? null,
-          title: next.title,
-        }),
-      });
-      const sessionData = (await sessionRes.json().catch(() => ({}))) as {
-        session?: { id: string };
-        error?: string;
-      };
-      if (!sessionRes.ok || !sessionData.session) {
-        throw new Error(
-          `${sessionData.error ?? "创建下一步会话失败"}。本步已完成，可在计划页继续下一步。`,
-        );
-      }
-      await fetch(`/api/plans/${updated.id}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ itemId: next.id, status: "in_progress" }),
-      });
-      window.dispatchEvent(new Event("plans:changed"));
-      window.dispatchEvent(new Event("sessions:changed"));
-      const focus = next.conceptName ? `聚焦知识点「${next.conceptName}」。` : "";
-      const q = `按我的学习路线「${updated.title}」，现在学这一步：${next.title}。${focus}${next.rationale ?? ""} 先讲清楚再出题检验。`;
-      router.push(`/s/${sessionData.session.id}?q=${encodeURIComponent(q)}&minutes=20`);
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      advancingRef.current = false;
-      setAdvancing(false);
+    if (session?.mode === "goal" && activePlan) {
+      router.push(`/plan/${activePlan.id}`);
+      return;
     }
-  }, [
-    activePlan,
-    activePlanStep,
-    canAdvancePlan,
-    router,
-    send,
-    session?.planItemId,
-    sessionId,
-    stepComplete,
-    stepRequired,
-    stepVerified,
-  ]);
+    void send("继续下一步，不要重复刚才的内容。");
+  }, [activeCourse, activePlan, courseComplete, courseHref, router, send, session?.mode]);
 
-  const startPlan = useCallback(async () => {
-    if (canAdvancePlan && activePlan && activePlanStep && activePlanStep.status !== "done") {
-      setSession((s) => (s ? { ...s, planItemId: activePlanStep.id } : s));
-      try {
-        await Promise.all([
-          fetch(`/api/sessions/${sessionId}`, {
-            method: "PATCH",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ planItemId: activePlanStep.id }),
-          }),
-          activePlanStep.status === "in_progress"
-            ? Promise.resolve()
-            : fetch(`/api/plans/${activePlan.id}`, {
-                method: "PATCH",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({ itemId: activePlanStep.id, status: "in_progress" }),
-              }),
-        ]);
-        window.dispatchEvent(new Event("plans:changed"));
-      } catch {
-        // 绑定失败不阻塞开讲；下一步操作仍可重新绑定
-      }
-    }
-    void send("开始第一步：先讲清楚，再出题检验。");
-  }, [activePlan, activePlanStep, canAdvancePlan, send, sessionId]);
+  const generateSummary = useCallback(() => {
+    if (pending || messages.length === 0) return;
+    void send("请基于本次真实发生的学习，调用 write_summary 工具写一份学习小结，不要编造数据。");
+  }, [pending, messages.length, send]);
+
+  const retryLast = useCallback(() => {
+    if (pending) return;
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    if (!lastUser) return;
+    setError(null);
+    // 复用原提问：服务端不会再插入一条重复的用户消息。
+    void send(lastUser.content, { reuseUserId: lastUser.id });
+  }, [messages, pending, send]);
 
   const lastAssistant = useMemo(
     () => [...messages].reverse().find((m) => m.role === "assistant") ?? null,
@@ -597,15 +601,13 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
       (lastAssistant.content.trim() || lastAssistant.parts.length > 0),
   );
   const teachingActions = lastHasPlan
-    ? activePlanStep && activePlanStep.status !== "done"
-      ? [
-          {
-            label: activePlanStep.status === "in_progress" ? "继续当前步骤" : "开始第一步",
-            primary: true,
-            onClick: startPlan,
-          },
-        ]
-      : []
+    ? [
+        {
+          label: activePlan?.status === "active" ? "查看计划" : "查看并确认计划",
+          primary: true,
+          onClick: () => router.push(activePlan ? `/plan/${activePlan.id}` : "/plan"),
+        },
+      ]
     : [
         {
           label: "出题检验",
@@ -615,14 +617,68 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
         },
         {
           label: "换个讲法",
-          onClick: () =>
-            void send("这个讲法我还没完全懂，换一种更直观的讲法，用我能想象的东西打比方。"),
+          onClick: () => {
+            const key = `lumina:reps:${sessionId}`;
+            let used: string[] = [];
+            try {
+              const raw = JSON.parse(window.localStorage.getItem(key) ?? "[]");
+              if (Array.isArray(raw)) used = raw.filter((x): x is string => typeof x === "string");
+            } catch {
+              /* 本地记录损坏时重新开始 */
+            }
+            const fresh = REPRESENTATIONS.filter((r) => !used.includes(r));
+            const next = fresh[0] ?? REPRESENTATIONS[0];
+            // 全部用过一轮后重新计数，但本次仍然避开刚用过的那几种
+            const avoid = fresh.length ? used : [];
+            const updated = [...new Set([...avoid, next])];
+            try {
+              window.localStorage.setItem(key, JSON.stringify(updated));
+            } catch {
+              /* 隐私模式下写不了，不影响本次请求 */
+            }
+            void send("这个讲法我还没完全懂，换一种讲法重新讲一遍。", {
+              representation: next,
+              avoidRepresentations: avoid,
+            });
+          },
         },
-        {
-          label: canAdvancePlan ? planActionLabel : "继续下一步",
-          onClick: () => void goNext(),
-          title: canAdvancePlan ? "手动标记当前计划步骤完成，并进入下一步" : "继续下一个知识点",
-        },
+        ...(session?.mode === "goal"
+          ? [
+              {
+                label: activeCourse
+                  ? courseComplete
+                    ? "返回课程"
+                    : continueLabel
+                  : "查看计划",
+                onClick: () =>
+                  activeCourse && !courseComplete
+                    ? goNext()
+                    : router.push(courseHref ?? (activePlan ? `/plan/${activePlan.id}` : "/plan")),
+                title: activeCourse
+                  ? "继续本课程的下一个知识点"
+                  : "回到计划选择课程",
+              },
+            ]
+          : session?.mode === "infinite"
+            ? [
+                {
+                  label: "继续",
+                  onClick: () => void send("继续刚才的内容，不要重复。"),
+                },
+                {
+                  label: "整理成计划",
+                  onClick: () =>
+                    void send(
+                      "请把这次对话里的学习内容整理成一个目标学习计划草稿，按「课程 → 知识点」组织；先给我确认，不要直接开始教学。",
+                    ),
+                },
+              ]
+            : [
+                {
+                  label: "继续复习",
+                  onClick: () => goNext(),
+                },
+              ]),
       ];
 
   // 结构化复习：空会话进入时自动开题（约束由服务端的 review 模式提示词给，不靠这句话）
@@ -657,23 +713,6 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
     setSession((s) => (s ? { ...s, title: t } : s));
     // 侧栏「最近」用的是另一份数据，通知它重新拉取
     window.dispatchEvent(new Event("sessions:changed"));
-  };
-
-  const changePlan = async (value: string) => {
-    const planId = value || null;
-    const planTitle = planId ? plans.find((p) => p.id === planId)?.title ?? null : null;
-    const res = await fetch(`/api/sessions/${sessionId}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ planId }),
-    });
-    if (!res.ok) {
-      toast.error("调整计划归属失败");
-      return;
-    }
-    setSession((s) => (s ? { ...s, planId, planTitle } : s));
-    window.dispatchEvent(new Event("sessions:changed"));
-    toast.success(planId ? `已归入「${planTitle}」` : "已移出计划");
   };
 
   const removeSession = async () => {
@@ -718,9 +757,9 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-3xl flex-col px-4 md:min-h-dvh md:px-6">
+    <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-[44rem] flex-col px-4 md:min-h-dvh md:px-6">
       {/* 会话头 */}
-      <header className="sticky top-14 z-20 -mx-4 border-b border-line bg-bg/85 px-4 py-2.5 backdrop-blur-md md:top-0 md:-mx-6 md:px-6">
+      <header className="sticky top-14 z-20 -mx-4 border-b border-line bg-bg/97 px-4 py-2.5 backdrop-blur-md md:top-0 md:-mx-6 md:px-6">
         <div className="flex items-center gap-2">
           {editingTitle ? (
             <input
@@ -744,17 +783,19 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
             </button>
           )}
           <Badge
-            tone={session?.mode === "free" ? "neutral" : "accent"}
+            tone={session?.mode === "infinite" ? "neutral" : session?.mode === "review" ? "warn" : "accent"}
             className="shrink-0 whitespace-nowrap"
           >
-            {session?.mode === "goal" ? "目标学习" : session?.mode === "review" ? "复习" : "自由学习"}
+            {session?.mode === "goal" ? "目标学习" : session?.mode === "review" ? "复习" : "无限学习"}
           </Badge>
           {session?.mode === "review" && session.focusConceptName ? (
-            <span className="truncate text-[11.5px] text-ink3">聚焦：{session.focusConceptName}</span>
+            <span className="hidden shrink-0 truncate text-[12px] text-ink3 sm:inline">
+              聚焦：{session.focusConceptName}
+            </span>
           ) : null}
           <div className="ml-auto flex items-center gap-1">
             <button
-              onClick={() => send("请基于本次真实发生的学习，调用 write_summary 工具写一份学习小结，不要编造数据。")}
+              onClick={generateSummary}
               disabled={pending || messages.length === 0}
               className="rounded-full p-2 text-ink3 transition-colors hover:bg-panel2 hover:text-ink disabled:opacity-30"
               title="生成本次学习小结"
@@ -780,24 +821,58 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
             </button>
           </div>
         </div>
-        {session?.topics?.length || (plans.length > 0 && !empty) ? (
+        {session?.mode === "goal" && session.planId ? (
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-ink3">
+            <Link href={`/plan/${session.planId}`} className="hover:text-accentink hover:underline">
+              {session.planTitle ?? "学习计划"}
+            </Link>
+            {session.planItemId ? (
+              <>
+                <span>/</span>
+                <Link
+                  href={`/plan/${session.planId}/course/${session.planItemId}`}
+                  className="hover:text-accentink hover:underline"
+                >
+                  {session.courseTitle ?? activeCourse?.title ?? "课程"}
+                </Link>
+                {activeCourse ? (
+                  <span className="text-ink3">
+                    · {activeCourse.progress.mastered}/{activeCourse.progress.total} 个知识点已掌握
+                  </span>
+                ) : null}
+              </>
+            ) : planningSession ? (
+              <>
+                <span>
+                  · 规划会话 · {activePlan?.status === "active" ? "计划已确认" : "计划待确认"}
+                </span>
+                <Link
+                  href={`/plan/${session.planId}`}
+                  className="text-accentink hover:underline"
+                >
+                  {activePlan?.status === "active" ? "查看计划" : "去确认"}
+                </Link>
+              </>
+            ) : (
+              <span>· 尚未绑定课程</span>
+            )}
+          </div>
+        ) : session?.mode === "review" && session.planTitle ? (
+          <div className="mt-1 flex flex-wrap items-center gap-1 text-[12px] text-ink3">
+            <span>{session.planTitle}</span>
+            {session.courseTitle ? <span>· {session.courseTitle}</span> : null}
+            <span>· 只更新这个知识点的证据</span>
+          </div>
+        ) : session?.mode === "infinite" ? (
+          <div className="mt-1 text-[12px] text-ink3">
+            对话式学习 · 不生成正式计划与课程进度
+          </div>
+        ) : null}
+        {/* 目标/复习会话的计划与课程已经在上一行给过了，再挂一条 #计划名 只是重复 */}
+        {session?.topics?.length && session.mode === "infinite" ? (
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
-            {plans.length > 0 && !empty ? (
-              <PlanSelect
-                plans={plans}
-                mode="assign"
-                value={session?.planId ?? ""}
-                onChange={(v) => void changePlan(v)}
-                className={cx(
-                  "max-w-[220px] rounded-full border bg-panel px-2 py-0.5 text-[11px] text-ink3 outline-none hover:border-linestrong",
-                  session?.planId ? "border-line" : "border-dashed border-line",
-                )}
-                title="所属学习计划"
-                ariaLabel="切换所属学习计划"
-              />
-            ) : null}
-            {session?.topics?.map((t) => (
-              <span key={t.id} className="text-[11px] text-ink3">
+            {session.topics.map((t) => (
+              <span key={t.id} className="text-[12px] text-ink3">
                 # {t.name}
               </span>
             ))}
@@ -811,29 +886,25 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
           <div className="flex flex-col gap-5 py-6">
             <div className="flex flex-col gap-2">
               <h1 className="font-serif text-[26px] leading-tight tracking-tight text-ink">
-                想学点什么？
+                {session?.mode === "goal" ? "先确定学习目标" : "想学点什么？"}
               </h1>
               <p className="text-[13.5px] leading-relaxed text-ink2">
-                直接问就行。我会根据你的回答调整讲法，必要时给练习或可调参数的模拟器。
+                {session?.mode === "goal"
+                  ? "告诉我想系统掌握什么，我会先按「课程 → 知识点」生成一份待确认的计划草稿；不会直接开始教学。"
+                  : session?.mode === "review"
+                    ? "这次只检验已有知识点，不新建计划或知识点。"
+                    : "直接问就行。我会根据你的回答调整讲法，必要时给练习或可调参数的模拟器；这些对话不会自动写入正式学习档案。"}
               </p>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-ink3">
-                <FolderOpen className="size-3.5" />
-                <span>归入计划</span>
-                {plans.length > 0 ? (
-                  <PlanSelect
-                    plans={plans}
-                    mode="assign"
-                    value={session?.planId ?? ""}
-                    onChange={(v) => void changePlan(v)}
-                    className="max-w-[260px] rounded-full border border-line bg-panel px-2.5 py-1 text-[12px] text-ink2 outline-none hover:border-linestrong"
-                    ariaLabel="归入学习计划"
-                  />
-                ) : (
+              {session?.mode === "goal" ? (
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-ink3">
+                  <FolderOpen className="size-3.5" />
+                  <span>已确认的计划可以在</span>
                   <Link href="/plan" className="text-accentink hover:underline">
-                    还没有计划，去建一个
+                    目标学习
                   </Link>
-                )}
-              </div>
+                  <span>里继续。</span>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : (
@@ -848,97 +919,197 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
                   blocks={blocks}
                   onAsk={send}
                   onOpenWorkspace={openWorkspace}
+                  onRetry={
+                    m.id === lastAssistant?.id && m.status === "error" && !pending
+                      ? retryLast
+                      : undefined
+                  }
                   onNextStep={m.id === lastAssistant?.id ? goNext : undefined}
-                  nextStepLabel={m.id === lastAssistant?.id ? planActionLabel : undefined}
+                  nextStepLabel={
+                    m.id === lastAssistant?.id
+                      ? session?.mode === "goal"
+                        ? continueLabel
+                        : session?.mode === "review"
+                          ? "继续复习"
+                          : "继续"
+                      : undefined
+                  }
                 />
               ),
             )}
 
-            {showTeachingActions && (!lastHasPlan || activePlanStep) ? (
-              <NextActions actions={teachingActions} busy={pending || advancing} />
+            {showTeachingActions ? (
+              <NextActions actions={teachingActions} busy={pending} />
             ) : null}
 
             {pending ? (
               <div className="animate-rise">
-                <div className="mb-1.5 flex items-center gap-1.5 text-[11.5px] text-ink3">
+                <div className="mb-1.5 flex items-center gap-1.5 text-[12px] text-ink3">
                   <Sparkles className="size-3" />
                   Lumina
                   {toolStatus ? <span className="ml-1 animate-pulse-soft">正在生成{toolLabel(toolStatus)}…</span> : null}
                 </div>
+                {streamParts.map((p, i) => {
+                  if (p.type === "text") {
+                    return (
+                      <div key={i} className="mt-2">
+                        <ErrorBoundary label="streaming-text">
+                          <Markdown>{stripPartialCitation(String(p.text ?? ""))}</Markdown>
+                        </ErrorBoundary>
+                      </div>
+                    );
+                  }
+                  if (p.type === "block" && p.blockId && blocks[p.blockId]) {
+                    return (
+                      <div key={i} className="mt-3">
+                        <BlockRenderer
+                          block={blocks[p.blockId]}
+                          onAsk={send}
+                          onOpenWorkspace={() => openWorkspace(p.blockId!)}
+                        />
+                      </div>
+                    );
+                  }
+                  if (p.type === "notice") {
+                    return <NoticeLine key={i} text={p.notice ?? ""} />;
+                  }
+                  return null;
+                })}
                 {streamText ? (
-                  <div className={cx(streamText ? "stream-caret" : "")}>
+                  <div className="stream-caret mt-2">
                     <ErrorBoundary label="streaming-text">
                       <Markdown>{stripPartialCitation(streamText)}</Markdown>
                     </ErrorBoundary>
                   </div>
-                ) : (
+                ) : !streamParts.length ? (
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2 text-[13px] text-ink3">
                       <span className="flex gap-1">
                         <Dot /> <Dot delay={0.15} /> <Dot delay={0.3} />
                       </span>
-                      {webStatusLine ?? "思考中…"}
+                      {webStatusLine ??
+                        (reasoningActive
+                          ? `模型正在推理${elapsed ? ` · ${elapsed}s` : ""}…`
+                          : elapsed >= 3
+                            ? `思考中… ${elapsed}s`
+                            : "思考中…")}
                     </div>
                     {liveSources.length ? <SourceCards sources={liveSources} loading /> : null}
                   </div>
-                )}
-                {streamParts
-                  .filter((p) => p.type === "block" && p.blockId && blocks[p.blockId])
-                  .map((p) => (
-                    <div key={p.blockId} className="mt-3">
-                      <BlockRenderer
-                        block={blocks[p.blockId!]}
-                        onAsk={send}
-                        onOpenWorkspace={() => openWorkspace(p.blockId!)}
-                      />
-                    </div>
-                  ))}
-                {streamParts
-                  .filter((p) => p.type === "notice")
-                  .map((p, i) => (
-                    <NoticeLine key={i} text={p.notice ?? ""} />
-                  ))}
+                ) : null}
               </div>
             ) : null}
 
             {error ? (
               <div className="flex items-start gap-2 rounded-xl border border-bad/30 bg-badsoft/40 px-3 py-2.5 text-[12.5px] text-bad">
                 <AlertCircle className="mt-0.5 size-4 shrink-0" />
-                <div>
-                  {error}
-                  {error.includes("配置") ? (
-                    <Link href="/settings" className="ml-1 underline">
-                      去设置
+                <div className="min-w-0">
+                  <p>{error}</p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    {!error.includes("配置") ? (
+                      <button
+                        type="button"
+                        onClick={retryLast}
+                        className="rounded-full border border-line bg-panel px-2.5 py-1 text-[12px] text-ink2 transition-colors hover:border-accent/50 hover:text-ink"
+                      >
+                        重试
+                      </button>
+                    ) : null}
+                    <Link href="/settings" className="text-[12px] underline underline-offset-2">
+                      检查模型设置
                     </Link>
-                  ) : null}
+                  </div>
                 </div>
               </div>
             ) : null}
+
           </div>
         )}
       </div>
 
-      {/* 输入区 */}
+      {/* 输入区：手机上有消息后默认收成一条窄栏，把空间让给讲解/图表 */}
       <div className="sticky bottom-[60px] z-20 -mx-4 border-t border-line bg-bg/90 px-4 py-3 backdrop-blur-md md:bottom-0 md:-mx-6 md:px-6">
-        {showJumpToLatest ? (
-          <button
-            onClick={() => {
-              followLatest.current = true;
-              setShowJumpToLatest(false);
-              scrollToLatest("smooth");
-            }}
-            className="fixed bottom-60 right-4 z-30 flex items-center gap-1.5 rounded-full border border-line bg-panel/95 px-3 py-1.5 text-[12px] text-ink2 shadow-[var(--shadow)] backdrop-blur transition-colors hover:text-ink md:bottom-48 md:right-8"
-            aria-label="回到最新消息"
-          >
-            <ArrowDown className="size-3.5" />
-            回到最新
-          </button>
+        {messages.length > 0 && !composerExpanded ? (
+          <div className="md:hidden">
+            {pending ? (
+              <div className="flex items-center gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-line bg-panel px-3.5 py-2.5 text-[13px] text-ink3">
+                  <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-accent" />
+                  <span className="truncate">正在生成{elapsed ? ` · ${elapsed}s` : ""}…</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => abortRef.current?.abort()}
+                  className="shrink-0 rounded-full border border-line bg-panel px-3 py-2 text-[12.5px] text-ink2"
+                >
+                  停止
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={expandComposer}
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-line bg-panel px-3 py-2.5 text-left"
+                >
+                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accentsoft text-accent">
+                    <ArrowUp className="size-3.5" />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-[13px] text-ink3">
+                    继续追问，或让我换种讲法 / 出题检验
+                  </span>
+                </button>
+                {showJumpToLatest ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      followLatest.current = true;
+                      setShowJumpToLatest(false);
+                      scrollToLatest("smooth");
+                    }}
+                    className="flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-panel text-ink2"
+                    aria-label="回到最新消息"
+                  >
+                    <ArrowDown className="size-4" />
+                  </button>
+                ) : null}
+              </div>
+            )}
+          </div>
         ) : null}
+        <div className={cx(messages.length > 0 && !composerExpanded && "hidden md:block")}>
         {effectiveAi && !effectiveAi.configured ? (
           <div className="mb-2">
             <AiWarning ai={effectiveAi} />
           </div>
         ) : null}
+        <div className="mb-1.5 flex flex-wrap items-center justify-end gap-2 px-1">
+          <div className="flex items-center gap-1.5">
+            {showJumpToLatest ? (
+              <button
+                onClick={() => {
+                  followLatest.current = true;
+                  setShowJumpToLatest(false);
+                  scrollToLatest("smooth");
+                }}
+                className="flex items-center gap-1 rounded-full border border-line bg-panel px-2.5 py-1 text-[12px] text-ink2 transition-colors hover:border-accent/50 hover:text-ink"
+                aria-label="回到最新消息"
+              >
+                <ArrowDown className="size-3.5" />
+                回到最新
+              </button>
+            ) : null}
+            {messages.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setComposerExpanded(false)}
+                className="rounded-full border border-line bg-panel px-2.5 py-1 text-[12px] text-ink3 md:hidden"
+              >
+                收起
+              </button>
+            ) : null}
+          </div>
+        </div>
         <Composer
           onSend={send}
           pending={pending}
@@ -974,6 +1145,7 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
               : "继续追问，或让我换种讲法 / 出题检验"
           }
         />
+        </div>
       </div>
 
       <Modal
@@ -995,28 +1167,27 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
           默认删除：这条会话里的<strong className="text-ink">对话、教学组件和未提交的草稿</strong>。
           题目、作答记录与知识点证据会保留——它们属于跨会话的学习档案。
         </p>
-        <label className="mt-3 flex items-start gap-2 rounded-xl border border-line bg-panel2/40 p-3 text-[12.5px] text-ink2">
-          <input
-            type="checkbox"
-            checked={withEvidence}
-            onChange={(e) => setWithEvidence(e.target.checked)}
-            className="mt-0.5 size-4 accent-[var(--accent)]"
-          />
-          <span>
-            同时删除本会话产生的作答证据
-            <span className="mt-0.5 block text-[11.5px] text-ink3">
-              勾选后会删掉这条会话产生的证据，并按剩余证据<strong className="font-medium text-ink">重算掌握度</strong>——
-              分数可能回落。历史快照与变更记录仍保留，可追溯。
+        {session?.mode !== "infinite" ? (
+          <label className="mt-3 flex items-start gap-2 rounded-xl border border-line bg-panel2/40 p-3 text-[12.5px] text-ink2">
+            <input
+              type="checkbox"
+              checked={withEvidence}
+              onChange={(e) => setWithEvidence(e.target.checked)}
+              className="mt-0.5 size-4 accent-[var(--accent)]"
+            />
+            <span>
+              同时删除本会话产生的作答证据
+              <span className="mt-0.5 block text-[12px] text-ink3">
+                勾选后会删掉这条会话产生的证据，并按剩余证据
+                <strong className="font-medium text-ink">重算掌握度</strong>——
+                分数可能回落。历史快照与变更记录仍保留，可追溯。
+              </span>
             </span>
-          </span>
-        </label>
+          </label>
+        ) : null}
       </Modal>
     </div>
   );
-}
-
-function shortStepTitle(title: string): string {
-  return title.split(/[｜|]/)[0]?.trim() || "本步";
 }
 
 function toolLabel(name: string) {
@@ -1028,7 +1199,7 @@ function toolLabel(name: string) {
     present_steps: "步骤演示",
     open_simulator: "互动模拟器",
     save_concepts: "知识点",
-    save_plan: "学习路线",
+    save_plan: "计划草稿",
     write_summary: "学习小结",
   };
   return map[name] ?? "内容";
@@ -1046,7 +1217,7 @@ function Dot({ delay = 0 }: { delay?: number }) {
 function UserMessage({ message }: { message: MessageDTO }) {
   return (
     <div className="flex flex-col items-end gap-1 animate-rise">
-      <div className="flex items-center gap-1.5 text-[11.5px] text-ink3">
+      <div className="flex items-center gap-1.5 text-[12px] text-ink3">
         <User className="size-3" /> 你
       </div>
       <div className="max-w-[92%] rounded-2xl rounded-tr-sm bg-panel2 px-3.5 py-2.5 text-[14.5px] leading-relaxed text-ink whitespace-pre-wrap">
@@ -1061,6 +1232,7 @@ function AssistantMessage({
   blocks,
   onAsk,
   onOpenWorkspace,
+  onRetry,
   onNextStep,
   nextStepLabel,
 }: {
@@ -1068,6 +1240,7 @@ function AssistantMessage({
   blocks: Record<string, BlockWithExercise>;
   onAsk: (t: string) => void;
   onOpenWorkspace: (id: string) => void;
+  onRetry?: () => void;
   onNextStep?: () => void | Promise<void>;
   nextStepLabel?: string;
 }) {
@@ -1075,12 +1248,25 @@ function AssistantMessage({
   const hasParts = message.parts.length > 0;
 
   return (
-    <div className="group flex flex-col gap-1.5 animate-rise">
-      <div className="flex items-center gap-1.5 text-[11.5px] text-ink3">
+    <div
+      id={`m-${message.id}`}
+      data-role="assistant"
+      className="group flex scroll-mt-52 flex-col gap-1.5 animate-rise md:scroll-mt-24"
+    >
+      <div className="flex items-center gap-1.5 text-[12px] text-ink3">
         <Sparkles className="size-3 text-accent" /> Lumina
         {message.status === "error" ? <Badge tone="bad">生成中断</Badge> : null}
+        {message.status === "error" && onRetry ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="rounded-full border border-line bg-panel px-2 py-0.5 text-[11.5px] text-ink2 transition-colors hover:border-accent/50 hover:text-ink"
+          >
+            重试
+          </button>
+        ) : null}
         {message.error === "AI_NOT_CONFIGURED" ? (
-          <Link href="/settings" className="text-[11.5px] text-accentink underline">
+          <Link href="/settings" className="text-[12px] text-accentink underline">
             去配置模型
           </Link>
         ) : null}
@@ -1135,12 +1321,12 @@ function AssistantMessage({
           <SourceCards sources={message.sources} />
         </div>
       ) : message.content?.trim() ? (
-        <p className="mt-1 text-[10.5px] text-ink3/80" title="没有检索到来源，内容来自模型知识">
+        <p className="mt-1 text-[12px] text-ink3/80" title="没有检索到来源，内容来自模型知识">
           模型知识
         </p>
       ) : null}
       {message.model ? (
-        <p className="mt-1 flex items-center gap-1 text-[10.5px] text-ink3/80" title="产出这条回答的模型">
+        <p className="mt-1 flex items-center gap-1 text-[12px] text-ink3/80" title="产出这条回答的模型">
           <Sparkles className="size-2.5" />
           {message.model}
         </p>
@@ -1152,7 +1338,7 @@ function AssistantMessage({
 function NoticeLine({ text }: { text: string }) {
   if (!text) return null;
   return (
-    <p className="flex items-center gap-1.5 text-[11.5px] text-ink3">
+    <p className="flex items-center gap-1.5 text-[12px] text-ink3">
       <span className="h-px w-3 bg-line-strong" />
       {text}
     </p>

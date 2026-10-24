@@ -62,11 +62,24 @@ function plan(text) {
           args: {
             title: "四周搞定导数",
             goal: "能独立做高考难度的导数题",
-            items: [
-              { title: "极限与连续", rationale: "导数的前置" },
-              { title: "导数定义与几何意义" },
-              { title: "求导法则" },
-              { title: "单调性与极值" },
+            courses: [
+              {
+                title: "极限与连续",
+                description: "导数的前置",
+                concepts: [{ name: "数列极限" }, { name: "函数连续" }],
+              },
+              {
+                title: "导数定义与几何意义",
+                concepts: [{ name: "导数定义" }, { name: "切线斜率" }],
+              },
+              {
+                title: "求导法则",
+                concepts: [{ name: "基本求导公式" }, { name: "链式法则" }],
+              },
+              {
+                title: "单调性与极值",
+                concepts: [{ name: "单调区间" }, { name: "极值判定" }],
+              },
             ],
           },
         },
@@ -88,7 +101,7 @@ function plan(text) {
           name: "present_quiz",
           args: {
             title: "机会成本 3 题小测",
-            concept: "机会成本",
+            concept: "测试机会成本",
             topic: "经济学基础",
             questions: [
               {
@@ -99,7 +112,7 @@ function plan(text) {
                 explanation: "机会成本 = 被放弃的最优替代方案的价值。",
               },
               {
-                concept: "账面成本",
+                concept: "测试账面成本",
                 type: "single",
                 prompt: "你花 100 元买电影票，这 100 元在会计上属于什么？",
                 options: ["机会成本", "账面成本", "沉没成本"],
@@ -107,7 +120,7 @@ function plan(text) {
                 explanation: "已经支付、记在账上的金额是账面成本。",
               },
               {
-                concept: "沉没成本",
+                concept: "测试沉没成本",
                 type: "single",
                 prompt: "已经花掉、无法收回的钱属于什么？",
                 options: ["机会成本", "账面成本", "沉没成本"],

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCheck, Clock, Repeat2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -95,14 +96,14 @@ export default function ReviewPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-8 md:py-10">
+    <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
       <div className="mb-5">
-        <div className="mb-1.5 flex items-center gap-2 text-[11.5px] uppercase tracking-[0.14em] text-ink3">
+        <div className="mb-1.5 flex items-center gap-2 text-[12px] uppercase tracking-[0.14em] text-ink3">
           <Repeat2 className="size-3.5" /> 复习
         </div>
         <h1 className="font-serif text-[26px] tracking-tight text-ink">该回头看一眼的</h1>
         <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-ink2">
-          这里的建议来自真实作答记录：连续出错、依赖提示、只有单一题型证据，或者到了间隔复测时间。按计划分组；用「计划」下拉只看某一条路线。你可以忽略任何一条——它不会打断你正在做的事。
+          按到期与薄弱程度排序；不想看的可以直接忽略。
         </p>
       </div>
 
@@ -134,7 +135,7 @@ export default function ReviewPage() {
           }
           description={
             items.length === 0
-              ? "当出现连续答错、依赖提示、或到了复测时间的情况，这里会出现建议。"
+              ? "做错、用提示、或到期时，这里会出现建议。"
               : "换个计划筛选看看，或先在这个计划下完成一次练习。"
           }
           action={
@@ -161,16 +162,22 @@ export default function ReviewPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-[14px] font-medium text-ink">{it.conceptName}</p>
-                          <Badge tone="neutral">{it.topicName}</Badge>
+                          {it.courseName ? <Badge tone="neutral">{it.courseName}</Badge> : null}
                           {it.priority === 1 ? <Badge tone="warn">优先</Badge> : null}
                           {it.dueAt ? (
-                            <span className="flex items-center gap-1 text-[11px] text-ink3">
+                            <span className="flex items-center gap-1 text-[12px] text-ink3">
                               <Clock className="size-3" />
                               {new Date(it.dueAt).toLocaleDateString("zh-CN")}
                             </span>
                           ) : null}
                         </div>
                         <p className="mt-1 text-[12.5px] leading-relaxed text-ink2">{it.reason}</p>
+                        <Link
+                          href={`/library?c=${it.conceptId}`}
+                          className="mt-1 inline-block text-[12px] text-ink3 underline-offset-2 hover:text-accentink hover:underline"
+                        >
+                          查看知识点依据
+                        </Link>
                       </div>
                       <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
                         <Button size="sm" onClick={() => void practice(it)} loading={busy === it.id}>

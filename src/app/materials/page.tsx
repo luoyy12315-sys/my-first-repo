@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, FileText, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, ChevronDown, FileText, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Badge, Button, EmptyState, Modal, SectionHeader, Spinner, cx } from "@/components/ui/kit";
 import { PlanSelect, usePlans } from "@/components/PlanSelect";
@@ -158,7 +158,7 @@ export default function MaterialsPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-8 md:py-10">
+    <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
       {focusChunk ? (
         <div className="mb-4 rounded-xl border border-accent/30 bg-accentsoft/30 px-3.5 py-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -170,7 +170,7 @@ export default function MaterialsPage() {
             </span>
             <button
               onClick={() => setFocusChunk(null)}
-              className="ml-auto rounded-full px-2 py-0.5 text-[11px] text-ink3 hover:bg-panel2 hover:text-ink"
+              className="ml-auto rounded-full px-2 py-0.5 text-[12px] text-ink3 hover:bg-panel2 hover:text-ink"
             >
               收起
             </button>
@@ -193,7 +193,7 @@ export default function MaterialsPage() {
           >
             <ArrowLeft className="size-3.5" /> 回到对话
           </Link>
-          <span className="text-[11.5px] text-ink3">
+          <span className="text-[12px] text-ink3">
             {uploadedCount > 0
               ? `已上传 ${uploadedCount} 份材料，回去后可以直接让 AI 引用它们。`
               : "上传完可以直接回到刚才那段对话继续问。"}
@@ -204,7 +204,7 @@ export default function MaterialsPage() {
       <div className="mb-5">
         <h1 className="font-serif text-[26px] tracking-tight text-ink">学习材料</h1>
         <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-ink2">
-          上传课件、笔记或题目，并按学习计划分组。解析出的文本只在同一计划的对话中被引用，并标注来源文件名；解析失败或不支持的格式会如实说明，不会伪造内容。
+          按计划分组；回答引用时会标注来源文件。
         </p>
       </div>
 
@@ -220,13 +220,6 @@ export default function MaterialsPage() {
             ariaLabel="按计划筛选材料"
           />
         </label>
-        <span className="text-[11.5px] text-ink3">
-          {selectedPlan
-            ? `只显示「${selectedPlan.title}」；新上传也归入它`
-            : planFilter === "none"
-              ? "只显示未归类；新上传也标记为未归类"
-              : "全部材料按计划分组；选一个计划后，新上传会归入它"}
-        </span>
       </div>
 
       <div
@@ -255,10 +248,10 @@ export default function MaterialsPage() {
         />
         {uploading ? <Spinner /> : <Upload className="size-5 text-ink3" />}
         <p className="text-[13.5px] text-ink">{uploading ? "正在解析…" : "拖入文件，或点击选择"}</p>
-        <p className="text-[11.5px] text-ink3">
-          {selectedPlan ? `上传到「${selectedPlan.title}」` : "上传到：未归类（在「计划」下拉里选一个计划可上传到它）"}
+        <p className="text-[12px] text-ink3">
+          {selectedPlan ? `新上传将归入「${selectedPlan.title}」` : "新上传将归入：未归类"}
         </p>
-        <p className="text-[11.5px] text-ink3">
+        <p className="text-[12px] text-ink3">
           支持 txt / md / csv / json / html / pdf / docx · 单个文件 ≤ {20}MB
         </p>
       </div>
@@ -277,7 +270,7 @@ export default function MaterialsPage() {
           }
           description={
             materials.length === 0
-              ? "不传材料也能学。传了之后，讲解会优先引用同一计划下材料里的说法，并指出与你材料冲突的地方。"
+              ? "不传也能学。传了会优先引用其中的说法，并指出冲突。"
               : "换个计划筛选看看，或直接上传——新材料会归入当前筛选的计划。"
           }
         />
@@ -299,7 +292,7 @@ export default function MaterialsPage() {
                     <FileText className="size-4 shrink-0 text-ink3" />
                     <div className="min-w-0 flex-1 basis-[calc(100%-2rem)] sm:basis-0">
                       <p className="truncate text-[13.5px] text-ink">{m.name}</p>
-                      <p className="mt-0.5 text-[11.5px] text-ink3">
+                      <p className="mt-0.5 text-[12px] text-ink3">
                         {formatSize(m.size)}
                         {m.status === "parsed" ? ` · ${m.textChars.toLocaleString()} 字 · ${m.chunks} 段` : ""}
                         {m.error ? ` · ${m.error}` : ""}
@@ -315,7 +308,8 @@ export default function MaterialsPage() {
                           mode="assign"
                           value={m.planId ?? ""}
                           onChange={(v) => void assign(m.id, v || null)}
-                          className="max-w-[120px] shrink-0 rounded-full border border-line bg-panel px-2 py-1 text-[11px] text-ink2 outline-none hover:border-linestrong sm:max-w-[130px]"
+                          title={m.planTitle ? `当前归属：${m.planTitle}` : "未归类，点击更换"}
+                          className="max-w-[190px] shrink-0 rounded-full border border-line bg-panel px-2 py-1 text-[12px] text-ink2 outline-none hover:border-linestrong sm:max-w-[240px]"
                           ariaLabel={`调整「${m.name}」所属计划`}
                         />
                       ) : null}
@@ -361,13 +355,18 @@ export default function MaterialsPage() {
         </p>
       </Modal>
 
-      <div className="mt-6 rounded-xl border border-line bg-panel2/40 px-3.5 py-3 text-[11.5px] leading-relaxed text-ink3">
-        <p className="mb-1 font-medium text-ink2">关于解析能力（如实说明）</p>
-        <p>· PDF 只提取文本层；扫描件需要 OCR，当前不支持，会明确报错。</p>
-        <p>· 旧版 .doc 与 PPTX 暂未启用，请先另存为 .docx / PDF。</p>
-        <p>· 材料中的内容会被当作"待分析的数据"，其中的任何指令都不会被执行。</p>
-        <p>· 引用时不编造页码：解析器没有提供页码时，只标注来源文件与段落。</p>
-      </div>
+      <details className="group mt-6 rounded-xl border border-line bg-panel2/40 px-3.5 py-2.5 text-[12px] leading-relaxed text-ink3">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-medium text-ink2 [&::-webkit-details-marker]:hidden">
+          支持哪些格式、有什么限制
+          <ChevronDown className="size-3.5 shrink-0 text-ink3 transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="mt-2 flex flex-col gap-1">
+          <p>· PDF 只提取文本层；扫描件需要 OCR，当前不支持，会明确报错。</p>
+          <p>· 旧版 .doc 与 PPTX 暂未启用，请先另存为 .docx / PDF。</p>
+          <p>· 材料中的内容会被当作"待分析的数据"，其中的任何指令都不会被执行。</p>
+          <p>· 没有页码时只标注来源文件与段落，不编造页码。</p>
+        </div>
+      </details>
     </div>
   );
 }

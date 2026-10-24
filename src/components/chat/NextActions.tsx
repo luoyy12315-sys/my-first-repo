@@ -25,7 +25,7 @@ export default function NextActions({
   if (!actions.length) return null;
   return (
     <div className="mt-2.5 flex flex-wrap items-center gap-1.5 rounded-xl border border-dashed border-line bg-panel2/30 px-2.5 py-2">
-      <span className="mr-0.5 flex items-center gap-1 text-[10.5px] uppercase tracking-wide text-ink3">
+      <span className="mr-0.5 flex items-center gap-1 text-[12px] uppercase tracking-wide text-ink3">
         <Sparkles className="size-3 text-accent" />
         {label}
       </span>
@@ -37,7 +37,7 @@ export default function NextActions({
           disabled={busy}
           title={action.title}
           className={cx(
-            "flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11.5px] transition-colors disabled:opacity-45",
+            "flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] transition-colors disabled:opacity-45",
             action.primary
               ? "border-accent/35 bg-accentsoft text-accentink hover:border-accent"
               : "border-line bg-panel text-ink2 hover:border-accent/40 hover:text-ink",

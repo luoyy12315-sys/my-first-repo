@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lumina 界面验收报告 · 2026-10-23</title>
+<style>
+  :root {
+    --bg: #faf8f4;
+    --panel: #ffffff;
+    --panel2: #f4f1ea;
+    --ink: #1a1917;
+    --ink2: #57534b;
+    --ink3: #6f6a5f;
+    --line: #e7e2d7;
+    --line2: #d6cfc0;
+    --accent: #1f6f63;
+    --accent-soft: #e4f1ee;
+    --bad: #a8332a;
+    --bad-soft: #faeae7;
+    --warn: #8a5a10;
+    --warn-soft: #f8f0de;
+    --ok: #2c7a4b;
+    --ok-soft: #e6f3ec;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Songti SC", Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+      "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    --mono: "SF Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 56px 40px 96px; }
+  h1, h2, h3 { font-family: var(--serif); font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+  h1 { font-size: 38px; line-height: 1.2; }
+  h2 { font-size: 26px; margin: 0 0 6px; }
+  h3 { font-size: 17px; }
+  p { margin: 0; }
+  a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+  code { font-family: var(--mono); font-size: 0.88em; background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
+
+  /* header */
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink3);
+  }
+  .eyebrow::before { content: ""; width: 22px; height: 1px; background: var(--line2); }
+  .lede { margin-top: 14px; max-width: 720px; color: var(--ink2); font-size: 15.5px; }
+  .meta {
+    margin-top: 22px; display: flex; flex-wrap: wrap; gap: 8px;
+  }
+  .meta span {
+    font-size: 12.5px; color: var(--ink2); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px;
+  }
+
+  /* verdict */
+  .verdict {
+    margin-top: 34px; display: grid; grid-template-columns: 200px 1fr; gap: 32px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 18px;
+    padding: 28px 30px; box-shadow: 0 1px 2px rgba(26,25,23,.04), 0 18px 40px -30px rgba(26,25,23,.35);
+  }
+  .score { display: flex; flex-direction: column; gap: 2px; }
+  .score b { font-family: var(--serif); font-size: 56px; line-height: 1; font-weight: 600; }
+  .score b small { font-size: 18px; color: var(--ink3); font-weight: 400; }
+  .score em { font-style: normal; font-size: 13px; color: var(--ink3); letter-spacing: .04em; }
+  .verdict-body { border-left: 1px solid var(--line); padding-left: 32px; }
+  .verdict-body h3 { font-size: 20px; margin-bottom: 8px; }
+  .verdict-body p { color: var(--ink2); font-size: 14.5px; }
+
+  /* score bars */
+  .bars { margin-top: 26px; display: grid; gap: 10px; }
+  .bar { display: grid; grid-template-columns: 150px 1fr 44px; align-items: center; gap: 14px; font-size: 13px; color: var(--ink2); }
+  .track { height: 7px; background: var(--panel2); border-radius: 999px; overflow: hidden; }
+  .fill { height: 100%; border-radius: 999px; background: var(--accent); }
+  .fill.warn { background: #b0781f; }
+  .bar b { font-family: var(--serif); font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; text-align: right; }
+
+  /* sections */
+  section { margin-top: 64px; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+  .sec-num { font-family: var(--mono); font-size: 12px; color: var(--ink3); letter-spacing: .1em; }
+  .sec-sub { color: var(--ink2); font-size: 14px; max-width: 760px; margin-bottom: 22px; }
+
+  /* issues */
+  .issue {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px 20px 16px; margin-bottom: 10px; border-left: 3px solid var(--line2);
+  }
+  .issue.p0 { border-left-color: #8f1d15; }
+  .issue.p1 { border-left-color: #b0382c; }
+  .issue.p2 { border-left-color: #b0781f; }
+  .issue.p3 { border-left-color: #b9b1a1; }
+  .issue-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .id { font-family: var(--mono); font-size: 11.5px; color: var(--ink3); letter-spacing: .04em; }
+  .chip {
+    font-size: 11px; font-weight: 600; letter-spacing: .04em; border-radius: 999px;
+    padding: 1px 8px; border: 1px solid transparent; white-space: nowrap;
+  }
+  .chip.p0 { background: #f3dedb; color: #8f1d15; }
+  .chip.p1 { background: var(--bad-soft); color: var(--bad); }
+  .chip.p2 { background: var(--warn-soft); color: var(--warn); }
+  .chip.p3 { background: var(--panel2); color: var(--ink3); border-color: var(--line); }
+  .chip.fixed { background: var(--accent-soft); color: var(--accent); border-color: #cfe4df; }
+  .chip.partial { background: #fff; color: var(--warn); border-color: #e8d6b4; }
+  .banner {
+    margin-top: 26px; display: flex; gap: 14px; align-items: flex-start;
+    background: var(--accent-soft); border: 1px solid #cfe4df; border-radius: 14px; padding: 16px 20px;
+  }
+  .banner .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--accent); margin-top: 7px; flex: none; }
+  .banner h3 { font-size: 15.5px; margin-bottom: 3px; }
+  .banner p { font-size: 13.5px; color: #14443d; }
+  .issue h3 { flex: 1 1 320px; font-size: 16.5px; line-height: 1.45; }
+  .issue dl { margin: 12px 0 0; display: grid; grid-template-columns: 62px 1fr; gap: 6px 14px; font-size: 14px; }
+  .issue dt { color: var(--ink3); font-size: 12.5px; padding-top: 1px; }
+  .issue dd { margin: 0; color: var(--ink2); }
+  .issue dd b { color: var(--ink); font-weight: 600; }
+
+  /* tables */
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--panel2); font-size: 12px; font-weight: 600; color: var(--ink2); letter-spacing: .03em; }
+  tr:last-child td { border-bottom: 0; }
+  td b { font-weight: 600; }
+
+  /* figures */
+  .figs { display: grid; gap: 14px; margin: 18px 0 6px; }
+  .figs.two { grid-template-columns: 1fr 1fr; }
+  .figs.three { grid-template-columns: repeat(3, 1fr); }
+  figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  figure img { display: block; width: 100%; height: auto; }
+  figcaption { font-size: 12px; color: var(--ink3); padding: 9px 12px; border-top: 1px solid var(--line); background: #fcfbf8; }
+  figcaption b { color: var(--ink2); font-weight: 600; }
+
+  /* callout */
+  .callout {
+    background: var(--accent-soft); border: 1px solid #cfe4df; border-radius: 12px;
+    padding: 15px 18px; font-size: 14px; color: #14443d; margin: 18px 0;
+  }
+  .callout b { color: #0f3a33; }
+  .callout.warn { background: var(--warn-soft); border-color: #ecdcc0; color: #6b4610; }
+
+  /* two col good/bad */
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+  .box h3 { font-size: 16px; margin-bottom: 10px; }
+  .box ul { margin: 0; padding-left: 18px; color: var(--ink2); font-size: 14px; }
+  .box li + li { margin-top: 6px; }
+  .box.ok { border-top: 3px solid var(--ok); }
+  .box.no { border-top: 3px solid #b0382c; }
+
+  /* steps */
+  .steps { display: grid; gap: 12px; }
+  .step { display: grid; grid-template-columns: 46px 1fr; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .step .n { font-family: var(--serif); font-size: 22px; color: var(--accent); line-height: 1.2; }
+  .step h3 { font-size: 15.5px; margin-bottom: 4px; }
+  .step p { font-size: 13.5px; color: var(--ink2); }
+  .step .tag { display: inline-block; font-size: 11.5px; color: var(--ink3); background: var(--panel2); border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
+
+  footer { margin-top: 72px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink3); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+
+  @media (max-width: 860px) {
+    .wrap { padding: 36px 20px 72px; }
+    h1 { font-size: 30px; }
+    .verdict { grid-template-columns: 1fr; gap: 20px; padding: 22px; }
+    .verdict-body { border-left: 0; border-top: 1px solid var(--line); padding: 20px 0 0; }
+    .figs.two, .figs.three, .cols { grid-template-columns: 1fr; }
+    .issue dl { grid-template-columns: 1fr; gap: 2px 0; }
+    .issue dt { margin-top: 8px; }
+    .bar { grid-template-columns: 110px 1fr 38px; font-size: 12px; }
+    table { font-size: 12.5px; }
+  }
+  @media print {
+    body { background: #fff; }
+    .wrap { max-width: none; padding: 0; }
+    section { break-inside: avoid; }
+    .issue, figure { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Interface Acceptance · 2026-10-23</div>
+    <h1>Lumina 界面验收：一个会用，但还没学会克制的学习工作台</h1>
+    <p class="lede">
+      教学闭环确实跑得通，判题、证据、掌握度、材料解析都不是演示。可一旦把镜头拉近到界面本身，问题就露出来了：
+      平板宽度下卡片互相挤、判完题不知道哪个选项对、计划详情一屏 28 个「待学习」、次级文字灰到快看不见。
+      以下是 31 个可复现的问题，按功能 / 布局 / 文字密度 / 可读性分类，全部标了严重度和改法。
+    </p>
+    <div class="meta">
+      <span>验收对象 127.0.0.1:3210</span>
+      <span>1440 / 834 / 390 三档全页 + 320/360/414 抽查</span>
+      <span>21 次页面加载 · 0 控制台错误</span>
+      <span>写操作全部在隔离副本上完成</span>
+    </div>
+
+    <div class="banner">
+      <span class="dot"></span>
+      <div>
+        <h3>已于 2026-10-23 完成全部 31 项修复（两轮）</h3>
+        <p>这份报告保留原始问题记录与截图，方便对照。第一轮修功能与布局（07），第二轮收信息层级与字号（08）。</p>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <div class="score">
+        <b>76<small>/100</small></b>
+        <em>B · 可用，未到可交付</em>
+      </div>
+      <div class="verdict-body">
+        <h3>自己每天用没问题，交给别人之前还有一轮硬仗</h3>
+        <p>
+          核心链路没有断点，视觉语言也统一（暖灰底 + 衬线标题 + 单一强调色），这在个人项目里算难得。
+          但 2 个功能 P1（<b>「设定新目标」是死链</b>、<b>判题后选项不标对错</b>）直接影响用户对「这产品靠不靠谱」的判断，
+          再加上 3 个体验 P1（平板断点、计划详情全展开、次级文字对比度 3.46:1），构成了这次的主要失分。
+        </p>
+        <div class="bars">
+          <div class="bar"><span>核心功能可用性</span><div class="track"><div class="fill" style="width:83%"></div></div><b>83</b></div>
+          <div class="bar"><span>布局与信息层级</span><div class="track"><div class="fill warn" style="width:76%"></div></div><b>76</b></div>
+          <div class="bar"><span>响应式表现</span><div class="track"><div class="fill warn" style="width:73%"></div></div><b>73</b></div>
+          <div class="bar"><span>文字密度与降噪</span><div class="track"><div class="fill warn" style="width:70%"></div></div><b>70</b></div>
+          <div class="bar"><span>可读性与无障碍</span><div class="track"><div class="fill warn" style="width:65%"></div></div><b>65</b></div>
+          <div class="bar"><span>一致性与细节</span><div class="track"><div class="fill" style="width:80%"></div></div><b>80</b></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ 0 ============ -->
+  <section id="method">
+    <div class="sec-head"><span class="sec-num">00</span><h2>怎么验的，边界在哪</h2></div>
+    <p class="sec-sub">
+      没有只截一张首页就下结论。三档断点逐页截图、逐元素量了对比度和点击区、把会写库的操作全放到隔离实例上跑。
+    </p>
+    <table>
+      <thead><tr><th style="width:190px">项目</th><th>做法</th><th style="width:250px">结果</th></tr></thead>
+      <tbody>
+        <tr><td>页面覆盖</td><td>首页、会话、材料、计划、计划详情、课程、历史、档案、复习、设置、工作区、404</td><td>12 条路由 × 3 断点</td></tr>
+        <tr><td>布局度量</td><td>横向溢出、容器宽度、网格列宽、粘性元素位置、点击区尺寸、字号 census</td><td><code>docs/ui-audit/*.json</code></td></tr>
+        <tr><td>可读性</td><td>逐文本节点计算前景/背景对比度（含堆叠背景），按 WCAG AA 判定</td><td>每页 5–45 处不达标</td></tr>
+        <tr><td>功能走查</td><td>作答→判题→解析→重做、真实提问、材料上传、筛选、弹窗、设置保存、Esc 关闭</td><td>主链路通，细节有坑</td></tr>
+        <tr><td>数据安全</td><td>写操作跑在 <code>DATA_DIR=./data/audit-ui</code> 的 3211 实例；主库只读</td><td>主库零改动，副本已删</td></tr>
+        <tr><td>未做</td><td>读屏软件实测、真实用户学习增益、200% 缩放逐项、真实网络失败注入</td><td>已在下文标注替代方法</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ 1 功能 ============ -->
+  <section id="func">
+    <div class="sec-head"><span class="sec-num">01</span><h2>核心功能：链路是通的，但有两处「以为是坏的」</h2></div>
+    <p class="sec-sub">
+      最扎眼的不是缺功能，而是两个让用户怀疑产品坏了的地方：一个按钮点了没反应，一次判题看不出对错。
+    </p>
+
+    <article class="issue p1">
+      <div class="issue-top"><span class="id">F1</span><span class="chip p1">P1</span><span class="chip fixed">已修复</span><h3>计划页的「设定新目标」跳到首页后，什么都没发生</h3></div>
+      <dl>
+        <dt>现象</dt><dd>在「目标学习」页点右上角<b>设定新目标</b>，页面回到首页，两张卡片原样躺着，光标不聚焦、目标卡不高亮、也没有弹窗。用户的第一反应是「我点错了吗」。</dd>
+        <dt>证据</dt><dd><code>plan/page.tsx:50</code> 与 <code>:65</code> 都 <code>router.push("/?mode=goal")</code>，但首页全文没有 <code>useSearchParams</code>，<code>mode</code> 参数被完全忽略。</dd>
+        <dt>建议</dt><dd>首页读 <code>mode=goal</code>：自动聚焦「目标学习」输入框、给卡片加一次性高亮，并把「无限学习」卡降一档；或者更直接——在计划页开一个目标输入弹窗，别把用户送回首页重新找入口。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p1">
+      <div class="issue-top"><span class="id">F2</span><span class="chip p1">P1</span><span class="chip fixed">已修复</span><h3>判完题，选项没有任何对错标记——错的那个还挂着白色对勾</h3></div>
+      <dl>
+        <dt>现象</dt><dd>选中 A 时，A 的圆形徽标变成强调色底 + 白色 ✓。提交后如果答错，A 仍然是这个「✓ + 淡绿底」的样子，正确的 B 没有任何标记，只有下方反馈卡片红着脸说「没有答对」。<b>用户得读完整段解析才能反推哪个选项是对的。</b></dd>
+        <dt>证据</dt><dd><code>AnswerInput.tsx:110-125</code> 只有 <code>selected</code> 分支和 <code>disabled</code>，没有正确答案入参。判题后实测四个选项边框仍全是 <code>#e7e2d7</code>。</dd>
+        <dt>建议</dt><dd>把 <code>correctIndex</code> 与判题结果传给选项：正确项 <code>ok-soft</code> 底 + ✓，选错项 <code>bad-soft</code> 底 + ✗，并给选错项加 <code>aria-invalid="true"</code>。「选中」和「正确」必须用两种颜色——现在两者共用一个淡绿色系，等于没有区分。</dd>
+      </dl>
+    </article>
+
+    <div class="figs two">
+      <figure>
+        <img src="ui-audit/shots/opt-graded.png" alt="判题反馈区" />
+        <figcaption><b>反馈卡片本身很完整</b>：结论、正确答案、解析、知识点掌握度 0.62 都在。问题是选项列表没同步。</figcaption>
+      </figure>
+      <figure>
+        <img src="ui-audit/shots/crop-history-row.png" alt="历史页行内计划下拉被裁切" />
+        <figcaption><b>130px 装 15 个字的计划名</b>：直接切在「：」后面，连省略号都不给，像加载失败。</figcaption>
+      </figure>
+    </div>
+
+    <article class="issue p2">
+      <div class="issue-top"><span class="id">F3</span><span class="chip p2">P2</span><span class="chip fixed">已修复</span><h3>历史列表里的计划下拉：130px 装 220px 的字，连省略号都没有</h3></div>
+      <dl>
+        <dt>现象</dt><dd>「SQL 数据库基础：从零到独立写查询」被裁成「SQL 数据库基础：/」，看着像加载失败的乱码。</dd>
+        <dt>证据</dt><dd><code>PlanSelect</code> 传了 <code>max-w-[120px]</code>，实测宽 130px；原生 select 的 scrollWidth 等于 clientWidth，所以只会硬切不会省略。</dd>
+        <dt>建议</dt><dd>放到 200–240px 并补 <code>title</code> 悬浮提示；如果放不下，就把「改归属」从列表行挪进详情，行内只显示一行小字「归属：SQL 数据库基础」——反正每行都在重复计划名，本来也是噪音。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p2">
+      <div class="issue-top"><span class="id">F4</span><span class="chip p2">P2</span><span class="chip fixed">已修复</span><h3>联网开关保存失败后，页面同时说「开着」和「关着」</h3></div>
+      <dl>
+        <dt>现象</dt><dd>勾上「启用联网检索」→ 点保存 → 顶部弹「启用联网前先配置搜索服务」的红色提示，但复选框仍是勾选状态，区域标题写「默认关闭」、右侧徽标写「关闭」。三个地方三种说法。</dd>
+        <dt>证据</dt><dd><code>settings/web/route.ts:87</code> 在 <code>enabled &amp;&amp; !isProviderConfigured</code> 时返回 400；前端没有回滚本地状态。Base URL 里显示的 <code>http://127.0.0.1:8888</code> 其实只是 placeholder，不是值——这也是校验失败的真实原因。</dd>
+        <dt>建议</dt><dd>失败回滚开关；错误提示锚定到 Base URL 字段并在字段下方显示；把 placeholder 换成不会让人误认成已填内容的空态（例如「例如 http://127.0.0.1:8888」，前置「例如」两个字就能解决）。</dd>
+      </dl>
+    </article>
+
+    <div class="figs">
+      <figure>
+        <img src="ui-audit/shots/s-2-web-saved.png" alt="联网设置保存失败后的状态" />
+        <figcaption><b>三种状态打架</b>：复选框已勾选、区块写「默认关闭」、徽标写「关闭」。另外 toast 稳稳压在 H1「设置」上。</figcaption>
+      </figure>
+    </div>
+
+    <article class="issue p2">
+      <div class="issue-top"><span class="id">F5</span><span class="chip p2">P2</span><span class="chip fixed">已修复</span><h3>学习档案 30 条知识点、将近 3000px 长，却没有搜索框</h3></div>
+      <dl>
+        <dt>现象</dt><dd>只有 5 个状态 chip 和一个计划筛选。想找「视图 VIEW」只能靠滚——而这还是只有 30 条的时候。</dd>
+        <dt>证据</dt><dd><code>library/page.tsx</code> 内无 input；页高实测 2926px。</dd>
+        <dt>建议</dt><dd>顶部加搜索（匹配知识点名与课程名），支持 <code>?c=</code> 直接定位；数据量再涨就该考虑按课程折叠。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p2">
+      <div class="issue-top"><span class="id">F6</span><span class="chip p2">P2</span><span class="chip fixed">已修复</span><h3>320–360px 窄屏横向溢出</h3></div>
+      <dl>
+        <dt>现象</dt><dd>320px 下首页横向多出 44px（360px 下还有 4px），能左右拖动，露出背景。</dd>
+        <dt>证据</dt><dd>溢出源是首页计划卡内的「学习进度 / 1% · 已掌握 0/30」行，卡片被撑到 348px。</dd>
+        <dt>建议</dt><dd>网格项补 <code>min-w-0</code>，进度行 <code>flex-wrap</code>；顺手在 320px 加一条视觉回归。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p3">
+      <div class="issue-top"><span class="id">F7</span><span class="chip p3">P3</span><span class="chip fixed">已修复</span><h3>不存在的路径返回英文默认 404</h3></div>
+      <dl>
+        <dt>现象</dt><dd><code>/nope</code> 显示「404 / This page could not be found.」；而会话不存在时的中文空态写得挺好——两套体验。</dd>
+        <dt>建议</dt><dd>加 <code>app/not-found.tsx</code>，复用「回到首页」那套。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p3">
+      <div class="issue-top"><span class="id">F8</span><span class="chip p3">P3</span><span class="chip fixed">已修复</span><h3>键盘用户要先 Tab 12 次才能碰到主内容</h3></div>
+      <dl>
+        <dt>现象</dt><dd>焦点顺序是 logo → 6 个导航 → 5 条「最近」→ 主内容。没有 skip link。</dd>
+        <dt>建议</dt><dd>加「跳到主内容」；侧栏「最近」默认折叠或最多 3 条。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p3">
+      <div class="issue-top"><span class="id">F9</span><span class="chip p3">P3</span><span class="chip fixed">已修复</span><h3>Toast 永远压在标题上</h3></div>
+      <dl>
+        <dt>现象</dt><dd>设置页的报错 toast 盖住「设置」，材料页的成功 toast 盖住「学习材料」，会话页盖住会话标题。连续三次不是巧合。</dd>
+        <dt>建议</dt><dd>挪到右上角（移动端贴 tab bar 上方），或给主内容加 <code>scroll-margin-top</code> 与 toast 避让。</dd>
+      </dl>
+    </article>
+  </section>
+
+  <!-- ============ 2 布局 ============ -->
+  <section id="layout">
+    <div class="sec-head"><span class="sec-num">02</span><h2>布局：桌面稳，平板塌，容器宽度各玩各的</h2></div>
+    <p class="sec-sub">
+      1440 下确实对齐得很准（头部按钮右缘和卡片右缘都是 1196，一像素不差）。但一到 834px，双列网格就开始互相踩脚。
+    </p>
+
+    <article class="issue p1">
+      <div class="issue-top"><span class="id">L1</span><span class="chip p1">P1</span><span class="chip fixed">已修复</span><h3>768–1024 是最难受的一档：卡片被压到 255px，说明文字换三行</h3></div>
+      <dl>
+        <dt>现象</dt><dd>iPad 竖屏下首页两张模式卡并排，每张 255px：「可随时暂停，历史里能接着聊」折成两行，和「开始对话」按钮挤在同一行，卡片底部参差不齐。计划卡只剩半行宽，标题断成两行、描述被截。</dd>
+        <dt>证据</dt><dd><code>page.tsx:151,266</code> 用 <code>md:grid-cols-2</code>（768 起两列）。侧栏已占 248px，834 宽时可用 522px，一列只剩 255。</dd>
+        <dt>建议</dt><dd>双列断点提到 <code>lg</code>（1024）；768–1023 用单列 + 卡片内部横排（图标左、文字右），比硬塞两列体面得多。</dd>
+      </dl>
+    </article>
+
+    <div class="figs">
+      <figure>
+        <img src="ui-audit/shots/home-tablet.png" alt="834px 下的首页" />
+        <figcaption><b>834px 实测</b>：左右卡片内部节奏全部被打乱；计划卡标题断行、描述省略号，底部两个空态栏挤成窄条。</figcaption>
+      </figure>
+    </div>
+
+    <article class="issue p2">
+      <div class="issue-top"><span class="id">L2</span><span class="chip p2">P2</span><span class="chip fixed">已修复</span><h3>只有一条计划时，网格右边空着一半</h3></div>
+      <dl>
+        <dt>现象</dt><dd>计划卡固定占 2 列网格的 1 列（406px），右侧 406px 全白；「全部计划」被 <code>justify-between</code> 推到 832px 尽头，视线被拉成「卡片—大空白—远处链接」。</dd>
+        <dt>建议</dt><dd>计划列表改成横向整行卡（标题、进度、下一步一行装下），或让卡片 <code>col-span-full</code>，空位只留给「+ 新建计划」。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p2">
+      <div class="issue-top"><span class="id">L3</span><span class="chip p2">P2</span><span class="chip fixed">已修复</span><h3>一级页面两套容器宽度，切页时内容横向「跳」一下</h3></div>
+      <dl>
+        <dt>现象</dt><dd>首页内容宽 896（max-w-4xl），计划、历史、材料、复习、设置都是 704（max-w-3xl）。左边界在 428 与 492 之间来回跳了 64px。</dd>
+        <dt>建议</dt><dd>统一一个容器 token；列表类页面用宽容器 + 内部栅格，而不是让「页面宽度」承担信息密度。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p2">
+      <div class="issue-top"><span class="id">L4</span><span class="chip p2">P2</span><span class="chip fixed">已修复</span><h3>会话头 94px、三行 11px，第三行还重复了第二行的计划名</h3></div>
+      <dl>
+        <dt>现象</dt><dd>标题一行 + 徽标 + 「聚焦：视图 VIEW」；第二行「计划 · 课程 · 只更新这个知识点的证据」；第三行「# 计划名」。900px 高的屏幕上，纯上下文吃掉 10%。</dd>
+        <dt>建议</dt><dd>压成两行：标题（可编辑）+ 一行「课程 · 聚焦知识点」；计划名只留一次，删掉第三行的 topic 标签。</dd>
+      </dl>
+    </article>
+
+    <div class="figs two">
+      <figure>
+        <img src="ui-audit/shots/session-desktop.png" alt="会话页桌面端" />
+        <figcaption><b>会话页</b>：正文区做得好，但头部三行元信息 + 下方两排共 14 个按钮，注意力被切碎。</figcaption>
+      </figure>
+      <figure>
+        <img src="ui-audit/shots/session-mobile-fold.png" alt="会话页移动端" />
+        <figcaption><b>390px 会话页</b>：快捷问法横向被裁，「降低难度」露半个字，没有任何可滚动暗示。</figcaption>
+      </figure>
+    </div>
+
+    <article class="issue p2">
+      <div class="issue-top"><span class="id">L5</span><span class="chip p2">P2</span><span class="chip fixed">已修复</span><h3>一屏 14 个同级按钮，谁都说自己重要</h3></div>
+      <dl>
+        <dt>现象</dt><dd>提交答案 / 给我提示 / 查看解析 / 跳过；太简单 / 太难 / 有问题 / 换一题；换种讲法 / 举个例子 / 用图表展示 / 点出思路 / 降低难度 / 增加挑战。字号、颜色、圆角几乎一致，只有「提交答案」是实心。</dd>
+        <dt>建议</dt><dd>主操作 1 个（提交），次操作 3 个（提示、解析、跳过），其余进「更多 ⋯」；6 个快捷问法合并成一个「换个讲法」下拉。判题后同理——现在反馈区一口气给了 11 个动作。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p2">
+      <div class="issue-top"><span class="id">L6</span><span class="chip p2">P2</span><span class="chip fixed">已修复</span><h3>知识点弹窗底部：5 个控件抢一行，两个下拉高度还不一样</h3></div>
+      <dl>
+        <dt>现象</dt><dd>「针对它练一练」（主按钮）、「手动更正」、「选择新状态…」（下拉）、夹在中间的 11px 说明、「合并到…」（下拉），再加一个红色「删除知识点」。视觉上没有分组，说明文字被两个控件夹成碎片。</dd>
+        <dt>建议</dt><dd>三组：主操作单独一行；「状态 / 合并」用带标签的表单行；删除放到右上角或底部危险区。两个 select 至少统一高度和对齐基线。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p3">
+      <div class="issue-top"><span class="id">L7</span><span class="chip p3">P3</span><span class="chip fixed">已修复</span><h3>工作区：内容卡 540px，四周全是空</h3></div>
+      <dl>
+        <dt>现象</dt><dd>说是「独立工作区」，实际内容比会话页还窄；顶栏左边「返回对话 + 标题」，右边「练习」徽标贴在屏幕边缘，中间空出 800px。</dd>
+        <dt>建议</dt><dd>用 max-w-5xl 并把顶栏内容同宽居中；「练习」徽标收进标题行。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p3">
+      <div class="issue-top"><span class="id">L8</span><span class="chip p3">P3</span><span class="chip fixed">已修复</span><h3>移动端横向 chip 被裁切，没有渐隐提示</h3></div>
+      <dl>
+        <dt>建议</dt><dd>右侧加 <code>mask-image: linear-gradient(to right, #000 85%, transparent)</code>，或最后一个改成「更多」。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p3">
+      <div class="issue-top"><span class="id">L9</span><span class="chip p3">P3</span><span class="chip fixed">已修复</span><h3>设置滑块组：「最大来源 3 1–5」三个语义同一个字重</h3></div>
+      <dl>
+        <dt>现象</dt><dd>标签、当前值、取值范围全挤在一行 12.5px，读起来像一句话。下面「允许自建服务地址（127.0.0.1 / 内网）」换行后，和右侧说明形成锯齿。</dd>
+        <dt>建议</dt><dd>标签在上、值右对齐、范围做后缀弱化；checkbox 说明另起一行左对齐。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p3">
+      <div class="issue-top"><span class="id">L10</span><span class="chip p3">P3</span><span class="chip fixed">已修复</span><h3>点击区小得有点欺负手指</h3></div>
+      <dl>
+        <dt>数据</dt><dd>「太简单/太难/有问题」21px 高、「工作区」25px、模型「编辑/删除」26px、移动端筛选 chip 28px、主按钮 32px。</dd>
+        <dt>建议</dt><dd>桌面 ≥32px、移动端 ≥44px；图标按钮加隐形内边距比放大图标更省空间。</dd>
+      </dl>
+    </article>
+  </section>
+
+  <!-- ============ 3 密度 ============ -->
+  <section id="density">
+    <div class="sec-head"><span class="sec-num">03</span><h2>文字密度：不是信息多，是同一句话说太多次</h2></div>
+    <p class="sec-sub">
+      这产品有个习惯：把「解释」当成「设计」。每加一个功能，就加一段 11px 灰字说明；每列一个状态，就再给一个徽标。
+      结果不是信息丰富，而是读者要在 30 条同构信息里自己找重点。
+    </p>
+
+    <div class="figs two">
+      <figure>
+        <img src="ui-audit/shots/plan-detail-desktop.png" alt="计划详情页" />
+        <figcaption><b>计划详情</b>：8 门课全部展开，30 个知识点平铺；同一页「待学习」28 次。</figcaption>
+      </figure>
+      <figure>
+        <img src="ui-audit/shots/crop-library.png" alt="学习档案列表" />
+        <figcaption><b>学习档案（2×）</b>：每行名称 + 描述 + 状态三层，课程头再复述一次计划名。</figcaption>
+      </figure>
+    </div>
+
+    <article class="issue p1">
+      <div class="issue-top"><span class="id">T1</span><span class="chip p1">P1</span><span class="chip fixed">已修复</span><h3>计划详情把 30 个知识点全摊开，用户看到的是「状态墙」</h3></div>
+      <dl>
+        <dt>数据</dt><dd>同页文案去重计数：<b>待学习 28 次</b>、待开始 12 次、已掌握 8 次、进入课程 6 次、进行中 5 次；8 条进度条。整页没有一处告诉用户「现在该做什么」。</dd>
+        <dt>建议</dt><dd>默认只展开当前课程，其余折叠成一行「第 X 课 · 0/4」；卡片头部只留一个状态徽标（删掉进度行里重复的「进行中」）；整卡可点，去掉每行重复的「进入课程」按钮。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p2">
+      <div class="issue-top"><span class="id">T2</span><span class="chip p2">P2</span><span class="chip fixed">已修复</span><h3>学习档案：每行三层，计划名重复 9 次</h3></div>
+      <dl>
+        <dt>数据</dt><dd>30 行、正文 2021 字、页高 2926px；「待学习」29 次、计划名 9 次、「计划：」8 次。</dd>
+        <dt>建议</dt><dd>列表只留「名称 + 状态」，描述进 hover 或详情；计划名只在页面顶部出现一次（用筛选器表达）。状态为「待学习」的行可以整体降饱和，让「学习中/待复习」自己跳出来。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p2">
+      <div class="issue-top"><span class="id">T3</span><span class="chip p2">P2</span><span class="chip fixed">已修复</span><h3>课程页 4 个知识点，挂了 4 遍同一句提示</h3></div>
+      <dl>
+        <dt>现象</dt><dd>每个知识点下面都是「点击查看学习依据与作答记录」。这句话应该是列表级提示，或者 hover 才出现。</dd>
+        <dt>建议</dt><dd>提到课程标题下写一次，行内用图标/箭头暗示可点。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p2">
+      <div class="issue-top"><span class="id">T4</span><span class="chip p2">P2</span><span class="chip fixed">已修复</span><h3>判题后 11 个操作，把结论淹了</h3></div>
+      <dl>
+        <dt>现象</dt><dd>下一步 / 继续复习 / 讲讲这道题 / 看知识点 / 再做一次 / 太简单 / 太难 / 有问题 / 换一题 / 6 个快捷问法，全部展开。</dd>
+        <dt>建议</dt><dd>结论区只留「下一步」+「再做一次」；评价（简单/太难/有问题）收进一个表情按钮的 popover；快捷问法在输入框上方按需出现。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p2">
+      <div class="issue-top"><span class="id">T5</span><span class="chip p2">P2</span><span class="chip fixed">已修复</span><h3>材料页：同一件事解释两遍，外加 4 行常驻说明书</h3></div>
+      <dl>
+        <dt>现象</dt><dd>筛选行右边写「选一个计划后，新上传会归入它」，拖拽区里又写「上传到：未归类（在『计划』下拉里选一个计划可上传到它）」。下方还常驻一张「关于解析能力（如实说明）」卡片，4 条 10.5px。</dd>
+        <dt>建议</dt><dd>解释只留一处，改成拖拽区里的一行状态「将归入：未归类 · 更改」；解析能力折叠成「支持哪些格式？」。</dd>
+      </dl>
+    </article>
+
+    <div class="figs">
+      <figure>
+        <img src="ui-audit/shots/m-1-uploaded.png" alt="材料页上传后" />
+        <figcaption><b>材料页</b>：上传解析正常（704 B / 272 字 / 1 段），但同一页面里两套说法 + 常驻说明卡；toast 也压住了标题。</figcaption>
+      </figure>
+    </div>
+
+    <article class="issue p2">
+      <div class="issue-top"><span class="id">T6</span><span class="chip p2">P2</span><span class="chip fixed">已修复</span><h3>设置页底部 8 行开源许可 + 21 处 ≤11px 辅助文字</h3></div>
+      <dl>
+        <dt>数据</dt><dd>许可区约 500px 高，占整页 1/4；21 处文本 ≤11px。</dd>
+        <dt>建议</dt><dd>许可收进「关于 / 许可」折叠；辅助文字下限提到 12px，非必要说明改成 tooltip。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p3">
+      <div class="issue-top"><span class="id">T7</span><span class="chip p3">P3</span><span class="chip partial">部分修复</span><h3>面包屑和 H1 说同一句话；「进行中」出现两次</h3></div>
+      <dl>
+        <dt>建议</dt><dd>面包屑只保留上级（目标学习），当前页交给 H1；课程卡的徽标与进度行标签二选一。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p3">
+      <div class="issue-top"><span class="id">T8</span><span class="chip p3">P3</span><span class="chip fixed">已修复</span><h3>模型菜单把同一个名字显示两遍</h3></div>
+      <dl>
+        <dt>现象</dt><dd>「deepseek-v4-1-flash-261017」下面一行又是「deepseek-v4-1-flash-261017」（label 与 model id 相同）。</dd>
+        <dt>建议</dt><dd>相同则不渲染第二行。</dd>
+      </dl>
+    </article>
+  </section>
+
+  <!-- ============ 4 可读性 ============ -->
+  <section id="a11y">
+    <div class="sec-head"><span class="sec-num">04</span><h2>可读性：正文很舒服，说明文字灰到快隐形</h2></div>
+    <p class="sec-sub">
+      整站的视觉基底是暖灰 + 墨绿，这套气质我买账。问题出在次级文字的对比度：它承担了所有「为什么这样」的解释，却只有 3.46:1。
+    </p>
+
+    <article class="issue p1">
+      <div class="issue-top"><span class="id">A1</span><span class="chip p1">P1</span><span class="chip fixed">已修复</span><h3>次级文字全站 3.46:1，低于 WCAG AA 的 4.5:1</h3></div>
+      <dl>
+        <dt>数据</dt><dd><code>--ink-3 #8b8579</code> 在 <code>--bg #faf8f4</code> 上 3.46:1，在白卡上 3.66:1。每页不达标文本：首页 20 处、会话 25、历史 12、档案 40、设置 45。</dd>
+        <dt>影响</dt><dd>它承载 11–12px 的元数据、说明、时间戳——恰恰是最需要清楚的那部分。低视力用户和「笔记本屏幕亮度 40%」的普通用户都吃亏。</dd>
+        <dt>建议</dt><dd>把 ink-3 加深到 <code>#6f6a5f</code>（≈5.1:1），或规定「说明文字一律 12.5px + ink-2」。顺带解决深色模式（约 4.1:1）的同类问题。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p2">
+      <div class="issue-top"><span class="id">A2</span><span class="chip p2">P2</span><span class="chip fixed">已修复</span><h3>10–12px 的文本太多</h3></div>
+      <dl>
+        <dt>数据</dt><dd>设置页 ≤11px 文本 21 处；档案页 11px 文本 249 字、12px 859 字。</dd>
+        <dt>建议</dt><dd>最小字号 12px；说明 12.5–13px；确实要更小的（如徽标）只放 1–2 个字的标签。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p3">
+      <div class="issue-top"><span class="id">A3</span><span class="chip p3">P3</span><span class="chip fixed">已修复</span><h3>正文每行 46 个汉字，略宽</h3></div>
+      <dl>
+        <dt>数据</dt><dd>720px / 15.5px，实测 cpl≈46。中文舒适区 32–40。</dd>
+        <dt>建议</dt><dd>正文收到 620–680px（图表、代码可超出），或字号提到 17px。</dd>
+      </dl>
+    </article>
+
+    <article class="issue p3">
+      <div class="issue-top"><span class="id">A4</span><span class="chip p3">P3</span><span class="chip fixed">已修复</span><h3>深色模式对比度同样不达标</h3></div>
+      <dl>
+        <dt>数据</dt><dd>深色 ink-3 <code>#7a766d</code> 在 <code>#121312</code> 上约 4.1:1。</dd>
+        <dt>建议</dt><dd>与 A1 一起调，深色可到 <code>#8b877d</code>。</dd>
+      </dl>
+    </article>
+  </section>
+
+  <!-- ============ 5 通过项 ============ -->
+  <section id="pass">
+    <div class="sec-head"><span class="sec-num">05</span><h2>该夸的地方也别装看不见</h2></div>
+    <div class="cols">
+      <div class="box ok">
+        <h3>实测通过</h3>
+        <ul>
+          <li>作答 → 判题 → 反馈 → 写证据 → 掌握度 0.62 更新，一条链完整走通</li>
+          <li>「查看解析」明确标为非独立完成；「再做一次」重置干净</li>
+          <li>流式回答正常，刷新后会话与消息完整保留</li>
+          <li>材料上传解析出 272 字 / 1 段，归属与删除可用</li>
+          <li>粘性头部与输入框在 0 / 300 / 951 三个滚动位都稳定</li>
+          <li>1440 下头部按钮右缘与卡片右缘精确对齐（1196）</li>
+          <li>21 次页面加载 0 控制台错误、0 失败请求</li>
+          <li>焦点环 2px 可见；深色模式全站可用；已处理 reduced-motion</li>
+        </ul>
+      </div>
+      <div class="box no">
+        <h3>下次别再这样</h3>
+        <ul>
+          <li>按钮点了没反应（参数写了没人读）</li>
+          <li>「选中」和「正确」共用一个淡绿色</li>
+          <li>用 11px 灰字解释 11px 灰字</li>
+          <li>把 30 个知识点同时摊在屏幕上，还指望用户知道先干哪个</li>
+          <li>长文本塞进 130px 原生下拉，还不用省略号</li>
+          <li>内容容器一个 896 一个 704，像两个产品拼的</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 6 路线 ============ -->
+  <section id="plan">
+    <div class="sec-head"><span class="sec-num">06</span><h2>怎么修：三轮，从「别再让人怀疑坏了」开始</h2></div>
+    <p class="sec-sub">排序原则：先修「用户会以为功能坏了」的，再修「用起来累」的，最后才是「不够好看」的。</p>
+    <div class="steps">
+      <div class="step">
+        <div class="n">1</div>
+        <div>
+          <h3>本周 · 约 1.5 天 <span class="tag">收益最高</span></h3>
+          <p><b>F1</b> 让 mode=goal 真正生效（10 分钟）· <b>F2</b> 判题后标选项对错（半天）· <b>L1</b> 平板断点提到 lg（20 分钟）· <b>T1</b> 计划详情默认折叠（2 小时）· <b>A1</b> 加深 ink-3（5 分钟，全站生效）。这五项做完，体验分数大概能从 76 到 85。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">2</div>
+        <div>
+          <h3>下一轮 · 约 2 天 <span class="tag">去噪音</span></h3>
+          <p>F3 / F4 / F5 / L2 / L3 / L4 / L5 / L6 / T2 / T3 / T4 / T5 / T6。核心动作是「合并解释、收敛按钮、统一容器」——不是加功能，是删东西。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">3</div>
+        <div>
+          <h3>打磨 · 半天 <span class="tag">细节</span></h3>
+          <p>F6–F9 / L7–L10 / T7–T8 / A2–A4。顺手加两条肉眼回归：320px 无横向溢出、每页无 &lt;32px 点击区。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <b>一句话总结：</b>这个产品的教学设计比界面成熟得多。界面现在的问题不是「不会做」，而是「舍不得删」——
+      删掉重复的状态、重复的解释、重复的按钮，剩下的东西其实很好看。
+    </div>
+  </section>
+
+
+  <!-- ============ 7 修复记录 ============ -->
+  <section id="fixes">
+    <div class="sec-head"><span class="sec-num">07</span><h2>修复记录：把「像坏了」的先修掉</h2></div>
+    <p class="sec-sub">
+      本轮只做低风险改动，不重做视觉。5 个 P1 全部处理，另有 17 项顺手修掉；
+      剩下 9 项要动信息层级，放在第二轮（见 08）。
+    </p>
+
+    <div class="callout">
+      <b>顺带挖出一个真正的隐形 bug：</b><code>globals.css</code> 里那条无层级的 <code>* { border-color: var(--line) }</code>
+      把全站所有 <code>border-*</code> 工具类都盖掉了——所以「选中态描边」「危险态红边」「正确态绿边」从来就没生效过，
+      之前所有边框都是同一个米灰色。移进 <code>@layer base</code> 后，判题红绿边框才真正出现。
+    </div>
+
+    <table>
+      <thead><tr><th style="width:76px">问题</th><th style="width:250px">改动</th><th>效果</th></tr></thead>
+      <tbody>
+        <tr><td><b>F1</b> 死链</td><td><code>page.tsx</code> 读取 <code>?mode=goal</code>：聚焦目标输入框、卡片高亮 2.8s、清掉 URL 参数</td><td>从计划页点「设定新目标」→ 落点明确，不用再找入口</td></tr>
+        <tr><td><b>F2</b> 选项不标对错</td><td>判题接口新增 <code>reveal</code>（只给下标，判定后才下发）；选项改为五态：未选 / 选中 / 正确 / 漏选 / 错误</td><td>答错立刻看到「你选的红、正确的绿」，刷新后仍保留</td></tr>
+        <tr><td><b>F3</b> 下拉裁字</td><td>历史与材料行内下拉 120→190（桌面 240/260）+ 悬浮 title</td><td>计划名能看全，看不到也有 tooltip</td></tr>
+        <tr><td><b>F4</b> 状态矛盾</td><td>保存失败回滚开关到服务端状态</td><td>不会再出现「勾着 + 写关闭」</td></tr>
+        <tr><td><b>F5</b> 档案没搜索</td><td>顶部搜索框，匹配知识点 / 课程 / 计划名，可一键清空</td><td>30 条不用再靠滚</td></tr>
+        <tr><td><b>F6</b> 320 溢出</td><td><code>PlanCard</code> 根节点 <code>min-w-0</code>，内部 truncate 补 <code>min-w-0</code></td><td>320/360/390 全部 0 溢出</td></tr>
+        <tr><td><b>F7</b> 英文 404</td><td>新增 <code>app/not-found.tsx</code></td><td>中文空态 + 回首页 / 看历史</td></tr>
+        <tr><td><b>F9</b> toast 压标题</td><td>top-center → top-right，移动端下移避开顶栏</td><td>不再盖住页面 H1</td></tr>
+        <tr><td><b>L1</b> 平板挤压</td><td>首页双列 <code>md:</code> → <code>lg:</code></td><td>834px 下卡片纵向铺满 522px，说明文字不再折三行</td></tr>
+        <tr><td><b>L2</b> 计划卡半行</td><td>首页计划列表改单列整行</td><td>右侧不再空 406px</td></tr>
+        <tr><td><b>L3</b> 容器不一致</td><td>列表页统一 896（首页/档案/计划/历史/材料/复习/设置），详情与对话保留 704/720 阅读宽度</td><td>切页左边界不再跳 64px</td></tr>
+        <tr><td><b>L4</b> 会话头 94px</td><td>删掉重复计划名的第三行（目标/复习会话），「聚焦」在移动端隐藏</td><td>头部少一行，窄屏标题不再被挤</td></tr>
+        <tr><td><b>T1</b> 30 个知识点全摊开</td><td>课程折叠：默认只展开当前课程，其余一行显示「已掌握 x/y」，点击展开</td><td>「待学习」28 → 3，页面高度 1900 → 1323</td></tr>
+        <tr><td><b>T2</b> 计划名重复 9 次</td><td>档案里每组的「计划：…」并入标题行 hint</td><td>少 8 行文字</td></tr>
+        <tr><td><b>T3</b> 同一句提示 ×4</td><td>行内提示删除，改成列表级一行</td><td>知识点行只留名称 + 状态</td></tr>
+        <tr><td><b>T5</b> 材料重复解释</td><td>拖拽区与筛选行只保留一处说明</td><td>同一件事不说两遍</td></tr>
+        <tr><td><b>T6</b> 许可常驻 500px</td><td>改为 <code>&lt;details&gt;</code> 折叠「开源复用与许可 · 8 项」</td><td>设置页 1914 → 1365</td></tr>
+        <tr><td><b>A1</b> 次级文字 3.46:1</td><td><code>--ink-3</code> #8b8579 → #6f6a5f（深色 #7a766d → #8b877d），<code>--warn</code> 也加深</td><td>每页不达标文本 20–45 处 → 0–1 处</td></tr>
+        <tr><td><b>L10</b> 点击区过小</td><td>练习评价、换一题、工作区、设置图标按钮统一放大</td><td>21–26px → 28–32px</td></tr>
+      </tbody>
+    </table>
+
+    <div class="figs two">
+      <figure>
+        <img src="ui-audit/shots/home-tablet.png" alt="修复前：834px 首页" />
+        <figcaption><b>修复前 · 834px</b>：双列把卡片压到 255px，文案与按钮互相挤。</figcaption>
+      </figure>
+      <figure>
+        <img src="ui-audit/fix/home-834.png" alt="修复后：834px 首页" />
+        <figcaption><b>修复后 · 834px</b>：单列铺满，计划卡也变成整行。</figcaption>
+      </figure>
+    </div>
+
+    <div class="figs two">
+      <figure>
+        <img src="ui-audit/shots/opt-graded.png" alt="修复前：答错但选项没有标记" />
+        <figcaption><b>修复前 · 判题</b>：只有下方红卡片说错了，选项本身毫无变化。</figcaption>
+      </figure>
+      <figure>
+        <img src="ui-audit/fix/session-graded.png" alt="修复后：选项标红标绿" />
+        <figcaption><b>修复后 · 判题</b>：选错的 A 红底 ✗，正确的 B 绿底 ✓，一眼可读。</figcaption>
+      </figure>
+    </div>
+
+    <div class="figs two">
+      <figure>
+        <img src="ui-audit/shots/plan-detail-desktop.png" alt="修复前：计划详情全部展开" />
+        <figcaption><b>修复前 · 计划详情</b>：8 门课全展开，30 行「待学习」。</figcaption>
+      </figure>
+      <figure>
+        <img src="ui-audit/fix/plan-detail.png" alt="修复后：只展开当前课程" />
+        <figcaption><b>修复后 · 计划详情</b>：只展开当前课，其余折叠成一行。</figcaption>
+      </figure>
+    </div>
+
+    <h3 style="margin:34px 0 10px">验证</h3>
+    <table>
+      <thead><tr><th style="width:220px">项目</th><th>结果</th></tr></thead>
+      <tbody>
+        <tr><td>类型检查</td><td><code>tsc --noEmit</code> 0 错误</td></tr>
+        <tr><td>单元 / 集成测试</td><td><b>112 / 112</b> 通过</td></tr>
+        <tr><td>端到端冒烟</td><td><b>81 / 81</b> 通过（含判题、重做、证据、来源、联网）</td></tr>
+        <tr><td>生产构建</td><td><code>next build</code> 通过</td></tr>
+        <tr><td>对比度复测</td><td>9 个页面不达标文本 0–1 处（修复前 5–45 处）</td></tr>
+        <tr><td>横向溢出</td><td>320 / 360 / 390 全部为 0</td></tr>
+        <tr><td>主库安全</td><td>验收与修复期间写操作全部在副本上；主库仍为 7 会话 / 10 消息 / 30 知识点 / 0 作答 / 0 证据</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout warn">
+      <b>一次误操作已复原：</b>中途误把冒烟测试指向了正在运行的主实例，它覆盖了模型配置（把 Base URL 改成了本地替身）。
+      已从 <code>data/backup/pre-dual-mode-20261023-113325.db</code> 恢复原始配置，并实测连通（1.7s 返回）。
+      测试产生的计划 / 会话 / 知识点也已删除，计数回到原值。
+    </div>
+  </section>
+
+
+  <!-- ============ 8 第二轮 ============ -->
+  <section id="round2">
+    <div class="sec-head"><span class="sec-num">08</span><h2>第二轮：把信息层级收回来</h2></div>
+    <p class="sec-sub">
+      第一轮解决了「像坏了」，第二轮解决「看着累」：按钮太多、弹窗操作挤、滑块三种语义同行、字号下限 10px。
+      这一轮动的是结构与排版，所以每改一处都重新截图确认没有连带塌方。
+    </p>
+
+    <table>
+      <thead><tr><th style="width:76px">问题</th><th style="width:260px">改动</th><th>效果</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>L5 / T4</b> 按钮军备竞赛</td>
+          <td>练习区从「提交 / 提示 / 解析 / 跳过 + 太简单 / 太难 / 有问题 / 换一题」8 个平级按钮，收成 1 主 3 次 + 一个「题目反馈 ⋯」溢出菜单；菜单里才是评价与换题</td>
+          <td>一眼能找到「提交答案」，评价类动作不再抢注意力</td>
+        </tr>
+        <tr>
+          <td><b>L6</b> 弹窗底部挤</td>
+          <td>拆成三组：主操作（练一练）/ 状态与合并（两个等宽下拉 + 各自说明）/ 危险操作（删除，右对齐）</td>
+          <td>两个下拉统一 32px 高，说明文字不再被夹在两个控件中间</td>
+        </tr>
+        <tr>
+          <td><b>L7</b> 工作区顶栏</td>
+          <td>顶栏内容加同宽容器（max-w-4xl），与正文、输入框对齐</td>
+          <td>「练习」徽标不再贴屏幕右缘</td>
+        </tr>
+        <tr>
+          <td><b>L8</b> 移动端 chip 被裁</td>
+          <td>快捷问法改为「渐隐 + 横向滚动」，只在窄屏生效</td>
+          <td>看到半个字就知道右边还有，不再像截断</td>
+        </tr>
+        <tr>
+          <td><b>L9</b> 滑块三种语义同行</td>
+          <td>抽出 <code>SliderField</code>：标签在上、当前值右对齐等宽数字、说明另起一行；复选框说明移到标签下方</td>
+          <td>「最大来源 3 1–5」变成「最大来源 … 3 / 每次最多采信 1–5 条」</td>
+        </tr>
+        <tr>
+          <td><b>F8</b> 键盘要先 Tab 12 次</td>
+          <td>新增「跳到主内容」，<code>main</code> 加 <code>id</code> 与 <code>tabIndex=-1</code></td>
+          <td>第一次 Tab 就能跳过整个侧栏</td>
+        </tr>
+        <tr>
+          <td><b>T8</b> 模型名显示两遍</td>
+          <td>label 与 model id 相同时不再渲染第二行</td>
+          <td>菜单从三行变两行</td>
+        </tr>
+        <tr>
+          <td><b>A3</b> 正文 46 字/行</td>
+          <td>会话容器 768 → 704，正文 15.5 → 16px</td>
+          <td>约 41 字/行，回到中文舒适区</td>
+        </tr>
+        <tr>
+          <td><b>A2</b> 10–11.5px 太多</td>
+          <td>全站 142 处 <code>text-[10/10.5/11/11.5px]</code> 统一抬到 12px</td>
+          <td>最小字号从 10px 提到 12px；改完 12 条路由 × 4 档宽度复测无溢出</td>
+        </tr>
+        <tr>
+          <td><b>T7</b> 面包屑重复</td>
+          <td>计划详情与课程页只保留「← 目标学习」，当前页交给 H1</td>
+          <td>同一屏不再出现两遍同一个名字</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="figs two">
+      <figure>
+        <img src="ui-audit/shots/session-desktop.png" alt="修复前：练习区 8 个平级按钮" />
+        <figcaption><b>修复前 · 练习区</b>：提交、提示、解析、跳过、太简单、太难、有问题、换一题全平铺。</figcaption>
+      </figure>
+      <figure>
+        <img src="ui-audit/fix2/prod-session.png" alt="修复后：主次分明" />
+        <figcaption><b>修复后 · 练习区</b>：只留 1 主 3 次，评价与换题收进「题目反馈 ⋯」。</figcaption>
+      </figure>
+    </div>
+
+    <div class="figs two">
+      <figure>
+        <img src="ui-audit/shots/l-1-concept-modal.png" alt="修复前：弹窗底部 5 个控件挤一行" />
+        <figcaption><b>修复前 · 知识点弹窗</b>：两个下拉 + 说明 + 删除挤在同一行，高度还不一致。</figcaption>
+      </figure>
+      <figure>
+        <img src="ui-audit/fix2/prod-concept-modal.png" alt="修复后：三组分层" />
+        <figcaption><b>修复后 · 知识点弹窗</b>：主操作 / 状态与合并 / 危险操作三组分开。</figcaption>
+      </figure>
+    </div>
+
+    <div class="figs two">
+      <figure>
+        <img src="ui-audit/shots/crop-settings-web.png" alt="修复前：滑块标签挤在一行" />
+        <figcaption><b>修复前 · 滑块</b>：「最大来源 3 1–5」三种语义一个字号。</figcaption>
+      </figure>
+      <figure>
+        <img src="ui-audit/fix2/prod-settings.png" alt="修复后：标签 / 值 / 说明分层" />
+        <figcaption><b>修复后 · 滑块</b>：标签、当前值、说明各归各位，四个滑块对齐。</figcaption>
+      </figure>
+    </div>
+
+    <div class="callout">
+      <b>一处更正：</b>L7 原文说工作区内容卡只有 540px，实测是 896px——当时把缩放后的截图尺寸当成了真实尺寸。
+      真正的问题是顶栏内容拉满全宽、正文居中，两者不在一条竖线上；这一轮修的是顶栏对齐，不是宽度。
+    </div>
+
+    <h3 style="margin:34px 0 10px">第二轮验证</h3>
+    <table>
+      <thead><tr><th style="width:220px">项目</th><th>结果</th></tr></thead>
+      <tbody>
+        <tr><td>类型检查 / 单测 / 构建</td><td><code>tsc</code> 0 错 · vitest <b>112/112</b> · <code>next build</code> 通过</td></tr>
+        <tr><td>溢出回归</td><td>12 条路由 × 1440 / 834 / 390 / 320 四档，<b>横向溢出全部为 0</b></td></tr>
+        <tr><td>控制台</td><td>除 404 页自身的资源请求外，无报错</td></tr>
+        <tr><td>键盘</td><td>首次 Tab 命中「跳到主内容」，回车后焦点落到 <code>main#main-content</code></td></tr>
+        <tr><td>主库</td><td>仍为 7 会话 / 10 消息 / 30 知识点 / 0 作答 / 0 证据；生产实例已用新构建重启</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+
+  <!-- ============ 9 文案 ============ -->
+  <section id="copy">
+    <div class="sec-head"><span class="sec-num">09</span><h2>文案瘦身：问题不是写得不好，是写得太多</h2></div>
+    <p class="sec-sub">
+      先把「知识点描述」这类学习内容剔除，只统计界面文案：12 个页面里约 1000 字说明性文字，
+      其中 7 段页面副标题就占 385 字。读起来像产品在不停向用户解释自己。
+    </p>
+
+    <div class="callout warn">
+      <b>最典型的一句：</b>「这里的建议来自真实作答记录：连续出错、依赖提示、只有单一题型证据，或者到了间隔复测时间。
+      按计划分组；用「计划」下拉只看某一条路线。你可以忽略任何一条——它不会打断你正在做的事。」
+      —— 90 个字，说了三件事，其中两件界面本身已经表达了。
+    </div>
+
+    <h3 style="margin:26px 0 10px">页面副标题</h3>
+    <table>
+      <thead><tr><th style="width:90px">页面</th><th style="width:56px">字数</th><th>改后</th></tr></thead>
+      <tbody>
+        <tr><td>首页</td><td>45 → 14</td><td>直接开聊，或者先定一个目标。</td></tr>
+        <tr><td>档案</td><td>55 → 26</td><td>状态由证据推导，不是模型自评；p 值等指标在详情里。</td></tr>
+        <tr><td>复习</td><td>90 → 22</td><td>按到期与薄弱程度排序；不想看的可以直接忽略。</td></tr>
+        <tr><td>计划</td><td>50 → 16</td><td>进度只算本课程内已掌握的知识点。</td></tr>
+        <tr><td>历史</td><td>35 → 14</td><td>无限学习与目标学习分开归类。</td></tr>
+        <tr><td>材料</td><td>70 → 19</td><td>按计划分组；回答引用时会标注来源文件。</td></tr>
+        <tr><td>设置</td><td>40 → 25</td><td>可配置多个模型；Key 只存在本机，不下发浏览器。</td></tr>
+        <tr><td><b>合计</b></td><td><b>385 → 136</b></td><td><b>减少 65%</b></td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin:30px 0 10px">另外动的地方</h3>
+    <table>
+      <thead><tr><th style="width:120px">位置</th><th>处理</th></tr></thead>
+      <tbody>
+        <tr><td>首页两张卡</td><td>「不需要计划，也不会生成正式进度」「设定一个想系统掌握的目标」等前缀删除，只留机制本身</td></tr>
+        <tr><td>首页按钮行</td><td>删「先生成草稿，不会直接开始」——按钮就叫「生成计划草稿」，不必再解释一遍</td></tr>
+        <tr><td>首页 / 历史 / 复习空态</td><td>从「讲道理」改成「会发生什么」：做完练习后这里会出现该复习的内容</td></tr>
+        <tr><td>材料页</td><td>筛选行那句与拖拽区重复的说明删除；4 条格式限制收进「支持哪些格式、有什么限制」折叠</td></tr>
+        <tr><td>设置页</td><td>联网隐私说明 60 → 31 字（承诺一条不少）；删会话说明 60 → 28；滑块说明压到一行</td></tr>
+        <tr><td>计划 / 计划详情 / 课程</td><td>「（按知识点状态计算）」这类口径说明只保留一处，其余删掉</td></tr>
+      </tbody>
+    </table>
+
+    <div class="figs two">
+      <figure>
+        <img src="ui-audit/shots/materials-desktop.png" alt="改前：材料页说明" />
+        <figcaption><b>改前 · 材料页</b>：副标题 70 字 + 筛选说明 + 4 行常驻限制。</figcaption>
+      </figure>
+      <figure>
+        <img src="ui-audit/copy/after/materials.png" alt="改后：材料页" />
+        <figcaption><b>改后 · 材料页</b>：一行副标题，限制收进折叠。</figcaption>
+      </figure>
+    </div>
+
+    <div class="figs two">
+      <figure>
+        <img src="ui-audit/shots/review-desktop.png" alt="改前：复习页说明" />
+        <figcaption><b>改前 · 复习</b>：90 字副标题把「怎么排序、怎么筛选、能不能忽略」全讲了一遍。</figcaption>
+      </figure>
+      <figure>
+        <img src="ui-audit/copy/after/review.png" alt="改后：复习页" />
+        <figcaption><b>改后 · 复习</b>：两行说完，空态也只说会发生什么。</figcaption>
+      </figure>
+    </div>
+
+    <div class="callout">
+      <b>刻意保留的一类：</b>安全边界承诺——「Key 只存在本机」「关闭时不发请求」「本次不计入掌握度」。
+      这些不是自我表扬，是用户需要知道的行为约束，所以只压缩长度，不删内容。
+    </div>
+
+    <p class="sec-sub" style="margin-top:22px">
+      验证：<code>tsc</code> 0 错 · vitest 112/112 · <code>next build</code> 通过 · 截图逐页复查无错位。
+    </p>
+  </section>
+
+  <footer>
+    <span>Lumina · 界面验收 · 2026-10-23</span>
+    <span>截图与度量数据：docs/ui-audit/ · 清单版：docs/UI_ACCEPTANCE_2026-10-23.md</span>
+  </footer>
+</div>
+</body>
+</html>

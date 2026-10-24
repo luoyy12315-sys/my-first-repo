@@ -1,0 +1,13 @@
+[
+  "进入课程按钮 0",
+  "开始学习按钮 1",
+  "首字 53s，完成 86s，回答 830 字",
+  "有练习 true，有档案链接 false",
+  "回答开头 先把「连读与音变」讲透，再检验。 /  / 为什么你\"单词都认识，却听不出来\" /  / 你脑子里存的是书面上的词：not / at / all，三个独立的、边界清晰的词。但真实语流里没有这些边界——说话人不会在词与词之间\"停顿 0.1 秒\"，而是一口气把音吹出来，音和音互相黏合、变形、甚至被吞掉。 /  / 所以问题不在词汇量，而在你期待听到的音，和实际发出的音，根本不是同一串。 /  / 四类最常见的连读与音变 /  / 1. 辅音 + 元音连读（最高频） 前词末尾是辅音、后词开头是元音时，辅音会\"滑\"给后词，拼成一个音节： /  / not at all → 听起来像 no-ta-tall（3 个音节，你熟悉的\"no 塔 tall\"）",
+  "选项 4",
+  "判题 没有答对",
+  "DB attempts [{\"is_correct\":1,\"independent\":1,\"concept_id\":null,\"used_hint\":0,\"viewed_solution\":0},{\"is_correct\":0,\"independent\":1,\"concept_id\":\"c_7aafd227a3be4a6393b2\",\"used_hint\":0,\"viewed_solution\":0}]",
+  "DB evidence [{\"concept_id\":\"c_7aafd227a3be4a6393b2\",\"correct\":0,\"weight\":1,\"note\":\"已有 1 次作答证据，p(掌握)=0.23\"}]",
+  "DB concepts [{\"name\":\"连读与音变\",\"status\":\"learning\",\"introduced_at\":1792817344548},{\"name\":\"弱读与语调重音\",\"status\":\"untouched\",\"introduced_at\":null},{\"name\":\"适应常速语流\",\"status\":\"untouched\",\"introduced_at\":null},{\"name\":\"新闻结构与首句定位\",\"status\":\"untouched\",\"introduced_at\":null},{\"name\":\"新闻高频词汇与数字信息\",\"status\":\"untouched\",\"introduced_at\":null},{\"name\":\"长对话场景与问答定位\",\"status\":\"untouched\",\"introduced_at\":null},{\"name\":\"听力篇章结构与主旨题\",\"status\":\"untouched\",\"introduced_at\":null},{\"name\":\"观点态度判断\",\"status\":\"untouched\",\"introduced_at\":null},{\"name\":\"选项预读与预测\",\"status\":\"untouched\",\"introduced_at\":null},{\"name\":\"同义替换识别\",\"status\":\"untouched\",\"introduced_at\":null},{\"name\":\"边听边记与短时记忆\",\"status\":\"untouched\",\"introduced_at\":null},{\"name\":\"限时套题训练\",\"status\":\"untouched\",\"introduced_at\":null},{\"name\":\"错题归因与复盘\",\"status\":\"untouched\",\"introduced_at\":null}]",
+  "DB usage [{\"ok\":1,\"latency_ms\":45856,\"prompt_tokens\":16163,\"completion_tokens\":1180,\"error\":null},{\"ok\":0,\"latency_ms\":3906,\"prompt_tokens\":0,\"completion_tokens\":0,\"error\":\"AI_ABORTED\"},{\"ok\":1,\"latency_ms\":26839,\"prompt_tokens\":4781,\"completion_tokens\":1192,\"error\":null},{\"ok\":0,\"latency_ms\":1665,\"prompt_tokens\":0,\"completion_tokens\":0,\"error\":\"AI_ABORTED\"},{\"ok\":1,\"latency_ms\":84428,\"prompt_tokens\":13799,\"completion_tokens\":3505,\"error\":null}]"
+]

@@ -3,31 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import {
-  Compass,
-  FolderOpen,
-  History,
-  Library,
-  Repeat2,
-  Route,
-  Settings,
-  Sparkles,
-} from "lucide-react";
+import { Compass, Repeat2, Route, Settings, Sparkles, User } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import { cx } from "@/components/ui/kit";
 import type { SessionSummary } from "@/lib/types";
 
 const NAV = [
   { href: "/", label: "学习", icon: Compass },
-  { href: "/library", label: "学习档案", icon: Library },
-  { href: "/review", label: "复习", icon: Repeat2 },
   { href: "/plan", label: "计划", icon: Route },
-  { href: "/history", label: "历史", icon: History },
-  { href: "/materials", label: "材料", icon: FolderOpen },
+  { href: "/review", label: "复习", icon: Repeat2 },
+  { href: "/me", label: "我的", icon: User },
 ];
-
-// 手机端保留同样的入口（设置仍在右上角齿轮），避免“人在材料页但导航无当前项”。
-const MOBILE_NAV = NAV;
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/";
@@ -62,17 +48,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" || pathname.startsWith("/s/") : pathname.startsWith(href);
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/" || pathname.startsWith("/s/");
+    if (href === "/me") {
+      return ["/me", "/library", "/history", "/materials", "/settings"].some((p) =>
+        pathname.startsWith(p),
+      );
+    }
+    return pathname.startsWith(href);
+  };
 
   return (
     <div className="flex min-h-dvh bg-bg">
+      {/* 键盘用户不必先 Tab 过 12 个侧栏项才能到正文 */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-full focus:bg-accent focus:px-4 focus:py-2 focus:text-[13px] focus:font-medium focus:text-white"
+      >
+        跳到主内容
+      </a>
       {/* ── 桌面侧边栏 ── */}
       <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 flex-col border-r border-line bg-panel/60 backdrop-blur-sm md:flex">
         <div className="px-5 pt-6 pb-4">
           <Link href="/" className="group flex items-baseline gap-2">
             <span className="font-serif text-[21px] font-semibold tracking-tight text-ink">Lumina</span>
-            <span className="text-[11px] tracking-wide text-ink3 transition-colors group-hover:text-ink2">
+            <span className="text-[12px] tracking-wide text-ink3 transition-colors group-hover:text-ink2">
               ／学习工作台
             </span>
           </Link>
@@ -102,7 +102,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="mt-6 min-h-0 flex-1 overflow-y-auto px-3 no-scrollbar">
-          <p className="px-3 pb-2 text-[11px] uppercase tracking-wide text-ink3">最近</p>
+          <p className="px-3 pb-2 text-[12px] uppercase tracking-wide text-ink3">最近</p>
           <div className="flex flex-col gap-0.5">
             {sessions.length === 0 ? (
               <p className="px-3 py-2 text-[12.5px] leading-relaxed text-ink3">
@@ -123,7 +123,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   <span className="block truncate text-[12.8px]">{s.title}</span>
                   {s.planTitle ? (
-                    <span className="mt-0.5 block truncate text-[10px] text-ink3">{s.planTitle}</span>
+                    <span className="mt-0.5 block truncate text-[12px] text-ink3">{s.planTitle}</span>
                   ) : null}
                 </Link>
               ))
@@ -132,8 +132,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="border-t border-line px-3 py-3">
-          <div className="flex items-center justify-between">
-            <ThemeToggle />
+          <div className="flex items-center justify-between gap-2">
             <Link
               href="/settings"
               className={cx(
@@ -146,6 +145,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <Settings className="size-4" />
               设置
             </Link>
+            <ThemeToggle />
           </div>
         </div>
       </aside>
@@ -159,22 +159,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
           <div className="flex shrink-0 items-center gap-1">
             <ThemeToggle compact />
-            <Link
-              href="/settings"
-              className="rounded-full p-2 text-ink2 hover:bg-panel2 hover:text-ink"
-              aria-label="设置"
-            >
-              <Settings className="size-4" />
-            </Link>
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 pb-20 md:pb-0">{children}</main>
+        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 pb-20 outline-none md:pb-0">
+          {children}
+        </main>
       </div>
 
       {/* ── 移动端底部导航 ── */}
       <nav className="fixed inset-x-0 bottom-0 z-30 flex h-[60px] items-stretch border-t border-line bg-panel/95 backdrop-blur-md md:hidden">
-        {MOBILE_NAV.map((item) => {
+        {NAV.map((item) => {
           const active = isActive(item.href);
           const Icon = item.icon;
           return (
@@ -183,7 +178,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cx(
-                "flex flex-1 flex-col items-center justify-center gap-0.5 text-[10.5px]",
+                "flex flex-1 flex-col items-center justify-center gap-0.5 text-[12px]",
                 active ? "text-accent" : "text-ink3",
               )}
             >

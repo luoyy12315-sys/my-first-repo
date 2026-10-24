@@ -64,10 +64,13 @@ export async function GET() {
     } else {
       const last = sessions.find((x) => x.messageCount > 0);
       if (last) {
+        const cleanTitle = last.title.replace(/^(课程|规划|复习)：/, "");
+        const focus =
+          last.mode === "goal" ? last.focusConceptName ?? last.courseTitle ?? cleanTitle : cleanTitle;
         todayPlan = {
           kind: "continue",
-          title: `继续：${last.title}`,
-          reason: "没有到期的复习，接着上次的思路往下走",
+          title: `继续：${focus}`,
+          reason: last.resumeHint ?? "没有到期的复习，接着上次的思路往下走",
           minutes: 10,
           sessionId: last.id,
         };

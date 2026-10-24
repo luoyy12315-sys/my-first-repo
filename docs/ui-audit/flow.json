@@ -1,0 +1,29 @@
+{
+  "log": [
+    {
+      "step": "submit-answer",
+      "hasCorrect": true,
+      "hasSolution": true,
+      "len": 1215
+    },
+    {
+      "step": "view-solution",
+      "marksNonIndependent": true
+    },
+    {
+      "step": "retry",
+      "ok": true
+    },
+    {
+      "step": "chat",
+      "url": "http://127.0.0.1:3211/s/s_fc0c9b7ea87d4ab9b94e",
+      "chars": 279,
+      "hasModelTag": true
+    },
+    {
+      "step": "persist",
+      "kept": true
+    }
+  ],
+  "errs": []
+}

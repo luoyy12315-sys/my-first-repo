@@ -71,7 +71,7 @@ function Card({ src, index }: { src: SourceDTO; index: number }) {
           {meta.page ? <Badge tone="neutral">第 {meta.page} 页</Badge> : null}
         </div>
 
-        <p className="mt-0.5 text-[11px] text-ink3">
+        <p className="mt-0.5 text-[12px] text-ink3">
           {isWeb ? (
             <>
               {src.domain ?? "未知站点"}
@@ -86,7 +86,7 @@ function Card({ src, index }: { src: SourceDTO; index: number }) {
         </p>
 
         {src.snippet ? (
-          <p className="mt-1.5 line-clamp-3 text-[11.5px] leading-relaxed text-ink2">{src.snippet}</p>
+          <p className="mt-1.5 line-clamp-3 text-[12px] leading-relaxed text-ink2">{src.snippet}</p>
         ) : null}
 
         <div className="mt-1.5 flex items-center gap-2">
@@ -95,14 +95,14 @@ function Card({ src, index }: { src: SourceDTO; index: number }) {
               href={src.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[11.5px] text-accentink hover:underline"
+              className="inline-flex items-center gap-1 text-[12px] text-accentink hover:underline"
             >
               打开原页 <ExternalLink className="size-3" />
             </a>
           ) : meta.page || src.title ? (
             <Link
               href={`/materials?chunk=${encodeURIComponent(String((src.meta as { chunkId?: string })?.chunkId ?? ""))}`}
-              className="inline-flex items-center gap-1 text-[11.5px] text-accentink hover:underline"
+              className="inline-flex items-center gap-1 text-[12px] text-accentink hover:underline"
             >
               打开材料 <BookOpen className="size-3" />
             </Link>
@@ -121,7 +121,7 @@ function Card({ src, index }: { src: SourceDTO; index: number }) {
 
       {menuOpen ? (
         <div className="absolute right-2 top-9 z-20 w-36 overflow-hidden rounded-lg border border-line bg-panel shadow-[0_10px_24px_rgba(0,0,0,0.14)]">
-          <p className="border-b border-line px-2.5 py-1.5 text-[11px] text-ink3">这条来源有问题</p>
+          <p className="border-b border-line px-2.5 py-1.5 text-[12px] text-ink3">这条来源有问题</p>
           {FEEDBACK_KINDS.map((k) => (
             <button
               key={k.value}
@@ -135,7 +135,7 @@ function Card({ src, index }: { src: SourceDTO; index: number }) {
         </div>
       ) : null}
 
-      <span className="absolute -left-1.5 top-1.5 hidden text-[10px] text-ink3 group-hover/src:inline">
+      <span className="absolute -left-1.5 top-1.5 hidden text-[12px] text-ink3 group-hover/src:inline">
         [{index + 1}]
       </span>
     </div>
@@ -153,17 +153,17 @@ export default function SourceCards({
 }) {
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-[11.5px] text-ink3">
+      <div className="flex items-center gap-2 text-[12px] text-ink3">
         <Spinner /> 正在查证网络来源…
       </div>
     );
   }
   if (!sources || sources.length === 0) {
-    return status ? <p className="text-[11.5px] text-ink3">{status}</p> : null;
+    return status ? <p className="text-[12px] text-ink3">{status}</p> : null;
   }
   return (
     <div className="flex flex-col gap-1.5">
-      <p className="text-[11.5px] text-ink3">参考了 {sources.length} 个来源</p>
+      <p className="text-[12px] text-ink3">参考了 {sources.length} 个来源</p>
       {sources.map((s, i) => (
         <div key={s.id} className={cx("flex gap-2", i > 0 && "")}>
           <div className="min-w-0 flex-1">

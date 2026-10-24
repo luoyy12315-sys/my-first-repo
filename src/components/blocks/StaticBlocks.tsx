@@ -2,6 +2,7 @@
 
 import Markdown from "@/components/Markdown";
 import { CheckCircle2 } from "lucide-react";
+import { usePlans } from "@/components/PlanSelect";
 
 export function TableBlock({
   payload,
@@ -70,28 +71,48 @@ export function StepsBlock({
     items?: { title?: string; rationale?: string }[];
     note?: string;
     planId?: string;
+    draft?: boolean;
   };
 }) {
   const steps: StepLike[] = Array.isArray(payload.steps) && payload.steps.length
     ? payload.steps
     : (payload.items ?? []).map((it) => ({ title: it?.title ?? "（未命名步骤）", detail: it?.rationale }));
 
+  const { plans } = usePlans();
+  const plan = payload.planId ? plans.find((p) => p.id === payload.planId) ?? null : null;
+  // 草稿块会一直留在历史里；确认之后不能再显示「待确认」，否则和计划真实状态矛盾。
+  const isDraft = plan ? plan.status === "draft" : Boolean(payload.draft);
+  const confirmed = Boolean(plan && plan.status !== "draft");
+  const title = confirmed ? (payload.title ?? "").replace(/^计划草稿：/, "") : payload.title ?? "步骤";
+
   if (!steps.length) return <EmptyBlock text="这条步骤内容为空。" />;
 
   return (
     <div className="rounded-2xl border border-line bg-panel p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h4 className="font-serif text-[15px] text-ink">{payload.title ?? "步骤"}</h4>
+        <h4 className="font-serif text-[15px] text-ink">{title || "步骤"}</h4>
         {payload.planId ? (
-          <a href="/plan" className="text-[12px] text-accentink underline underline-offset-2">
-            在计划中编辑
+          <a
+            href={`/plan/${payload.planId}`}
+            className="shrink-0 text-[12px] text-accentink underline underline-offset-2"
+          >
+            {isDraft ? "查看并确认计划" : "查看计划"}
           </a>
         ) : null}
       </div>
+      {isDraft ? (
+        <p className="mb-3 rounded-lg border border-warn/30 bg-warnsoft/40 px-2.5 py-1.5 text-[12px] text-ink">
+          这是待确认的草稿，确认课程与知识点后才会进入正式学习。
+        </p>
+      ) : confirmed ? (
+        <p className="mb-3 flex items-center gap-1.5 rounded-lg border border-ok/25 bg-oksoft/40 px-2.5 py-1.5 text-[12px] text-ok">
+          <CheckCircle2 className="size-3.5" /> 计划已确认，可以开始学习。
+        </p>
+      ) : null}
       <ol className="relative flex flex-col gap-3 pl-1">
         {steps.map((s, i) => (
           <li key={i} className="flex gap-3">
-            <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border border-line bg-panel2 text-[11.5px] font-medium tabular-nums text-ink2">
+            <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border border-line bg-panel2 text-[12px] font-medium tabular-nums text-ink2">
               {i + 1}
             </span>
             <div className="min-w-0">
@@ -145,7 +166,7 @@ export function NoteBlock({
         <SummaryList label="仍需巩固" items={payload.needsWork} tone="warn" />
         <SummaryList label="下一步" items={payload.nextSteps} tone="accent" />
       </div>
-      <p className="mt-3 text-[11px] leading-relaxed text-ink3">
+      <p className="mt-3 text-[12px] leading-relaxed text-ink3">
         以上是模型对本次对话的总结；是否掌握以「学习档案」里的作答证据为准。
       </p>
       {payload.resumeHint ? (
@@ -174,7 +195,7 @@ function SummaryList({
   return (
     <div>
       <p
-        className={`mb-1 text-[11px] uppercase tracking-wide ${
+        className={`mb-1 text-[12px] uppercase tracking-wide ${
           tone === "ok" ? "text-ok" : tone === "warn" ? "text-warn" : tone === "accent" ? "text-accentink" : "text-ink3"
         }`}
       >

@@ -2,17 +2,29 @@ import { getDb, jsonParse, now, uid } from "./index";
 import { normalizeText } from "@/lib/blocks/schema";
 import { applyEvidence, type ConceptState } from "@/lib/learning/mastery";
 import { reviewGradeFromAttempt, scheduleNext, type ScheduleResult } from "@/lib/learning/scheduler";
+import {
+  conceptDisplayStatus,
+  courseProgressOf,
+  courseStatusOf,
+  planProgressOf,
+  type ConceptLike,
+} from "@/lib/learning/progress";
 import type {
   BlockDTO,
   BlockKind,
   ConceptDTO,
   ConceptStatus,
+  CourseConceptDTO,
+  CourseStatus,
   ExercisePublic,
   ExerciseType,
+  LearningMode,
   MaterialDTO,
   MessageDTO,
   MessagePart,
   PlanDTO,
+  PlanItemDTO,
+  PlanStatus,
   ReviewItemDTO,
   SessionSummary,
   EvidenceDTO,
@@ -205,11 +217,17 @@ export function deleteAiModel(id: string): { deleted: boolean; promotedId: strin
 }
 
 export function recordAiModelTest(id: string, ok: boolean, ms: number, error?: string | null) {
+  // 失败时保留上一次成功的时间与耗时：否则「上次什么时候还能用」会被一次失败抹掉。
   getDb()
     .prepare(
-      "update ai_models set last_ok_at = ?, last_test_ms = ?, last_error = ?, updated_at = updated_at where id = ?",
+      `update ai_models set
+         last_ok_at = case when ? = 1 then ? else last_ok_at end,
+         last_test_ms = case when ? = 1 then ? else last_test_ms end,
+         last_error = ?,
+         updated_at = updated_at
+       where id = ?`,
     )
-    .run(ok ? now() : null, ok ? ms : null, ok ? null : (error ?? "连接失败").slice(0, 300), id);
+    .run(ok ? 1 : 0, now(), ok ? 1 : 0, ms, ok ? null : (error ?? "连接失败").slice(0, 300), id);
 }
 
 /** 会话绑定模型；传 null 表示跟随默认 */
@@ -247,7 +265,7 @@ export function getSessionModelId(sessionId: string): string | null {
 export function createSession(
   opts: {
     title?: string;
-    mode?: "free" | "goal" | "review";
+    mode?: LearningMode;
     goalId?: string;
     planId?: string | null;
     planItemId?: string | null;
@@ -265,7 +283,7 @@ export function createSession(
   ).run(
     id,
     opts.title ?? (opts.mode === "review" ? "复习" : "新的学习"),
-    opts.mode ?? "free",
+    opts.mode ?? "infinite",
     opts.goalId ?? null,
     opts.planId ?? null,
     opts.planItemId ?? null,
@@ -294,14 +312,19 @@ export function getSession(id: string) {
   const planTitle = planId
     ? (getDb().prepare("select title from plans where id = ?").get(planId) as { title: string } | undefined)?.title ?? null
     : null;
+  const planItemId = (row.plan_item_id as string) ?? null;
+  const courseTitle = planItemId
+    ? (getDb().prepare("select title from plan_items where id = ?").get(planItemId) as { title: string } | undefined)?.title ?? null
+    : null;
   return {
     id: String(row.id),
     title: String(row.title),
-    mode: row.mode as "free" | "goal" | "review",
+    mode: row.mode as LearningMode,
     goalId: (row.goal_id as string) ?? null,
     planId,
     planTitle,
-    planItemId: (row.plan_item_id as string) ?? null,
+    planItemId,
+    courseTitle,
     focusConceptId,
     reviewItemId: (row.review_item_id as string) ?? null,
     focusConceptName: focusConcept?.name ?? null,
@@ -319,8 +342,9 @@ export function getSession(id: string) {
 export function listSessions(limit = 30): SessionSummary[] {
   const rows = getDb()
     .prepare(
-      `select s.*, p.title as plan_title from sessions s
+      `select s.*, p.title as plan_title, pi.title as course_title from sessions s
          left join plans p on p.id = s.plan_id
+         left join plan_items pi on pi.id = s.plan_item_id
         where s.archived = 0
         order by datetime(s.updated_at/1000,'unixepoch') desc limit ?`,
     )
@@ -328,14 +352,21 @@ export function listSessions(limit = 30): SessionSummary[] {
   return rows.map((r) => ({
     id: String(r.id),
     title: String(r.title),
-    mode: r.mode as "free" | "goal" | "review",
+    mode: r.mode as LearningMode,
     modelId: (r.model_id as string) ?? null,
     planId: (r.plan_id as string) ?? null,
     planTitle: (r.plan_title as string) ?? null,
+    planItemId: (r.plan_item_id as string) ?? null,
+    courseTitle: (r.course_title as string) ?? null,
     updatedAt: Number(r.updated_at),
     messageCount: Number(r.message_count ?? 0),
     summary: (r.summary as string) ?? null,
     resumeHint: (r.resume_hint as string) ?? null,
+    focusConceptId: (r.focus_concept_id as string) ?? null,
+    focusConceptName: (r.focus_concept_id as string)
+      ? (getConcept(String(r.focus_concept_id))?.name ?? null)
+      : null,
+    reviewItemId: (r.review_item_id as string) ?? null,
     topics: getDb()
       .prepare(
         "select t.id, t.name from session_topics st join topics t on t.id = st.topic_id where st.session_id = ?",
@@ -823,19 +854,40 @@ export function ensureConcept(opts: {
   topicId: string;
   name: string;
   definition?: string;
+  /** 唯一所属课程；已有归属时不会被另一门课程悄悄抢走 */
+  courseId?: string | null;
   /** 由讲解/出题登记：标记为已接触，避免被当成“从未学习”的空壳清理 */
   introduced?: boolean;
-}): { id: string; created: boolean; topicId: string } {
+}): {
+  id: string;
+  created: boolean;
+  topicId: string;
+  courseId: string | null;
+  courseConflict: boolean;
+} {
   const db = getDb();
   const key = normalizeText(opts.name);
   // 全局按 canonical_key 去重：同一个概念换一个主题再出现时，复用原档案，
   // 避免「机会成本」在「经济学基础」和「未分类」各建一份、掌握度分裂。
   const existing = db
     .prepare(
-      "select id, topic_id from concepts where canonical_key = ? order by evidence_count desc, created_at asc limit 1",
+      "select id, topic_id, course_id from concepts where canonical_key = ? order by evidence_count desc, created_at asc limit 1",
     )
-    .get(key) as { id: string; topic_id: string } | undefined;
+    .get(key) as { id: string; topic_id: string; course_id: string | null } | undefined;
   if (existing) {
+    let courseConflict = false;
+    if (opts.courseId) {
+      if (!existing.course_id) {
+        db.prepare("update concepts set course_id = ?, updated_at = ? where id = ?").run(
+          opts.courseId,
+          now(),
+          existing.id,
+        );
+        existing.course_id = opts.courseId;
+      } else if (existing.course_id !== opts.courseId) {
+        courseConflict = true;
+      }
+    }
     if (opts.definition) {
       db.prepare("update concepts set definition = coalesce(nullif(definition,''), ?), updated_at = ? where id = ?").run(
         opts.definition,
@@ -848,15 +900,22 @@ export function ensureConcept(opts: {
         "update concepts set introduced_at = coalesce(introduced_at, ?), updated_at = ? where id = ?",
       ).run(now(), now(), existing.id);
     }
-    return { id: existing.id, created: false, topicId: existing.topic_id };
+    return {
+      id: existing.id,
+      created: false,
+      topicId: existing.topic_id,
+      courseId: existing.course_id,
+      courseConflict,
+    };
   }
   const id = uid("c_");
   const t = now();
   db.prepare(
-    "insert into concepts (id, topic_id, name, definition, canonical_key, introduced_at, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?)",
+    "insert into concepts (id, topic_id, course_id, name, definition, canonical_key, introduced_at, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
   ).run(
     id,
     opts.topicId,
+    opts.courseId ?? null,
     opts.name,
     opts.definition ?? null,
     key,
@@ -864,7 +923,13 @@ export function ensureConcept(opts: {
     t,
     t,
   );
-  return { id, created: true, topicId: opts.topicId };
+  return {
+    id,
+    created: true,
+    topicId: opts.topicId,
+    courseId: opts.courseId ?? null,
+    courseConflict: false,
+  };
 }
 
 export function addConceptEdge(fromId: string, toId: string, kind: "prereq" | "related" = "prereq") {
@@ -882,7 +947,8 @@ function conceptRowToDTO(r: Record<string, unknown>): ConceptDTO {
       "select c.id, c.name, c.status from concept_edges e join concepts c on c.id = e.from_id where e.to_id = ?",
     )
     .all(String(r.id)) as { id: string; name: string; status: ConceptStatus }[];
-  return {
+  const introducedAt = (r.introduced_at as number) ?? null;
+  const concept = {
     id: String(r.id),
     topicId: String(r.topic_id),
     topicName: String(r.topic_name ?? ""),
@@ -901,30 +967,46 @@ function conceptRowToDTO(r: Record<string, unknown>): ConceptDTO {
     lapses: Number(r.lapses ?? 0),
     nextReviewAt: (r.next_review_at as number) ?? null,
     lastStudiedAt: (r.last_studied_at as number) ?? null,
-    introducedAt: (r.introduced_at as number) ?? null,
+    introducedAt,
+  } satisfies ConceptLike & Omit<ConceptDTO, "displayStatus" | "courseId" | "courseTitle" | "planId" | "planTitle" | "prerequisites">;
+  return {
+    ...concept,
+    displayStatus: conceptDisplayStatus(concept),
+    courseId: (r.course_id as string) ?? null,
+    courseTitle: (r.course_title as string) ?? null,
+    planId: (r.plan_id as string) ?? null,
+    planTitle: (r.plan_title as string) ?? null,
     prerequisites: prereqs,
   };
 }
 
 export function getConcept(id: string): ConceptDTO | null {
   const r = getDb()
-    .prepare("select c.*, t.name as topic_name from concepts c join topics t on t.id = c.topic_id where c.id = ?")
+    .prepare(
+      `select c.*, t.name as topic_name, pi.title as course_title, p.id as plan_id, p.title as plan_title
+         from concepts c
+         join topics t on t.id = c.topic_id
+         left join plan_items pi on pi.id = c.course_id
+         left join plans p on p.id = pi.plan_id
+        where c.id = ?`,
+    )
     .get(id) as Record<string, unknown> | undefined;
   return r ? conceptRowToDTO(r) : null;
 }
 
 export function findConceptByName(name: string, topicId?: string): ConceptDTO | null {  const key = normalizeText(name);
   const db = getDb();
+  const base = `select c.*, t.name as topic_name, pi.title as course_title, p.id as plan_id, p.title as plan_title
+    from concepts c
+    join topics t on t.id = c.topic_id
+    left join plan_items pi on pi.id = c.course_id
+    left join plans p on p.id = pi.plan_id`;
   const r = (topicId
     ? db
-        .prepare(
-          "select c.*, t.name as topic_name from concepts c join topics t on t.id = c.topic_id where t.id = ? and c.canonical_key = ?",
-        )
+        .prepare(`${base} where t.id = ? and c.canonical_key = ?`)
         .get(topicId, key)
     : db
-        .prepare(
-          "select c.*, t.name as topic_name from concepts c join topics t on t.id = c.topic_id where c.canonical_key = ? order by c.evidence_count desc, c.created_at asc limit 1",
-        )
+        .prepare(`${base} where c.canonical_key = ? order by c.evidence_count desc, c.created_at asc limit 1`)
         .get(key)) as Record<string, unknown> | undefined;
   return r ? conceptRowToDTO(r) : null;
 }
@@ -978,8 +1060,8 @@ export function mergeConceptsInto(survivorId: string, duplicateIds: string[]): {
 
   db.transaction(() => {
     for (const dupId of ids) {
-      const dup = db.prepare("select id, definition from concepts where id = ?").get(dupId) as
-        | { id: string; definition: string | null }
+      const dup = db.prepare("select id, definition, course_id from concepts where id = ?").get(dupId) as
+        | { id: string; definition: string | null; course_id: string | null }
         | undefined;
       if (!dup) continue;
 
@@ -988,6 +1070,12 @@ export function mergeConceptsInto(survivorId: string, duplicateIds: string[]): {
         db.prepare(
           "update concepts set definition = coalesce(nullif(definition, ''), ?), updated_at = ? where id = ?",
         ).run(dup.definition, now(), survivorId);
+      }
+      // survivor 尚未归属课程时，继承 duplicate 的唯一课程归属
+      if (dup.course_id) {
+        db.prepare(
+          "update concepts set course_id = coalesce(course_id, ?), updated_at = ? where id = ?",
+        ).run(dup.course_id, now(), survivorId);
       }
 
       // 未处理的复习条目丢弃，已处理的历史保留冷却
@@ -1050,16 +1138,17 @@ export function mergeDuplicateConcepts(): { groups: number; merged: number } {
 }
 
 export function listConcepts(opts: { topicId?: string; limit?: number } = {}): ConceptDTO[] {
+  const base = `select c.*, t.name as topic_name, pi.title as course_title, p.id as plan_id, p.title as plan_title
+      from concepts c
+      join topics t on t.id = c.topic_id
+      left join plan_items pi on pi.id = c.course_id
+      left join plans p on p.id = pi.plan_id`;
   const rows = (opts.topicId
     ? getDb()
-        .prepare(
-          "select c.*, t.name as topic_name from concepts c join topics t on t.id = c.topic_id where c.topic_id = ? order by c.updated_at desc",
-        )
+        .prepare(`${base} where c.topic_id = ? order by c.updated_at desc`)
         .all(opts.topicId)
     : getDb()
-        .prepare(
-          "select c.*, t.name as topic_name from concepts c join topics t on t.id = c.topic_id order by c.updated_at desc limit ?",
-        )
+        .prepare(`${base} order by c.updated_at desc limit ?`)
         .all(opts.limit ?? 200)) as Record<string, unknown>[];
   return rows.map(conceptRowToDTO);
 }
@@ -1079,19 +1168,23 @@ export function listTopics() {
  */
 export function countPlanItemsForConcept(conceptId: string): number {
   const r = getDb()
-    .prepare("select count(*) as n from plan_items where concept_id = ?")
-    .get(conceptId) as { n: number };
+    .prepare(
+      `select
+         (select count(*) from concepts where id = ? and course_id is not null) +
+         (select count(*) from plan_items where concept_id = ?) as n`,
+    )
+    .get(conceptId, conceptId) as { n: number };
   return Number(r.n);
 }
 
 export function deleteConcept(id: string): boolean {
   const db = getDb();
-  const row = db.prepare("select id, topic_id from concepts where id = ?").get(id) as
-    | { id: string; topic_id: string }
+  const row = db.prepare("select id, topic_id, course_id from concepts where id = ?").get(id) as
+    | { id: string; topic_id: string; course_id: string | null }
     | undefined;
   if (!row) return false;
-  // 被计划步骤引用的知识点不能直接删除；先改绑/合并，否则计划会指向不存在的数据
-  if (countPlanItemsForConcept(id) > 0) return false;
+  // 被课程引用的知识点不能直接删除；先从课程移除或合并，否则课程结构会指向不存在的数据
+  if (row.course_id || countPlanItemsForConcept(id) > 0) return false;
   db.transaction(() => {
     db.prepare("update exercises set concept_id = null where concept_id = ?").run(id);
     db.prepare("update attempts set concept_id = null where concept_id = ?").run(id);
@@ -1101,7 +1194,7 @@ export function deleteConcept(id: string): boolean {
   return true;
 }
 
-/** 批量清理"从没被学过"的知识点：证据数为 0（通常是 AI 讲解时顺手登记、用户并未练习） */
+/** 批量清理"从未归属课程、也从未被学过"的知识点：通常是旧版登记留下的空壳 */
 export function deleteEmptyConcepts(): number {
   const db = getDb();
   const rows = db
@@ -1109,6 +1202,7 @@ export function deleteEmptyConcepts(): number {
       `select id, topic_id from concepts
         where evidence_count = 0
           and introduced_at is null
+          and course_id is null
           and id not in (select concept_id from attempts where concept_id is not null)
           and id not in (select concept_id from plan_items where concept_id is not null)`,
     )
@@ -1142,6 +1236,7 @@ export function countEmptyConcepts(): number {
       `select count(*) as n from concepts
         where evidence_count = 0
           and introduced_at is null
+          and course_id is null
           and id not in (select concept_id from attempts where concept_id is not null)
           and id not in (select concept_id from plan_items where concept_id is not null)`,
     )
@@ -1196,6 +1291,7 @@ export function listConceptEvidence(conceptId: string): EvidenceDTO[] {
     score: r.score === null ? null : Number(r.score),
     independent: Number(r.independent) === 1,
     hintUsed: Number(r.hint_used) === 1,
+    weight: Number(r.weight ?? 1),
     voided: Number(r.voided) === 1,
     voidReason: (r.void_reason as string) ?? null,
     note: (r.note as string) ?? null,
@@ -1948,189 +2044,256 @@ export function findPlanByTitle(title: string): PlanDTO | null {
   return hit ? getPlan(hit.id) : null;
 }
 
-/** 把新步骤补进已有路线：标题相同的跳过，其余追加到最后 */
-export function appendPlanItems(
+export interface CourseInput {
+  title: string;
+  description?: string;
+  concepts: { name: string; definition?: string }[];
+}
+
+export interface PlanCreateInput {
+  goalId?: string | null;
+  title: string;
+  note?: string;
+  status?: PlanStatus;
+  courses: CourseInput[];
+}
+
+interface RawCourseConceptRow {
+  id: string;
+  name: string;
+  status: ConceptStatus;
+  evidence_count: number;
+  introduced_at: number | null;
+  next_review_at: number | null;
+  created_at: number;
+}
+
+function rawCourseConcepts(courseId: string): RawCourseConceptRow[] {
+  return getDb()
+    .prepare(
+      `select id, name, status, evidence_count, introduced_at, next_review_at, created_at
+         from concepts where course_id = ? order by created_at asc, rowid asc`,
+    )
+    .all(courseId) as RawCourseConceptRow[];
+}
+
+function conceptLikeOf(r: RawCourseConceptRow): ConceptLike {
+  return {
+    status: r.status,
+    evidenceCount: r.evidence_count,
+    introducedAt: r.introduced_at,
+    nextReviewAt: r.next_review_at,
+  };
+}
+
+function insertCourse(
   planId: string,
-  items: { title: string; rationale?: string; conceptId?: string | null }[],
-): PlanDTO | null {
+  course: CourseInput,
+  orderIndex: number,
+  topicId: string,
+): { id: string; conflicts: string[] } {
+  const db = getDb();
+  const id = uid("pi_");
+  const t = now();
+  db.prepare(
+    "insert into plan_items (id, plan_id, concept_id, title, rationale, order_index, status, created_at, updated_at) values (?, ?, null, ?, ?, ?, 'pending', ?, ?)",
+  ).run(id, planId, course.title, course.description ?? null, orderIndex, t, t);
+  const conflicts: string[] = [];
+  for (const c of course.concepts ?? []) {
+    const result = ensureConcept({
+      topicId,
+      name: c.name,
+      definition: c.definition,
+      courseId: id,
+    });
+    if (result.courseConflict) conflicts.push(c.name);
+  }
+  return { id, conflicts };
+}
+
+function planTopicId(title: string, note?: string | null) {
+  return ensureTopic(title, note?.slice(0, 200)).id;
+}
+
+function touchPlan(planId: string) {
+  getDb().prepare("update plans set updated_at = ? where id = ?").run(now(), planId);
+}
+
+/**
+ * 追加课程到已有计划：同名课程只补新知识点，不重复创建课程。
+ * 这是 AI 在规划阶段重复生成同一目标时的幂等入口。
+ */
+export function appendPlanCourses(planId: string, courses: CourseInput[]): PlanDTO | null {
   const plan = getPlan(planId);
   if (!plan) return null;
-  const existing = new Map(plan.items.map((i) => [i.title.trim().toLowerCase(), i]));
-  const fresh = items.filter((i) => !existing.has(i.title.trim().toLowerCase()));
   const db = getDb();
-  const t = now();
+  const topicId = planTopicId(plan.title, plan.note);
+  const existing = new Map(plan.items.map((item) => [item.title.trim().toLowerCase(), item]));
+  const seen = new Set<string>();
   let next = plan.items.length;
+
   db.transaction(() => {
-    // 老步骤标题已存在时，把后来补上的概念绑定写进去
-    for (const it of items) {
-      const match = existing.get(it.title.trim().toLowerCase());
-      if (match && it.conceptId && !match.conceptId) {
-        db.prepare("update plan_items set concept_id = ?, updated_at = ? where id = ?").run(it.conceptId, t, match.id);
+    for (const course of courses) {
+      const key = course.title.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      const match = existing.get(key);
+      if (match) {
+        for (const c of course.concepts ?? []) {
+          ensureConcept({
+            topicId,
+            name: c.name,
+            definition: c.definition,
+            courseId: match.id,
+          });
+        }
+      } else {
+        insertCourse(planId, course, next++, topicId);
       }
     }
-    if (!fresh.length) {
-      db.prepare("update plans set updated_at = ? where id = ?").run(t, planId);
-      return;
-    }
-    const stmt = db.prepare(
-      "insert into plan_items (id, plan_id, concept_id, title, rationale, order_index, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?)",
-    );
-    for (const it of fresh) {
-      stmt.run(uid("pi_"), planId, it.conceptId ?? null, it.title, it.rationale ?? null, next++, t, t);
-    }
-    db.prepare("update plans set updated_at = ? where id = ?").run(t, planId);
+    touchPlan(planId);
   })();
   return getPlan(planId);
 }
 
-export function createPlan(opts: {
-  goalId?: string | null;
-  title: string;
-  note?: string;
-  items: { title: string; rationale?: string; conceptId?: string | null }[];
-}): PlanDTO {
+export function createPlan(opts: PlanCreateInput): PlanDTO {
   const db = getDb();
   const id = uid("p_");
   const t = now();
+  const topicId = planTopicId(opts.title, opts.note);
   db.transaction(() => {
     db.prepare(
-      "insert into plans (id, goal_id, title, note, created_at, updated_at) values (?, ?, ?, ?, ?, ?)",
-    ).run(id, opts.goalId ?? null, opts.title, opts.note ?? null, t, t);
-    const stmt = db.prepare(
-      "insert into plan_items (id, plan_id, concept_id, title, rationale, order_index, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?)",
-    );
-    opts.items.forEach((it, i) => {
-      stmt.run(uid("pi_"), id, it.conceptId ?? null, it.title, it.rationale ?? null, i, t, t);
+      "insert into plans (id, goal_id, title, note, status, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?)",
+    ).run(id, opts.goalId ?? null, opts.title, opts.note ?? null, opts.status ?? "draft", t, t);
+    opts.courses.forEach((course, i) => {
+      insertCourse(id, course, i, topicId);
     });
   })();
   return getPlan(id)!;
 }
 
-export const PLAN_STEP_REQUIRED_CONCEPTS = 3;
-
-/** 本步已经独立答对的不同知识点（只认未作废、未看解析、未用提示的正确证据） */
-function verifiedConceptsForPlanItem(planItemId: string): string[] {
-  return (
-    getDb()
-      .prepare(
-        `select distinct c.name
-           from evidence e
-           join sessions s on s.id = e.session_id
-           join concepts c on c.id = e.concept_id
-          where s.plan_item_id = ?
-            and e.voided = 0
-            and e.independent = 1
-            and e.correct = 1
-            and e.weight > 0
-            and e.concept_id is not null
-          order by c.name`,
-      )
-      .all(planItemId) as { name: string }[]
-  ).map((r) => r.name);
-}
-
 /**
- * 按“本步至少 N 个不同知识点独立答对”的规则同步计划步骤。
- * 返回当前进度；达标时自动把步骤标为 done。
+ * 按课程内的真实知识点状态更新课程状态。
+ * 不再使用「本步随便答对 3 个概念就算完成」的旧规则。
  */
 export function syncPlanItemCompletion(sessionId: string): {
   planItemId: string;
-  verified: number;
-  required: number;
+  mastered: number;
+  total: number;
   completed: boolean;
 } | null {
   const db = getDb();
   const session = db
     .prepare("select id, plan_id, plan_item_id, mode from sessions where id = ?")
     .get(sessionId) as
-    | { id: string; plan_id: string | null; plan_item_id: string | null; mode: string }
+    | { id: string; plan_id: string | null; plan_item_id: string | null; mode: LearningMode }
     | undefined;
-  if (!session?.plan_id || session.mode === "review") return null;
+  if (!session?.plan_id || !session.plan_item_id || session.mode === "infinite") return null;
 
-  let planItemId = session.plan_item_id;
-  if (!planItemId) {
-    const first = db
-      .prepare(
-        `select id from plan_items
-          where plan_id = ? and status in ('in_progress', 'pending')
-          order by case when status = 'in_progress' then 0 else 1 end, order_index asc
-          limit 1`,
-      )
-      .get(session.plan_id) as { id: string } | undefined;
-    if (!first) return null;
-    planItemId = first.id;
-    db.prepare("update sessions set plan_item_id = ?, updated_at = ? where id = ?").run(
-      planItemId,
-      now(),
-      sessionId,
-    );
-  }
-
-  const item = db.prepare("select status from plan_items where id = ?").get(planItemId) as
-    | { status: string }
+  const plan = db.prepare("select status from plans where id = ?").get(session.plan_id) as
+    | { status: PlanStatus }
     | undefined;
-  if (!item) return null;
-  const names = verifiedConceptsForPlanItem(planItemId);
-  const verified = names.length;
-  const required = PLAN_STEP_REQUIRED_CONCEPTS;
-  let completed = false;
+  // 草稿计划不产生学习进度，必须先由用户确认
+  if (!plan || plan.status === "draft") return null;
 
-  if (verified >= required && item.status !== "done") {
-    db.transaction(() => {
-      db.prepare("update plan_items set status = 'done', updated_at = ? where id = ?").run(now(), planItemId);
-      db.prepare("update plans set updated_at = ? where id = ?").run(now(), session.plan_id);
-    })();
-    completed = true;
-  } else if (verified > 0 && item.status === "pending") {
-    db.prepare("update plan_items set status = 'in_progress', updated_at = ? where id = ?").run(
+  const item = db.prepare("select status from plan_items where id = ?").get(session.plan_item_id) as
+    | { status: "pending" | "in_progress" | "done" | "skipped" }
+    | undefined;
+  if (!item || item.status === "skipped") return null;
+
+  const raw = rawCourseConcepts(session.plan_item_id);
+  const likes = raw.map(conceptLikeOf);
+  const status = courseStatusOf(item.status, likes);
+  const progress = courseProgressOf(likes);
+  const stored = status === "unconfigured" ? "pending" : status;
+  db.transaction(() => {
+    db.prepare("update plan_items set status = ?, updated_at = ? where id = ?").run(
+      stored,
       now(),
-      planItemId,
+      session.plan_item_id,
     );
-    db.prepare("update plans set updated_at = ? where id = ?").run(now(), session.plan_id);
-  }
-
-  return { planItemId, verified, required, completed };
+    touchPlan(session.plan_id!);
+  })();
+  return {
+    planItemId: session.plan_item_id,
+    mastered: progress.mastered,
+    total: progress.total,
+    completed: status === "done",
+  };
 }
 
 export function getPlan(id: string): PlanDTO | null {
   const db = getDb();
   const p = db.prepare("select * from plans where id = ?").get(id) as Record<string, unknown> | undefined;
   if (!p) return null;
-  const items = db
-    .prepare(
-      `select pi.*, c.name as concept_name, c.status as concept_status
-         from plan_items pi left join concepts c on c.id = pi.concept_id
-        where pi.plan_id = ? order by pi.order_index asc`,
-    )
+  const nowTs = Date.now();
+  const rows = db
+    .prepare("select * from plan_items where plan_id = ? order by order_index asc")
     .all(id) as Record<string, unknown>[];
+
+  const courses = rows.map((r) => {
+    const raw = rawCourseConcepts(String(r.id));
+    const likes = raw.map(conceptLikeOf);
+    const status = courseStatusOf(
+      r.status as "pending" | "in_progress" | "done" | "skipped",
+      likes,
+      nowTs,
+    );
+    const progress = courseProgressOf(likes, nowTs);
+    const concepts: CourseConceptDTO[] = raw.map((c) => ({
+      id: c.id,
+      name: c.name,
+      status: c.status,
+      displayStatus: conceptDisplayStatus(conceptLikeOf(c), nowTs),
+      introducedAt: c.introduced_at,
+    }));
+    const next =
+      raw.find((c) => {
+        const s = conceptDisplayStatus(conceptLikeOf(c), nowTs);
+        return s === "learning" || s === "review";
+      }) ??
+      raw.find((c) => conceptDisplayStatus(conceptLikeOf(c), nowTs) !== "mastered") ??
+      null;
+    const dto: PlanItemDTO = {
+      id: String(r.id),
+      planId: String(r.plan_id),
+      title: String(r.title),
+      description: (r.rationale as string) ?? null,
+      orderIndex: Number(r.order_index),
+      status,
+      concepts,
+      progress,
+      nextConceptId: next?.id ?? null,
+      nextConceptName: next?.name ?? null,
+      unconfigured: raw.length === 0,
+    };
+    return { dto, status, likes };
+  });
+
+  const progress = planProgressOf(
+    courses.map((c) => ({ status: c.status, concepts: c.likes })),
+    nowTs,
+  );
+  const current =
+    courses.find((c) => c.status === "in_progress") ??
+    courses.find((c) => c.status === "pending" && c.dto.concepts.length > 0) ??
+    courses.find((c) => c.status === "unconfigured") ??
+    null;
+
   return {
     id: String(p.id),
     goalId: (p.goal_id as string) ?? null,
     title: String(p.title),
     note: (p.note as string) ?? null,
-    status: String(p.status),
+    status: p.status as PlanStatus,
     createdAt: Number(p.created_at),
-    items: items.map((r) => {
-      const verifiedConceptNames = verifiedConceptsForPlanItem(String(r.id));
-      return {
-        id: String(r.id),
-        planId: String(r.plan_id),
-        title: String(r.title),
-        rationale: (r.rationale as string) ?? null,
-        conceptId: (r.concept_id as string) ?? null,
-        conceptName: (r.concept_name as string) ?? null,
-        conceptStatus: (r.concept_status as ConceptStatus | null) ?? null,
-        verifiedConcepts: verifiedConceptNames.length,
-        requiredConcepts: PLAN_STEP_REQUIRED_CONCEPTS,
-        verifiedConceptNames,
-        orderIndex: Number(r.order_index),
-        status: r.status as PlanDTO["items"][number]["status"],
-      };
-    }),
-    progress: {
-      done: items.filter((i) => i.status === "done").length,
-      total: items.length,
-    },
+    updatedAt: Number(p.updated_at),
+    items: courses.map((c) => c.dto),
+    progress,
+    currentCourseId: current?.dto.id ?? null,
+    currentCourseTitle: current?.dto.title ?? null,
+    currentConceptId: current?.dto.nextConceptId ?? null,
+    currentConceptName: current?.dto.nextConceptName ?? null,
     counts: {
       sessions: (db.prepare("select count(*) as n from sessions where plan_id = ?").get(id) as { n: number }).n,
       materials: (db.prepare("select count(*) as n from materials where plan_id = ?").get(id) as { n: number }).n,
@@ -2156,9 +2319,13 @@ export function deletePlan(id: string): boolean {
   if (!row) return false;
   db.transaction(() => {
     // 计划删除后，关联的会话/材料/复习条目回到“未归类”，不连带删除
-    db.prepare("update sessions set plan_id = null where plan_id = ?").run(id);
+    db.prepare("update sessions set plan_id = null, plan_item_id = null where plan_id = ?").run(id);
     db.prepare("update materials set plan_id = null where plan_id = ?").run(id);
     db.prepare("update review_items set plan_id = null where plan_id = ?").run(id);
+    // 知识点不删除，只解除课程归属；档案里会显示为“待整理”
+    db.prepare(
+      "update concepts set course_id = null where course_id in (select id from plan_items where plan_id = ?)",
+    ).run(id);
     db.prepare("delete from plan_items where plan_id = ?").run(id);
     db.prepare("delete from plans where id = ?").run(id);
     if (row.goal_id) {
@@ -2178,24 +2345,201 @@ export function listPlans(): PlanDTO[] {
   return rows.map((r) => getPlan(r.id)!).filter(Boolean);
 }
 
-export function updatePlanItem(itemId: string, status: PlanDTO["items"][number]["status"]) {
-  getDb().prepare("update plan_items set status = ?, updated_at = ? where id = ?").run(status, now(), itemId);
-  const row = getDb().prepare("select plan_id from plan_items where id = ?").get(itemId) as { plan_id: string } | undefined;
-  if (row) getDb().prepare("update plans set updated_at = ? where id = ?").run(now(), row.plan_id);
+export function updatePlanMeta(
+  planId: string,
+  patch: { title?: string; note?: string | null },
+): PlanDTO | null {
+  const plan = getPlan(planId);
+  if (!plan) return null;
+  const title = patch.title === undefined ? plan.title : patch.title.trim();
+  if (!title) return null;
+  getDb()
+    .prepare("update plans set title = ?, note = ?, updated_at = ? where id = ?")
+    .run(title, patch.note === undefined ? plan.note : patch.note, now(), planId);
+  return getPlan(planId);
 }
 
-/** 改绑计划步骤的聚焦知识点；null 表示不绑定 */
-export function setPlanItemConcept(itemId: string, conceptId: string | null): boolean {
-  const item = getDb().prepare("select plan_id from plan_items where id = ?").get(itemId) as
-    | { plan_id: string }
+export function confirmPlan(planId: string): PlanDTO | null {
+  const plan = getPlan(planId);
+  if (!plan) return null;
+  if (!plan.items.length) return plan;
+  if (!plan.items.some((item) => item.concepts.length > 0)) return plan;
+  getDb().prepare("update plans set status = 'active', updated_at = ? where id = ?").run(now(), planId);
+  return getPlan(planId);
+}
+
+export function setPlanStatus(planId: string, status: "active" | "paused"): PlanDTO | null {
+  const plan = getPlan(planId);
+  if (!plan) return null;
+  getDb().prepare("update plans set status = ?, updated_at = ? where id = ?").run(status, now(), planId);
+  return getPlan(planId);
+}
+
+function courseOfPlan(planId: string, itemId: string) {
+  return getDb()
+    .prepare("select id, title from plan_items where id = ? and plan_id = ?")
+    .get(itemId, planId) as { id: string; title: string } | undefined;
+}
+
+export function addPlanCourse(
+  planId: string,
+  course: { title: string; description?: string },
+): PlanDTO | null {
+  const plan = getPlan(planId);
+  if (!plan) return null;
+  const title = course.title.trim();
+  if (!title) return null;
+  const topicId = planTopicId(plan.title, plan.note);
+  const db = getDb();
+  db.transaction(() => {
+    insertCourse(planId, { title, description: course.description, concepts: [] }, plan.items.length, topicId);
+    touchPlan(planId);
+  })();
+  return getPlan(planId);
+}
+
+export function updatePlanCourse(
+  planId: string,
+  itemId: string,
+  patch: { title?: string; description?: string | null },
+): PlanDTO | null {
+  const course = courseOfPlan(planId, itemId);
+  if (!course) return null;
+  const title = patch.title === undefined ? course.title : patch.title.trim();
+  if (!title) return null;
+  const current = getDb().prepare("select rationale from plan_items where id = ?").get(itemId) as
+    | { rationale: string | null }
     | undefined;
-  if (!item) return false;
-  if (conceptId && !getConcept(conceptId)) return false;
   getDb()
-    .prepare("update plan_items set concept_id = ?, updated_at = ? where id = ?")
-    .run(conceptId, now(), itemId);
-  getDb().prepare("update plans set updated_at = ? where id = ?").run(now(), item.plan_id);
-  return true;
+    .prepare("update plan_items set title = ?, rationale = ?, updated_at = ? where id = ?")
+    .run(
+      title,
+      patch.description === undefined ? current?.rationale ?? null : patch.description,
+      now(),
+      itemId,
+    );
+  touchPlan(planId);
+  return getPlan(planId);
+}
+
+export function deletePlanCourse(planId: string, itemId: string): PlanDTO | null {
+  const course = courseOfPlan(planId, itemId);
+  if (!course) return null;
+  const db = getDb();
+  db.transaction(() => {
+    db.prepare("update concepts set course_id = null where course_id = ?").run(itemId);
+    db.prepare("update sessions set plan_item_id = null where plan_item_id = ?").run(itemId);
+    db.prepare("delete from plan_items where id = ?").run(itemId);
+    const left = db
+      .prepare("select id from plan_items where plan_id = ? order by order_index asc")
+      .all(planId) as { id: string }[];
+    left.forEach((row, i) => {
+      db.prepare("update plan_items set order_index = ? where id = ?").run(i, row.id);
+    });
+    touchPlan(planId);
+  })();
+  return getPlan(planId);
+}
+
+export function movePlanCourse(
+  planId: string,
+  itemId: string,
+  direction: "up" | "down",
+): PlanDTO | null {
+  const plan = getPlan(planId);
+  if (!plan) return null;
+  const index = plan.items.findIndex((i) => i.id === itemId);
+  if (index < 0) return null;
+  const target = direction === "up" ? index - 1 : index + 1;
+  if (target < 0 || target >= plan.items.length) return plan;
+  const db = getDb();
+  const a = plan.items[index];
+  const b = plan.items[target];
+  db.transaction(() => {
+    db.prepare("update plan_items set order_index = ? where id = ?").run(target, a.id);
+    db.prepare("update plan_items set order_index = ? where id = ?").run(index, b.id);
+    touchPlan(planId);
+  })();
+  return getPlan(planId);
+}
+
+export function setPlanCourseSkipped(
+  planId: string,
+  itemId: string,
+  skipped: boolean,
+): PlanDTO | null {
+  const course = courseOfPlan(planId, itemId);
+  if (!course) return null;
+  getDb()
+    .prepare("update plan_items set status = ?, updated_at = ? where id = ?")
+    .run(skipped ? "skipped" : "pending", now(), itemId);
+  touchPlan(planId);
+  return getPlan(planId);
+}
+
+/**
+ * 添加知识点到课程。一个知识点只能有一个课程归属：
+ * 已属于另一门课程时不强行搬走，返回 conflict 让用户先合并/移除。
+ */
+export function addConceptToCourse(
+  planId: string,
+  itemId: string,
+  concept: { name: string; definition?: string },
+): { plan: PlanDTO | null; created: boolean; conflict: boolean } {
+  const plan = getPlan(planId);
+  const course = courseOfPlan(planId, itemId);
+  if (!plan || !course) return { plan: null, created: false, conflict: false };
+  const name = concept.name.trim();
+  if (!name) return { plan, created: false, conflict: false };
+  const topicId = planTopicId(plan.title, plan.note);
+  const result = ensureConcept({
+    topicId,
+    name,
+    definition: concept.definition,
+    courseId: itemId,
+  });
+  if (result.courseConflict) return { plan, created: false, conflict: true };
+  touchPlan(planId);
+  return { plan: getPlan(planId), created: result.created, conflict: false };
+}
+
+export function removeConceptFromCourse(planId: string, conceptId: string): PlanDTO | null {
+  const row = getDb()
+    .prepare(
+      `select c.id from concepts c join plan_items pi on pi.id = c.course_id
+        where c.id = ? and pi.plan_id = ?`,
+    )
+    .get(conceptId, planId) as { id: string } | undefined;
+  if (!row) return null;
+  getDb().prepare("update concepts set course_id = null, updated_at = ? where id = ?").run(now(), conceptId);
+  touchPlan(planId);
+  return getPlan(planId);
+}
+
+export function renameConcept(
+  planId: string,
+  conceptId: string,
+  name: string,
+): { ok: boolean; conflictId?: string; plan: PlanDTO | null } {
+  const trimmed = name.trim();
+  if (!trimmed) return { ok: false, plan: getPlan(planId) };
+  const row = getDb()
+    .prepare(
+      `select c.id from concepts c join plan_items pi on pi.id = c.course_id
+        where c.id = ? and pi.plan_id = ?`,
+    )
+    .get(conceptId, planId) as { id: string } | undefined;
+  if (!row) return { ok: false, plan: getPlan(planId) };
+  const key = normalizeText(trimmed);
+  const dup = getDb()
+    .prepare("select id from concepts where canonical_key = ? and id <> ? limit 1")
+    .get(key, conceptId) as { id: string } | undefined;
+  if (dup) return { ok: false, conflictId: dup.id, plan: getPlan(planId) };
+  getDb()
+    .prepare("update concepts set name = ?, canonical_key = ?, updated_at = ? where id = ?")
+    .run(trimmed, key, now(), conceptId);
+  touchPlan(planId);
+  return { ok: true, plan: getPlan(planId) };
 }
 
 export function createGoal(opts: {
@@ -2221,19 +2565,30 @@ export function listGoals() {
 export function refreshReviewQueue() {
   const db = getDb();
   const t = now();
-  // 新条目按“最近一次证据所在会话的计划”归属；旧条目也在这里补齐
+  // 优先按知识点的唯一课程归属；没有课程时再回退到最近一次证据所在计划
   const planOfConcept = `
-    select s.plan_id as plan_id from evidence e join sessions s on s.id = e.session_id
-     where e.concept_id = ? and e.voided = 0 and s.plan_id is not null
-     order by e.created_at desc limit 1
+    select coalesce(
+      (select p.id from concepts c
+         join plan_items pi on pi.id = c.course_id
+         join plans p on p.id = pi.plan_id
+        where c.id = ? and p.status <> 'draft'),
+      (select s.plan_id from evidence e join sessions s on s.id = e.session_id
+        where e.concept_id = ? and e.voided = 0 and s.plan_id is not null
+        order by e.created_at desc limit 1)
+    ) as plan_id
   `;
   db.exec(`
-    update review_items set plan_id = (
-      select s.plan_id from evidence e join sessions s on s.id = e.session_id
-       where e.concept_id = review_items.concept_id
-         and e.voided = 0 and s.plan_id is not null
-       order by e.created_at desc limit 1
-    ) where plan_id is null
+    update review_items set plan_id = coalesce(
+      (select p.id from concepts c
+         join plan_items pi on pi.id = c.course_id
+         join plans p on p.id = pi.plan_id
+        where c.id = review_items.concept_id and p.status <> 'draft'),
+      (select s.plan_id from evidence e join sessions s on s.id = e.session_id
+        where e.concept_id = review_items.concept_id
+          and e.voided = 0 and s.plan_id is not null
+        order by e.created_at desc limit 1)
+    )
+    where plan_id is null
   `);
   const candidates = listConcepts({ limit: 500 });
   const existing = new Set(
@@ -2276,9 +2631,13 @@ export function refreshReviewQueue() {
     } else if (c.status === "initial" && c.distinctExercises < 3) {
       reason = "只有少量题目上验证过，换一种题型再测一次更可靠";
       priority = 3;
+    } else if (c.wrongStreak > 0) {
+      // 刚答错过一次：当天就给一个"再练一题"的入口，不要等到明天
+      reason = "刚答错过一次，今天再练一题更稳";
+      priority = 3;
     }
     if (reason) {
-      const plan = planFor.get(c.id) as { plan_id: string | null } | undefined;
+      const plan = planFor.get(c.id, c.id) as { plan_id: string | null } | undefined;
       ins.run(uid("ri_"), c.id, plan?.plan_id ?? null, reason, priority, c.nextReviewAt ?? t, t);
     }
   }
@@ -2287,11 +2646,14 @@ export function refreshReviewQueue() {
 export function listReviewItems(status = "open"): ReviewItemDTO[] {
   const rows = getDb()
     .prepare(
-      `select r.*, c.name as concept_name, t.name as topic_name, p.title as plan_title
+      `select r.*, c.name as concept_name, t.name as topic_name,
+              coalesce(pi.plan_id, r.plan_id) as resolved_plan_id,
+              p.title as plan_title, pi.id as course_id, pi.title as course_name
          from review_items r
          join concepts c on c.id = r.concept_id
          join topics t on t.id = c.topic_id
-         left join plans p on p.id = r.plan_id
+         left join plan_items pi on pi.id = c.course_id
+         left join plans p on p.id = coalesce(pi.plan_id, r.plan_id)
         where r.status = ?
         order by r.priority asc, r.created_at desc limit 30`,
     )
@@ -2301,8 +2663,10 @@ export function listReviewItems(status = "open"): ReviewItemDTO[] {
     conceptId: String(r.concept_id),
     conceptName: String(r.concept_name),
     topicName: String(r.topic_name),
-    planId: (r.plan_id as string) ?? null,
+    planId: (r.resolved_plan_id as string) ?? null,
     planTitle: (r.plan_title as string) ?? null,
+    courseId: (r.course_id as string) ?? null,
+    courseName: (r.course_name as string) ?? null,
     reason: String(r.reason),
     priority: Number(r.priority),
     dueAt: (r.due_at as number) ?? null,
@@ -2319,11 +2683,17 @@ export function actOnReviewItem(id: string, status: "accepted" | "dismissed" | "
 export function latestPlanForConcept(conceptId: string): string | null {
   const row = getDb()
     .prepare(
-      `select s.plan_id as plan_id from evidence e join sessions s on s.id = e.session_id
-        where e.concept_id = ? and e.voided = 0 and s.plan_id is not null
-        order by e.created_at desc limit 1`,
+      `select coalesce(
+         (select p.id from concepts c
+            join plan_items pi on pi.id = c.course_id
+            join plans p on p.id = pi.plan_id
+           where c.id = ? and p.status <> 'draft'),
+         (select s.plan_id from evidence e join sessions s on s.id = e.session_id
+           where e.concept_id = ? and e.voided = 0 and s.plan_id is not null
+           order by e.created_at desc limit 1)
+       ) as plan_id`,
     )
-    .get(conceptId) as { plan_id: string | null } | undefined;
+    .get(conceptId, conceptId) as { plan_id: string | null } | undefined;
   return row?.plan_id ?? null;
 }
 

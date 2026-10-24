@@ -1,0 +1,27 @@
+{
+  "ranAt": "2026-10-24T02:45:43.840Z",
+  "base": "http://127.0.0.1:3212",
+  "cases": [
+    {
+      "id": "chart-continuation",
+      "acceptance": "出现 chart 组件，且组件之后仍有正文",
+      "chars": 90,
+      "blocks": [
+        {
+          "kind": "chart",
+          "title": "复利增长曲线：本金 10000 元，年利率 5%，20 年"
+        }
+      ],
+      "textAfterBlock": true,
+      "reasoningChars": 498,
+      "reasoningEvents": 1,
+      "finishReason": "stop",
+      "usage": {
+        "promptTokens": 8987,
+        "completionTokens": 774
+      },
+      "errors": [],
+      "preview": "曲线向上弯曲，是因为利息本身也在继续生息：每一年的本金都比上一年多，按固定的 5% 算出的增量也就一年比一年大，所以增加的幅度本身在加速，曲线呈凸形；20 年翻到约 2.65 倍。"
+    }
+  ]
+}
