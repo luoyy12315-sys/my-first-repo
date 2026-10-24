@@ -129,20 +129,54 @@ for (const width of [1440, 390]) {
   });
   check("输入框聚焦没有方框 outline", focusStyle === "none", focusStyle);
 
-  // 侧边栏：搜索 + 折叠
+  // 侧边栏：ChatGPT 式搜索入口（行 + 弹层）与折叠（悬停临时展开）
   await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
   await page.evaluate(() => localStorage.removeItem("lumina-sidebar-collapsed"));
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(500);
   const aside = page.locator("aside");
-  check("侧边栏有搜索框", (await page.getByLabel("搜索对话").count()) === 1);
+  check("侧栏不再常驻搜索输入框", (await page.locator("aside input").count()) === 0);
+  const searchRow = aside.locator("button", { hasText: "搜索对话" });
+  check("侧栏有「搜索对话」入口", (await searchRow.count()) === 1);
   const expandedWidth = (await aside.boundingBox())?.width ?? 0;
   check("侧边栏默认展开 248px", expandedWidth > 200, String(expandedWidth));
+
+  await searchRow.click();
+  await page.waitForTimeout(500);
+  const dialog = page.getByRole("dialog", { name: "搜索对话" });
+  check("点搜索打开搜索弹层", await dialog.isVisible());
+  check(
+    "弹层输入框自动聚焦",
+    await dialog.getByLabel("搜索对话").evaluate((el) => el === document.activeElement),
+  );
+  await dialog.getByLabel("搜索对话").fill("你好");
+  await page.waitForTimeout(300);
+  const hits = await dialog.locator("button[data-index]").count();
+  const hitText = hits ? await dialog.locator("button[data-index]").first().innerText() : "";
+  check("输入即过滤结果", hits >= 1 && hitText.includes("你好"), JSON.stringify(hitText.split("\n")[0]));
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(250);
+  check("Esc 关闭搜索弹层", (await dialog.count()) === 0);
+  await page.keyboard.press("Control+k");
+  await page.waitForTimeout(400);
+  check("Ctrl/Cmd+K 打开搜索", await page.getByRole("dialog", { name: "搜索对话" }).isVisible());
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(200);
+
   await page.evaluate(() => localStorage.setItem("lumina-sidebar-collapsed", "1"));
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(400);
   const collapsedWidth = (await aside.boundingBox())?.width ?? 0;
   check("侧边栏可折叠成图标栏", collapsedWidth > 0 && collapsedWidth < 100, String(collapsedWidth));
+  check("窄栏保留搜索按钮", (await page.locator('aside [aria-label="搜索对话"]').count()) >= 1);
+  await aside.hover();
+  await page.waitForTimeout(450);
+  const peekPanel = page.locator("aside > div.animate-panel");
+  const peekWidth = (await peekPanel.boundingBox())?.width ?? 0;
+  check("悬停折叠栏临时展开成 248px", peekWidth >= 240, String(peekWidth));
+  await page.mouse.move(760, 520);
+  await page.waitForTimeout(400);
+  check("移开后自动收起", (await peekPanel.count()) === 0);
   await page.evaluate(() => localStorage.setItem("lumina-sidebar-collapsed", "0"));
 
   // 会话页「…」菜单向下展开且在视口内

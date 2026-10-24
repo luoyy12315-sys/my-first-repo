@@ -15,10 +15,13 @@ export const runtime = "nodejs";
 
 const MODES: LearningMode[] = ["infinite", "goal", "review"];
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    // 侧栏只要最近几条；搜索弹层要覆盖更早的会话，所以允许传 limit（上限 200）。
+    const raw = Number(new URL(req.url).searchParams.get("limit"));
+    const limit = Number.isFinite(raw) && raw > 0 ? Math.min(Math.floor(raw), 200) : 40;
     // 0 消息的会话只是“点了新建但没开始”，不应占据侧栏和历史。
-    return ok({ sessions: listSessions(40).filter((s) => s.messageCount > 0) });
+    return ok({ sessions: listSessions(limit).filter((s) => s.messageCount > 0) });
   } catch (e) {
     return handleError(e);
   }

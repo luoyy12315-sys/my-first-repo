@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Compass,
   Library,
@@ -14,9 +14,9 @@ import {
   Search,
   Settings,
   Sparkles,
-  X,
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
+import SearchDialog from "./SearchDialog";
 import { cx } from "@/components/ui/kit";
 import type { SessionSummary } from "@/lib/types";
 
@@ -33,7 +33,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/";
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [collapsed, setCollapsed] = useState(false);
-  const [query, setQuery] = useState("");
+  const [peek, setPeek] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const immersive = pathname.startsWith("/w/");
 
   const load = useCallback(async () => {
@@ -41,7 +42,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/sessions", { cache: "no-store" });
       if (res.ok) {
         const data = (await res.json()) as { sessions: SessionSummary[] };
-        // 搜索要覆盖更早的会话，展示仍然只取最近几条
         setSessions(data.sessions.slice(0, 40));
       }
     } catch {
@@ -55,12 +55,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toggleCollapsed = () => {
+    setPeek(false);
     setCollapsed((v) => {
       const next = !v;
       window.localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
       return next;
     });
   };
+
+  // ⌘/Ctrl+K 打开搜索，和 ChatGPT 一样
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     if (immersive) return;
@@ -86,13 +99,162 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return pathname.startsWith(href);
   };
 
-  const q = query.trim().toLowerCase();
-  const visibleSessions = useMemo(() => {
-    if (!q) return sessions.slice(0, 6);
-    return sessions
-      .filter((s) => `${s.title} ${s.planTitle ?? ""}`.toLowerCase().includes(q))
-      .slice(0, 12);
-  }, [sessions, q]);
+  /** 侧栏内容：expanded=false 时只留图标（用于折叠后的窄栏） */
+  const sidebarBody = (expanded: boolean) => (
+    <>
+      <div
+        className={cx(
+          "flex items-center gap-1 pb-2",
+          expanded ? "justify-between pl-5 pr-2 pt-5" : "justify-center px-2 pt-5",
+        )}
+      >
+        <Link
+          href="/"
+          className="font-serif text-[21px] font-semibold tracking-tight text-ink transition-opacity hover:opacity-70"
+          title="Lumina"
+        >
+          {expanded ? "Lumina" : <Sparkles className="size-[18px] text-accent" />}
+        </Link>
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}
+          aria-expanded={!collapsed}
+          title={collapsed ? "展开侧边栏" : "收起侧边栏"}
+          className="grid size-8 shrink-0 place-items-center rounded-full text-ink3 transition-colors hover:bg-panel2 hover:text-ink"
+        >
+          {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+        </button>
+      </div>
+
+      <div className="px-3 pb-2">
+        <Link
+          href="/"
+          title="新对话"
+          onClick={() => setPeek(false)}
+          className={cx(
+            "flex items-center justify-center gap-1.5 rounded-full bg-accent text-[13px] font-medium text-white transition-all hover:brightness-110",
+            expanded ? "px-3 py-2" : "size-10",
+          )}
+        >
+          <Plus className="size-4" />
+          {expanded ? "新对话" : <span className="sr-only">新对话</span>}
+        </Link>
+      </div>
+
+      <div className="px-3 pb-1">
+        {expanded ? (
+          <button
+            type="button"
+            onClick={() => {
+              setPeek(false);
+              setSearchOpen(true);
+            }}
+            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-[13.5px] text-ink2 transition-colors hover:bg-panel2 hover:text-ink"
+          >
+            <Search className="size-4 text-ink3" />
+            <span>搜索对话</span>
+            <kbd className="ml-auto rounded-md border border-line bg-panel2 px-1.5 py-0.5 font-mono text-[12px] text-ink3">
+              ⌘K
+            </kbd>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            aria-label="搜索对话"
+            title="搜索对话"
+            className="flex h-10 w-full items-center justify-center rounded-full text-ink2 transition-colors hover:bg-panel2 hover:text-ink"
+          >
+            <Search className="size-4 text-ink3" />
+          </button>
+        )}
+      </div>
+
+      <nav className={cx("mt-1 flex flex-col gap-0.5", expanded ? "px-3" : "px-2")}>
+        {NAV.map((item) => {
+          const active = isActive(item.href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              title={item.label}
+              onClick={() => setPeek(false)}
+              className={cx(
+                "flex items-center rounded-full transition-colors",
+                expanded ? "gap-2.5 px-3 py-2" : "h-10 justify-center",
+                active
+                  ? "bg-accentsoft font-medium text-accentink"
+                  : "text-ink2 hover:bg-panel2 hover:text-ink",
+              )}
+            >
+              <Icon className={cx("size-4", active ? "text-accent" : "text-ink3")} />
+              {expanded ? (
+                <span className="text-[13.5px]">{item.label}</span>
+              ) : (
+                <span className="sr-only">{item.label}</span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {expanded ? (
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto px-3 no-scrollbar">
+          <p className="px-3 pb-2 text-[12px] text-ink3">最近</p>
+          <div className="flex flex-col gap-0.5">
+            {sessions.length === 0 ? (
+              <p className="px-3 py-2 text-[12px] text-ink3">还没有对话。</p>
+            ) : (
+              sessions.slice(0, 6).map((s) => (
+                <Link
+                  key={s.id}
+                  href={`/s/${s.id}`}
+                  onClick={() => setPeek(false)}
+                  className={cx(
+                    "rounded-xl px-3 py-1.5 transition-colors",
+                    pathname === `/s/${s.id}`
+                      ? "bg-panel2 text-ink"
+                      : "text-ink2 hover:bg-panel2 hover:text-ink",
+                  )}
+                  title={s.planTitle ? `${s.title} · ${s.planTitle}` : s.title}
+                >
+                  <span className="block truncate text-[12.8px]">{s.title}</span>
+                  {s.planTitle ? (
+                    <span className="mt-0.5 block truncate text-[12px] text-ink3">{s.planTitle}</span>
+                  ) : null}
+                </Link>
+              ))
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1" />
+      )}
+
+      <div className={cx("border-t border-line py-3", expanded ? "px-3" : "px-2")}>
+        <div className={cx("flex items-center gap-2", expanded ? "justify-between" : "flex-col")}>
+          <Link
+            href="/settings"
+            title="设置"
+            className={cx(
+              "flex items-center rounded-full text-[13px] transition-colors",
+              expanded ? "gap-2 px-3 py-2" : "size-10 justify-center",
+              pathname.startsWith("/settings")
+                ? "bg-accentsoft text-accentink"
+                : "text-ink2 hover:bg-panel2 hover:text-ink",
+            )}
+          >
+            <Settings className="size-4" />
+            {expanded ? <span>设置</span> : <span className="sr-only">设置</span>}
+          </Link>
+          <ThemeToggle compact={!expanded} />
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <div className="flex min-h-dvh bg-bg">
@@ -103,151 +265,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       >
         跳到主内容
       </a>
-      {/* ── 桌面侧边栏（可折叠成图标栏） ── */}
+
+      {/* ── 桌面侧边栏：折叠后鼠标悬停临时展开（和 ChatGPT 一样） ── */}
       <aside
+        onMouseEnter={() => {
+          if (collapsed) setPeek(true);
+        }}
+        onMouseLeave={() => setPeek(false)}
         className={cx(
-          "sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-line bg-panel/60 backdrop-blur-sm transition-[width] duration-200 md:flex",
+          "sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-line bg-panel/60 backdrop-blur-sm md:flex",
           collapsed ? "w-[68px]" : "w-[248px]",
         )}
       >
-        <div className={cx("flex items-center gap-1 pb-2 pt-5", collapsed ? "justify-center px-2" : "justify-between pl-5 pr-2")}>
-          <Link
-            href="/"
-            className="font-serif text-[21px] font-semibold tracking-tight text-ink transition-opacity hover:opacity-70"
-            title="Lumina"
+        {sidebarBody(!collapsed)}
+        {collapsed && peek ? (
+          <div
+            className="absolute left-0 top-0 z-40 flex h-dvh w-[248px] flex-col border-r border-line bg-panel shadow-[var(--shadow-lg)] animate-panel"
+            onMouseLeave={() => setPeek(false)}
           >
-            {collapsed ? <Sparkles className="size-[18px] text-accent" /> : "Lumina"}
-          </Link>
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}
-            aria-expanded={!collapsed}
-            title={collapsed ? "展开侧边栏" : "收起侧边栏"}
-            className="grid size-8 shrink-0 place-items-center rounded-full text-ink3 transition-colors hover:bg-panel2 hover:text-ink"
-          >
-            {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
-          </button>
-        </div>
-
-        <div className={collapsed ? "px-3 pb-2" : "px-3 pb-2"}>
-          <Link
-            href="/"
-            title="新对话"
-            className={cx(
-              "flex items-center justify-center gap-1.5 rounded-full bg-accent text-[13px] font-medium text-white transition-all hover:brightness-110",
-              collapsed ? "size-10" : "px-3 py-2",
-            )}
-          >
-            <Plus className="size-4" />
-            {collapsed ? <span className="sr-only">新对话</span> : "新对话"}
-          </Link>
-        </div>
-
-        <nav className={cx("mt-1 flex flex-col gap-0.5", collapsed ? "px-2" : "px-3")}>
-          {NAV.map((item) => {
-            const active = isActive(item.href);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                title={item.label}
-                className={cx(
-                  "flex items-center rounded-full transition-colors",
-                  collapsed ? "h-10 justify-center" : "gap-2.5 px-3 py-2",
-                  active
-                    ? "bg-accentsoft font-medium text-accentink"
-                    : "text-ink2 hover:bg-panel2 hover:text-ink",
-                )}
-              >
-                <Icon className={cx("size-4", active ? "text-accent" : "text-ink3")} />
-                {collapsed ? (
-                  <span className="sr-only">{item.label}</span>
-                ) : (
-                  <span className="text-[13.5px]">{item.label}</span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {collapsed ? (
-          <div className="min-h-0 flex-1" />
-        ) : (
-          <div className="mt-4 min-h-0 flex-1 overflow-y-auto px-3 no-scrollbar">
-            <label className="mb-3 flex items-center gap-2 rounded-full border border-line bg-panel2/60 px-3 py-1.5 focus-within:border-accent">
-              <Search className="size-3.5 shrink-0 text-ink3" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") setQuery("");
-                }}
-                placeholder="搜索对话"
-                aria-label="搜索对话"
-                className="w-full bg-transparent text-[13px] text-ink outline-none placeholder:text-ink3"
-              />
-              {query ? (
-                <button
-                  type="button"
-                  onClick={() => setQuery("")}
-                  aria-label="清空搜索"
-                  className="shrink-0 rounded-full text-ink3 hover:text-ink"
-                >
-                  <X className="size-3.5" />
-                </button>
-              ) : null}
-            </label>
-
-            <p className="px-3 pb-2 text-[12px] text-ink3">{q ? "搜索结果" : "最近"}</p>
-            <div className="flex flex-col gap-0.5">
-              {visibleSessions.length === 0 ? (
-                <p className="px-3 py-2 text-[12px] text-ink3">{q ? "没有匹配的对话。" : "还没有对话。"}</p>
-              ) : (
-                visibleSessions.map((s) => (
-                  <Link
-                    key={s.id}
-                    href={`/s/${s.id}`}
-                    className={cx(
-                      "rounded-xl px-3 py-1.5 transition-colors",
-                      pathname === `/s/${s.id}`
-                        ? "bg-panel2 text-ink"
-                        : "text-ink2 hover:bg-panel2 hover:text-ink",
-                    )}
-                    title={s.planTitle ? `${s.title} · ${s.planTitle}` : s.title}
-                  >
-                    <span className="block truncate text-[12.8px]">{s.title}</span>
-                    {s.planTitle ? (
-                      <span className="mt-0.5 block truncate text-[12px] text-ink3">{s.planTitle}</span>
-                    ) : null}
-                  </Link>
-                ))
-              )}
-            </div>
+            {sidebarBody(true)}
           </div>
-        )}
-
-        <div className={cx("border-t border-line py-3", collapsed ? "px-2" : "px-3")}>
-          <div className={cx("flex items-center gap-2", collapsed ? "flex-col" : "justify-between")}>
-            <Link
-              href="/settings"
-              title="设置"
-              className={cx(
-                "flex items-center rounded-full text-[13px] transition-colors",
-                collapsed ? "size-10 justify-center" : "gap-2 px-3 py-2",
-                pathname.startsWith("/settings")
-                  ? "bg-accentsoft text-accentink"
-                  : "text-ink2 hover:bg-panel2 hover:text-ink",
-              )}
-            >
-              <Settings className="size-4" />
-              {collapsed ? <span className="sr-only">设置</span> : <span>设置</span>}
-            </Link>
-            <ThemeToggle compact={collapsed} />
-          </div>
-        </div>
+        ) : null}
       </aside>
 
       {/* ── 移动端顶栏 ── */}
@@ -258,6 +296,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <span className="font-serif text-[17px] font-semibold text-ink">Lumina</span>
           </Link>
           <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              aria-label="搜索对话"
+              title="搜索对话"
+              className="grid size-8 place-items-center rounded-full text-ink3 transition-colors hover:bg-panel2 hover:text-ink"
+            >
+              <Search className="size-4" />
+            </button>
             <ThemeToggle compact />
           </div>
         </header>
@@ -288,6 +335,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           );
         })}
       </nav>
+
+      <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }
