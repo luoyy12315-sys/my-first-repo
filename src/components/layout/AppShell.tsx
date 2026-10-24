@@ -163,8 +163,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         )}
       </div>
 
-      <div className={cx("pb-1", expanded ? "px-3" : "px-2")}>
-        {/* 和下面的导航项同一套样式：同样的圆角、内边距、悬停底色 */}
+      {/* 新对话、折叠态的搜索、四个导航项在同一列里，间距统一为 gap-0.5 */}
+      <div className={cx("mt-1 flex flex-col gap-0.5", expanded ? "px-3" : "px-2")}>
         <Link
           href="/"
           title="新对话"
@@ -176,10 +176,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <Plus className="size-4 text-ink3" />
           {expanded ? <span className="text-[13.5px]">新对话</span> : <span className="sr-only">新对话</span>}
         </Link>
-      </div>
 
-      {expanded ? null : (
-        <div className="px-3 pb-1">
+        {expanded ? null : (
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
@@ -189,37 +187,37 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Search className="size-4 text-ink3" />
           </button>
-        </div>
-      )}
+        )}
 
-      <nav className={cx("mt-1 flex flex-col gap-0.5", expanded ? "px-3" : "px-2")}>
-        {NAV.map((item) => {
-          const active = isActive(item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={active ? "page" : undefined}
-              title={item.label}
-              className={cx(
-                "flex items-center rounded-full transition-colors",
-                expanded ? "gap-2.5 px-3 py-2" : "h-10 justify-center",
-                active
-                  ? "bg-accentsoft font-medium text-accentink"
-                  : "text-ink2 hover:bg-panel2 hover:text-ink",
-              )}
-            >
-              <Icon className={cx("size-4", active ? "text-accent" : "text-ink3")} />
-              {expanded ? (
-                <span className="text-[13.5px]">{item.label}</span>
-              ) : (
-                <span className="sr-only">{item.label}</span>
-              )}
-            </Link>
-          );
-        })}
-      </nav>
+        <nav className="flex flex-col gap-0.5">
+          {NAV.map((item) => {
+            const active = isActive(item.href);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                title={item.label}
+                className={cx(
+                  "flex items-center rounded-full transition-colors",
+                  expanded ? "gap-2.5 px-3 py-2" : "h-10 justify-center",
+                  active
+                    ? "bg-accentsoft font-medium text-accentink"
+                    : "text-ink2 hover:bg-panel2 hover:text-ink",
+                )}
+              >
+                <Icon className={cx("size-4", active ? "text-accent" : "text-ink3")} />
+                {expanded ? (
+                  <span className="text-[13.5px]">{item.label}</span>
+                ) : (
+                  <span className="sr-only">{item.label}</span>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
 
       {expanded ? (
         <div className="mt-3 min-h-0 flex-1 overflow-y-auto px-3 pb-2 no-scrollbar">
