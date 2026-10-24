@@ -1,9 +1,9 @@
 import type { SourceDTO } from "@/lib/types";
 import { effectiveTtlDays, getCached, logSearch, putCached, queryHash } from "./cache";
-import type { WebConfig } from "./config";
+import { webEndpointLabel, type WebConfig } from "./config";
 import { extractReadableText, safeFetchText } from "./fetch";
 import { planQueries } from "./gate";
-import { getProvider, WebProviderError, type RawResult } from "./provider";
+import { searchWeb, WebProviderError, type RawResult } from "./provider";
 import { rankAndDedupe } from "./score";
 
 export interface WebRetrievalResult {
@@ -63,20 +63,20 @@ export async function retrieveWeb(opts: {
   }
 
   const ttl = effectiveTtlDays(query, cfg);
+  const endpointLabel = webEndpointLabel(cfg);
   const hash = queryHash({
-    provider: cfg.provider,
+    provider: endpointLabel,
     query,
     maxResults: cfg.maxSources,
     domains: cfg.allowDomains,
   });
 
-  const provider = getProvider(cfg);
   const log = (ok: boolean, count: number, cacheHit: boolean, error?: string) =>
     logSearch({
       sessionId: opts.sessionId,
       messageId: opts.messageId,
       queryHash: hash,
-      provider: cfg.provider,
+      provider: endpointLabel,
       cacheHit,
       resultCount: count,
       latencyMs: Date.now() - started,
@@ -101,7 +101,7 @@ export async function retrieveWeb(opts: {
     }
     return {
       status: "hit",
-      sources: toSources(ranked as RawResult[], cfg.provider),
+      sources: toSources(ranked as RawResult[], endpointLabel),
       queries,
       cacheHit: true,
       latencyMs: Date.now() - started,
@@ -110,10 +110,9 @@ export async function retrieveWeb(opts: {
 
   // 2) 实时检索
   try {
-    const raw = await provider.search({
+    const raw = await searchWeb(cfg, {
       query,
       maxResults: Math.max(5, cfg.maxSources * 2),
-      domains: cfg.allowDomains,
       timeoutMs: cfg.timeoutMs,
       signal: opts.signal,
     });
@@ -145,7 +144,7 @@ export async function retrieveWeb(opts: {
       ranked.map((r, i) => (i < 2 ? enrich(r, cfg.timeoutMs) : Promise.resolve(r))),
     );
 
-    const sources = toSources(enriched as RawResult[], cfg.provider);
+    const sources = toSources(enriched as RawResult[], endpointLabel);
     // 正文进 prompt，但不上来源卡片（卡片只放 ≤600 字摘要）
     enriched.forEach((r, i) => {
       if (r.content) {
@@ -171,7 +170,7 @@ export async function retrieveWeb(opts: {
     if (cached) {
       const ranked = rankAndDedupe(cached.results, query, cfg, cfg.maxSources);
       if (ranked.length) {
-        const sources = toSources(ranked as RawResult[], cfg.provider).map((s) => ({ ...s, stale: true }));
+        const sources = toSources(ranked as RawResult[], endpointLabel).map((s) => ({ ...s, stale: true }));
         return {
           status: "stale",
           sources,

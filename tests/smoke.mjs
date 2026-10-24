@@ -428,8 +428,9 @@ async function main() {
       method: "PUT",
       body: JSON.stringify({
         enabled: true,
-        provider: "searxng",
-        baseUrl: WEB,
+        endpoint: `${WEB}/search?format=json`,
+        method: "GET",
+        queryParam: "q",
         maxSources: 3,
         maxSearchesPerSession: 20,
         defaultMode: "off",

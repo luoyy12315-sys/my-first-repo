@@ -1,8 +1,8 @@
-import { AI_ERROR_HINT, AiError, aiStatus, resolveAiConfig } from "@/lib/ai/config";
+﻿import { AI_ERROR_HINT, AiError, aiStatus, resolveAiConfig } from "@/lib/ai/config";
 import { streamChat, type LlmMessage } from "@/lib/ai/provider";
 import { buildTeachingMessages, fallbackTitle, findMaterialSources } from "@/lib/ai/prompt";
 import { parseCitations } from "@/lib/ai/citations";
-import { isProviderConfigured, resolveWebConfig } from "@/lib/web/config";
+import { isWebConfigured, resolveWebConfig } from "@/lib/web/config";
 import { GATE_NOTICE, shouldSearch } from "@/lib/web/gate";
 import { retrieveWeb } from "@/lib/web/retrieve";
 import { countSessionSearches } from "@/lib/web/cache";
@@ -151,7 +151,7 @@ export async function POST(req: Request) {
         mode: webMode,
         text,
         cfg: webCfg,
-        configured: isProviderConfigured(webCfg),
+        configured: isWebConfigured(webCfg),
         usedInSession: countSessionSearches(session.id),
       });
       if (gate.reason === "not_configured" || gate.reason === "disabled") {

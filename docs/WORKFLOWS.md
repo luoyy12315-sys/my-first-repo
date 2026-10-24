@@ -115,7 +115,7 @@ flowchart LR
 | 调度 | `src/lib/learning/scheduler.ts` | FSRS 启发式间隔 |
 | 数据 | `src/lib/db/repo.ts` | 全部 SQL、聚合重算、审计 |
 | 材料 | `src/lib/materials/parse.ts` | txt/md/pdf/docx/html 解析与切片 |
-| 联网 | `src/lib/web/*` | 门控、provider、SSRF 防护、评分、缓存 |
+| 联网 | `src/lib/web/*` | 门控、通用 HTTP 搜索适配、SSRF 防护、评分、缓存 |
 
 ---
 
@@ -1223,3 +1223,4 @@ flowchart TD
 - 进度与状态：`src/lib/learning/progress.ts`；数据层：`src/lib/db/repo.ts`；模式提示词：`src/lib/ai/prompt.ts`；工具：`src/lib/ai/tools.ts`。
 
 **验收**：单元/集成测试 112 项通过；API 冒烟 81 项通过；浏览器回归 69 项通过；生产构建通过；桌面与 390px 移动端页面无横向溢出。
+

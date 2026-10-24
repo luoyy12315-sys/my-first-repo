@@ -199,25 +199,37 @@ for (const c of CASES) {
   }
 }
 
-// ── 讲解风格：一句话描述（先提问，不直接给定义）+ 必须提问 ──
+// ── 讲解风格：自定义风格（先提问，不直接给定义）+ 必须提问 ──
 try {
   process.stdout.write("[style] ");
   const put = await fetch(`${BASE}/api/settings/teaching`, {
-    method: "PUT",
+    method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      directive: "先提问引导我自己想，不要一上来就给定义",
-      verbosity: 4,
-      requireExample: true,
-      requireCheckQuestion: true,
+      action: "create",
+      style: {
+        name: "引导式",
+        directive: "先提问引导我自己想，不要一上来就给定义",
+        verbosity: 4,
+        requireExample: true,
+        requireCheckQuestion: true,
+      },
     }),
   });
-  const profile = put.ok ? (await put.json()).profile : null;
+  const created = put.ok ? await put.json() : null;
+  // 第一个风格会自动设为使用中；这里再显式激活一次，避免库里已有其它风格
+  if (created?.style?.id) {
+    await fetch(`${BASE}/api/settings/teaching`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "activate", id: created.style.id }),
+    });
+  }
   const sessionId = await createSession();
   const r = await chat(sessionId, "讲讲什么是资产。");
   const questions = (r.text.match(/[？?]/g) ?? []).length;
   const hasDefinitionLeak = /^资产是指|资产的定义是/.test(r.text.trim());
-  report.style = { profile, sessionId, chars: r.chars, questions, hasDefinitionLeak, preview: r.text.slice(0, 400) };
+  report.style = { activeId: created?.activeId ?? null, sessionId, chars: r.chars, questions, hasDefinitionLeak, preview: r.text.slice(0, 400) };
   console.log(`→ ${r.chars}字, ${questions}个问句, 直接给定义=${hasDefinitionLeak}`);
 } catch (e) {
   report.style = { error: e instanceof Error ? e.message : String(e) };

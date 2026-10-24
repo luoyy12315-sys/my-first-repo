@@ -79,9 +79,16 @@ describe("引用协议", () => {
 
 const baseCfg: WebConfig = {
   enabled: true,
-  provider: "searxng",
-  baseUrl: "http://127.0.0.1:8888",
+  endpoint: "http://127.0.0.1:8888/search",
+  method: "GET",
   apiKey: "",
+  authHeader: "",
+  queryParam: "q",
+  bodyTemplate: "",
+  resultsPath: "",
+  titleField: "",
+  urlField: "",
+  snippetField: "",
   maxSources: 3,
   timeoutMs: 4000,
   ttlDays: 7,

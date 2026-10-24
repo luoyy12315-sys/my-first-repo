@@ -1,9 +1,14 @@
-# Lumina 联网检索与来源可信化 Spec
+﻿# Lumina 联网检索与来源可信化 Spec
 
 - 版本：0.1（Draft，待评审）
 - 日期：2026-10-22
 - 影响范围：`src/lib/ai`、`src/lib/db`、`src/app/api/chat`、`src/components/chat`、`src/app/settings`
-- 状态：Phase 1 可直接开工；Phase 2 需先确认 provider；Phase 3 依赖 Phase 2 的评测数据
+- 状态：Phase 1 可直接开工；Phase 2 需先确认搜索接口（第二轮已改为通用 HTTP 接口，见下方修订）；Phase 3 依赖 Phase 2 的评测数据
+
+> **修订（2026-10-24，第二轮）**：内置 provider 预设（SearXNG / Tavily / Brave）已移除，改成**一个通用 HTTP 搜索接口**：
+> 地址 + 方法（GET/POST）+ 认证请求头/Key，请求体模板、结果数组路径与字段映射放在「高级」里，留空则自动识别。
+> 本文中凡是提到"provider 选型 / 预设"的段落保留为历史设计记录；以 §6.3、§8.3 的接口定义与 `src/lib/web/config.ts`、`src/lib/web/provider.ts` 的实现为准。
+> 落地记录见 `docs/AUDIT_2026-10-24.md` §12。
 
 ---
 
@@ -82,7 +87,7 @@ Lumina 目前的知识来源只有两类：
 2. **检索是工具，不是默认前置**：稳定知识直接教，别让每轮都等搜索。
 3. **来源分级，不混淆**：材料、网络、模型知识不能混成一句“根据资料”。
 4. **失败要可见**：超时/限流/无结果都要有明确文案。
-5. **本地优先**：默认关闭联网；provider 优先支持自建 SearXNG。
+5. **本地优先**：默认关闭联网；搜索接口由用户自己填（自建 SearXNG、或任意返回 JSON 的服务）。
 6. **判题路径隔离**：答案安全高于检索便利。
 
 ---
@@ -119,7 +124,7 @@ Lumina 目前的知识来源只有两类：
 
 **范围**
 
-- 设置页新增“联网检索”配置：provider、baseUrl、Key、maxSources、timeout、TTL、域名黑白名单、默认模式。
+- 设置页新增“联网检索”配置：接口地址、方法、认证头/Key、maxSources、timeout、TTL、域名黑白名单、默认模式。
 - Composer 增加联网开关：`关闭 / 手动`（Phase 2 不做自动）。
 - `POST /api/chat` 新增 `webMode: "off" | "manual"`。
 - 服务端前置检索：意图门控（manual 直接通过）→ 查询规划 → provider 搜索 → 抽取/评分/去重 → 注入 → 生成 → 引用校验 → 落库。
@@ -313,9 +318,16 @@ export interface MessageDTO {
 ```ts
 interface WebConfig {
   enabled: boolean;             // 总开关，默认 false
-  provider: "searxng" | "tavily" | "brave";
-  baseUrl: string;              // searxng 必填；其他可空
-  apiKey: string;               // 服务端保存，永不下发
+  endpoint: string;             // 完整接口地址，如 https://api.example.com/search?format=json
+  method: "GET" | "POST";       // GET 拼查询参数；POST 发 JSON 请求体
+  apiKey: string;               // 服务端保存，永不下发；供 {{apiKey}} 占位
+  authHeader: string;           // 认证请求头整行，如 "Authorization: Bearer {{apiKey}}"
+  queryParam: string;           // GET 时的查询参数名，默认 q
+  bodyTemplate: string;         // POST 请求体模板，支持 {{query}}/{{maxResults}}/{{apiKey}}
+  resultsPath: string;          // 结果数组路径，留空自动识别（results / data.items / web.results …）
+  titleField: string;           // 字段映射，留空自动识别
+  urlField: string;
+  snippetField: string;
   maxSources: number;           // 3（1-5）
   timeoutMs: number;            // 4000
   ttlDays: number;              // 7
@@ -326,7 +338,7 @@ interface WebConfig {
 }
 ```
 
-环境变量兜底：`WEB_SEARCH_PROVIDER`、`WEB_SEARCH_BASE_URL`、`WEB_SEARCH_API_KEY`。
+环境变量兜底：`WEB_SEARCH_ENDPOINT`、`WEB_SEARCH_API_KEY`、`WEB_SEARCH_AUTH_HEADER`。
 
 ---
 
@@ -359,7 +371,7 @@ SSE 新增事件（顺序）：
 
 ### 7.2 设置接口
 
-- `GET /api/settings/web` → `{ enabled, provider, configured, baseUrl, maxSources, timeoutMs, ttlDays, defaultMode, allowDomains, denyDomains, keyMasked }`
+- `GET /api/settings/web` → `{ enabled, endpoint, method, configured, hasAuth, keyMasked, queryParam, bodyTemplate, resultsPath, titleField, urlField, snippetField, maxSources, timeoutMs, ttlDays, defaultMode, allowDomains, denyDomains, maxSearchesPerSession, stats, cacheRows }`
 - `PUT /api/settings/web` → zod 校验；`apiKey` 含 `****` 时不覆盖；空字符串表示清除。
 - `POST /api/settings/web/test` → 执行一次最小搜索（query 固定为 `"test"`），返回 `{ ok, latencyMs, count, error? }`；不回显 Key。
 
@@ -379,7 +391,7 @@ shouldSearch({ text, mode, config }): { search: boolean; reason: string }
 ```
 
 - `mode === "off"` → false。
-- `mode === "manual"` → `config.enabled && providerConfigured` 时为 true；否则 false，`reason="not_configured"`，并给用户一条 notice。
+- `mode === "manual"` → `config.enabled && isWebConfigured(config)` 时为 true；否则 false，`reason="not_configured"`，并给用户一条 notice。
 - `mode === "auto"`（Phase 3）：
   - 显式：`/查一下|搜一下|联网|最新|最近|今年|现在|目前|价格|政策|法规|版本|发布|新闻|数据|统计|截至/`
   - 时效实体：问题含年份/季度/月份 + 可验证对象。
@@ -399,38 +411,30 @@ Phase 2（确定性）：
 
 Phase 3（模型规划）：快模型输出 1–3 条 query + `freshness`，zod 校验；失败回退确定性规划。
 
-### 8.3 Provider 适配
+### 8.3 搜索接口适配（通用 HTTP）
+
+不再为每家服务写适配器。一次搜索由配置完全描述：
 
 ```ts
-interface WebSearchProvider {
-  id: string;
-  search(input: {
-    query: string;
-    maxResults: number;
-    freshness?: "day" | "week" | "month" | "year";
-    language?: string;              // 默认 "zh-CN"
-    domains?: string[];
-    signal: AbortSignal;
-  }): Promise<RawResult[]>;
+interface SearchInput {
+  query: string;
+  maxResults: number;
+  timeoutMs?: number;
+  signal?: AbortSignal;
 }
 
-interface RawResult {
-  title: string;
-  url: string;
-  snippet: string;
-  publishedAt?: number;
-  content?: string;   // provider 已抽取的正文（Tavily 等）
-  score?: number;
-}
+async function searchWeb(cfg: WebConfig, input: SearchInput): Promise<RawResult[]>;
 ```
 
-实现优先级：
+执行顺序：
 
-1. **SearXNG**（推荐默认）：自建、无 Key、隐私友好；需在 `settings.yml` 开启 `json` 格式。
-2. **Tavily**：质量好，返回抽取内容，省去自建抓取；有 Key、有成本。
-3. **Brave Search API**：备选。
+1. 组装请求：GET 把 `query` 放进 `queryParam`（默认 `q`）；POST 用 `bodyTemplate` 渲染 JSON（`{{query}}` / `{{maxResults}}` / `{{apiKey}}`）。
+2. 认证：`authHeader` 整行解析成 `名称: 值`，值里可用 `{{apiKey}}`；HTTP 401/403 → `WEB_UNAUTHORIZED`，429 → `WEB_RATE_LIMIT`。
+3. 读结果：按 `resultsPath` 取数组；留空则依次尝试 `results` / `data` / `items` / `web.results` / `data.results` / `data.items` / `organic` / `hits`，最后退化为"顶层对象里第一个对象数组"。
+4. 映射字段：`titleField` / `urlField` / `snippetField` 可自定义；留空按常见字段名猜（title/name、url/link、snippet/content/description…）。没有可用 `http(s)` 链接的结果直接丢弃。
+5. 截断到 `maxResults`；`raw_content` 等长正文字段会带出来，供后续复用，省一次抓页。
 
-统一超时 4s；失败重试 0 次（避免拖慢聊天）；结果上限 5 条。
+统一超时 4s（可调 2–10s）；失败重试 0 次（避免拖慢聊天）。
 
 ### 8.4 抓取与抽取
 
@@ -551,7 +555,7 @@ ${sourceBlock}
   - `127.0.0.0/8`、`10.0.0.0/8`、`172.16.0.0/12`、`192.168.0.0/16`、`169.254.0.0/16`、`::1`、`fc00::/7`、`0.0.0.0/8`。
 - 每次重定向重新解析并校验；最多 3 次。
 - 响应大小上限 2MB；超时 4s；只读文本类型。
-- **Provider baseUrl 本身也是 SSRF 面**：允许 `http://127.0.0.1:8888`（自建 SearXNG）是合理需求，但必须由用户显式填写；服务商地址即用户自选，不再额外提供「放行内网」开关（该开关原本只是把同一件事说两遍）。抓取来源网页时始终阻断私网地址，与 provider 地址无关。`/api/settings/web/test` 只返回结果数、延迟与前几条标题/域名，不回显响应体。
+- **搜索接口地址本身也是 SSRF 面**：允许 `http://127.0.0.1:8888`（自建 SearXNG）是合理需求，但必须由用户显式填写；地址即用户自选，不额外提供「放行内网」开关。抓取来源网页时始终阻断私网地址，与接口地址无关。`/api/settings/web/test` 只返回结果数、延迟与前几条标题/域名，不回显响应体。
 - 残余风险：DNS rebinding。本地单用户应用接受该风险；如要更严格，可只允许 provider 返回内容、不自行抓页。
 
 ### 11.2 Prompt injection
@@ -567,7 +571,7 @@ ${sourceBlock}
 - 查询前脱敏邮箱/手机号/身份证号/长数字。
 - 设置页说明：手动模式会把查询发送到配置的搜索服务。
 - 默认不记录完整 query 到日志，只记录 hash；调试模式可临时开启。
-- 本地优先：默认推荐自建 SearXNG。
+- 本地优先：默认关闭；搜索接口由用户自选（自建 SearXNG 或任意 JSON 接口）。
 - Key 与现有模型 Key 一样，明文存于本机 SQLite 的 `settings` 表；设置页只回显掩码。这是本地单用户模式的既有取舍，Spec 不改变。
 
 ### 11.4 版权与抓取
@@ -608,8 +612,9 @@ ${sourceBlock}
 新增“联网检索”区块：
 
 - 总开关（默认关）。
-- Provider 选择：SearXNG / Tavily / Brave。
-- Base URL（SearXNG 必填）、API Key（密码框，保存后只显示掩码）。
+- 接口地址（完整 URL）、调用方式（GET/POST）。
+- API Key 与认证请求头（密码框/整行文本，保存后只显示掩码与"已配置"）。
+- 「高级」：查询参数名、请求体模板、结果数组路径、字段映射、最大来源、超时、缓存、会话上限、域名名单、清空缓存。
 - 最大来源数（1–5，默认 3）、超时（2–10s）、缓存天数（1–30）。
 - 域名白名单/黑名单（每行一个，支持 `*.gov.cn`）。
 - 默认模式：关闭 / 手动。
@@ -700,7 +705,7 @@ ${sourceBlock}
 
 | 问题 | 现状判断 | 建议 |
 | --- | --- | --- |
-| Provider 选型 | SearXNG 隐私好但中文结果依赖引擎配置；Tavily 质量好但有成本 | 先同时支持两者，默认 SearXNG；用评测集比较中文质量 |
+| 搜索接口选型 | 不同服务的中文质量、成本差异大 | 不预设服务商，用户填自己的接口；用评测集比较各接口质量 |
 | 是否自建抓取 | 增加 SSRF/版权/维护成本 | Phase 2 优先用 provider 返回内容；自建抓取作为 fallback |
 | 自动模式默认值 | 误触发会拖慢稳定知识教学 | 默认 `off`，Phase 3 评测达标后再考虑 `auto` |
 | 引用样式 | token 简单但正文会出现标记 | 渲染时替换为上标 chip；复制/导出转为 `[1]` |
@@ -729,7 +734,7 @@ ${sourceBlock}
 ### Phase 2（Phase 1 验收后）
 
 1. `web_config` 读写 + `/api/settings/web` + 设置页区块。
-2. `web/provider.ts`（新）：SearXNG/Tavily 适配。
+2. `web/provider.ts`：通用 HTTP 搜索（地址/方法/认证/模板/结果映射）。
 3. `web/fetch.ts`（新）：SSRF 防护、超时、抽取。
 4. `web/cache.ts`（新）：query hash、TTL、stale。
 5. `web/gate.ts`（新）：手动/自动门控；Phase 2 只做 manual。
@@ -779,3 +784,5 @@ Phase 3：
 | 过期 | `来源可能已过期` |
 | 来源反馈 | `这条来源有问题` → `不相关 / 已过期 / 打不开 / 内容有误` |
 | 设置说明 | `Key 只保存在本机数据库，不会下发给浏览器。` |
+
+

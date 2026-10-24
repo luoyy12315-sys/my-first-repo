@@ -353,13 +353,21 @@ export interface MaterialDTO {
   chunks: number;
 }
 
-/** 联网检索配置（Key 只在服务端） */
+/** 联网检索配置（Key / 认证头只在服务端，不回显） */
 export interface WebConfigPublic {
   enabled: boolean;
-  provider: "searxng" | "tavily" | "brave";
-  baseUrl: string;
+  endpoint: string;
+  method: "GET" | "POST";
   configured: boolean;
   keyMasked: string;
+  /** 是否已配置认证（请求头或 Key），不回显具体内容 */
+  hasAuth: boolean;
+  queryParam: string;
+  bodyTemplate: string;
+  resultsPath: string;
+  titleField: string;
+  urlField: string;
+  snippetField: string;
   maxSources: number;
   timeoutMs: number;
   ttlDays: number;

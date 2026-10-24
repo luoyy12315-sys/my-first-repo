@@ -1,4 +1,4 @@
-import type { WebConfig } from "./config";
+import { RESULT_PATH_CANDIDATES, type WebConfig } from "./config";
 
 export interface RawResult {
   title: string;
@@ -12,15 +12,8 @@ export interface RawResult {
 export interface SearchInput {
   query: string;
   maxResults: number;
-  freshness?: "day" | "week" | "month" | "year";
-  domains?: string[];
   signal?: AbortSignal;
   timeoutMs?: number;
-}
-
-export interface WebSearchProvider {
-  id: string;
-  search(input: SearchInput): Promise<RawResult[]>;
 }
 
 export class WebProviderError extends Error {
@@ -48,9 +41,80 @@ function withTimeout(timeoutMs: number, outer?: AbortSignal): { signal: AbortSig
 }
 
 function mapHttpError(status: number): WebProviderError {
-  if (status === 401 || status === 403) return new WebProviderError("WEB_UNAUTHORIZED", "搜索服务鉴权失败");
-  if (status === 429) return new WebProviderError("WEB_RATE_LIMIT", "搜索服务限流");
-  return new WebProviderError("WEB_BAD_RESPONSE", `搜索服务返回 ${status}`);
+  if (status === 401 || status === 403) return new WebProviderError("WEB_UNAUTHORIZED", "搜索接口鉴权失败（检查 Key 或认证头）");
+  if (status === 429) return new WebProviderError("WEB_RATE_LIMIT", "搜索接口限流");
+  return new WebProviderError("WEB_BAD_RESPONSE", `搜索接口返回 ${status}`);
+}
+
+/** 模板占位符：{{query}} / {{maxResults}} / {{apiKey}} */
+export function applyTemplate(tpl: string, vars: Record<string, string>): string {
+  return tpl.replace(/\{\{\s*([a-zA-Z_]+)\s*\}\}/g, (_m, key: string) => vars[key] ?? "");
+}
+
+/** 按点号路径取值，支持 a.b[0].c；路径为空时原样返回 */
+export function getByPath(value: unknown, path: string): unknown {
+  if (!path) return value;
+  return path.split(".").reduce<unknown>((acc, rawKey) => {
+    if (acc == null) return undefined;
+    const key = rawKey.trim();
+    const indexed = key.match(/^(.+)\[(\d+)\]$/);
+    if (indexed) {
+      const base = (acc as Record<string, unknown>)[indexed[1]];
+      return Array.isArray(base) ? base[Number(indexed[2])] : undefined;
+    }
+    if (Array.isArray(acc) && /^\d+$/.test(key)) return acc[Number(key)];
+    return (acc as Record<string, unknown>)[key];
+  }, value);
+}
+
+function asString(v: unknown): string {
+  if (typeof v === "string") return v;
+  if (typeof v === "number") return String(v);
+  return "";
+}
+
+/**
+ * 从响应 JSON 里取出结果数组。
+ * 指定了 resultsPath 就严格按它取；没指定就按常见路径猜，再退化成"第一个对象数组"。
+ */
+export function extractRows(payload: unknown, resultsPath: string): Record<string, unknown>[] {
+  const isRowArray = (v: unknown): v is Record<string, unknown>[] =>
+    Array.isArray(v) && v.length > 0 && v.every((x) => x && typeof x === "object" && !Array.isArray(x));
+
+  if (Array.isArray(payload)) return payload.filter((x) => x && typeof x === "object") as Record<string, unknown>[];
+
+  if (resultsPath.trim()) {
+    const picked = getByPath(payload, resultsPath.trim());
+    return Array.isArray(picked)
+      ? (picked.filter((x) => x && typeof x === "object") as Record<string, unknown>[])
+      : [];
+  }
+
+  for (const path of RESULT_PATH_CANDIDATES) {
+    const picked = getByPath(payload, path);
+    if (isRowArray(picked)) return picked;
+  }
+
+  // 最后兜底：顶层对象里第一个"元素是对象"的数组
+  if (payload && typeof payload === "object") {
+    for (const v of Object.values(payload as Record<string, unknown>)) {
+      if (isRowArray(v)) return v;
+    }
+  }
+  return [];
+}
+
+const TITLE_KEYS = ["title", "name", "heading", "question"];
+const URL_KEYS = ["url", "link", "href", "permalink"];
+const SNIPPET_KEYS = ["snippet", "content", "description", "summary", "text", "abstract"];
+
+function pickString(row: Record<string, unknown>, path: string, candidates: string[]): string {
+  if (path.trim()) return asString(getByPath(row, path.trim()));
+  for (const key of candidates) {
+    const v = asString(getByPath(row, key));
+    if (v.trim()) return v;
+  }
+  return "";
 }
 
 function toTs(v: unknown): number | undefined {
@@ -60,126 +124,85 @@ function toTs(v: unknown): number | undefined {
   return Number.isFinite(t) ? t : undefined;
 }
 
-/** SearXNG：自建、无 Key；需要实例在 settings.yml 打开 json 格式 */
-function searxngProvider(cfg: WebConfig): WebSearchProvider {
-  return {
-    id: "searxng",
-    async search({ query, maxResults, signal, timeoutMs }) {
-      if (!cfg.baseUrl) throw new WebProviderError("WEB_NOT_CONFIGURED", "尚未配置 SearXNG 地址");
-      const url = new URL("/search", cfg.baseUrl);
-      url.searchParams.set("q", query);
-      url.searchParams.set("format", "json");
-      url.searchParams.set("language", "zh-CN");
-      const t = withTimeout(timeoutMs ?? cfg.timeoutMs, signal);
-      try {
-        const res = await fetch(url, {
-          signal: t.signal,
-          headers: cfg.apiKey ? { authorization: `Bearer ${cfg.apiKey}` } : {},
-        });
-        if (!res.ok) throw mapHttpError(res.status);
-        const data = (await res.json()) as { results?: Record<string, unknown>[] };
-        return (data.results ?? []).slice(0, maxResults * 2).map((r) => ({
-          title: String(r.title ?? ""),
-          url: String(r.url ?? ""),
-          snippet: String(r.content ?? r.snippet ?? ""),
-          publishedAt: toTs(r.publishedDate),
-          score: typeof r.score === "number" ? r.score : undefined,
-        }));
-      } catch (e) {
-        if (e instanceof WebProviderError) throw e;
-        throw new WebProviderError(
-          String((e as Error).message).includes("timeout") ? "WEB_TIMEOUT" : "WEB_NETWORK",
-          (e as Error).message,
-        );
-      } finally {
-        t.done();
-      }
-    },
-  };
+/** 单条结果 → 统一结构；字段名可自定义，没填就按常见名字猜 */
+export function mapRow(row: Record<string, unknown>, cfg: Pick<WebConfig, "titleField" | "urlField" | "snippetField">): RawResult | null {
+  const url = pickString(row, cfg.urlField, URL_KEYS);
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  const title = pickString(row, cfg.titleField, TITLE_KEYS) || url;
+  const snippet = pickString(row, cfg.snippetField, SNIPPET_KEYS);
+  const publishedAt = toTs(row.publishedAt ?? row.published_date ?? row.date ?? row.published ?? row.age);
+  const rawContent = row.raw_content ?? row.full_text ?? row.content_text;
+  const content = typeof rawContent === "string" && rawContent.length > 200 ? rawContent : undefined;
+  return { title: title.slice(0, 300), url, snippet: snippet.slice(0, 2000), publishedAt, content };
 }
 
-/** Tavily：质量好，直接返回抽取内容（省去自建抓页） */
-function tavilyProvider(cfg: WebConfig): WebSearchProvider {
-  return {
-    id: "tavily",
-    async search({ query, maxResults, signal, timeoutMs }) {
-      if (!cfg.apiKey) throw new WebProviderError("WEB_NOT_CONFIGURED", "尚未配置 Tavily Key");
-      const t = withTimeout(timeoutMs ?? cfg.timeoutMs, signal);
-      try {
-        const res = await fetch(`${cfg.baseUrl || "https://api.tavily.com"}/search`, {
-          method: "POST",
-          signal: t.signal,
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            api_key: cfg.apiKey,
-            query,
-            max_results: maxResults,
-            search_depth: "basic",
-            include_answer: false,
-            include_raw_content: true,
-          }),
-        });
-        if (!res.ok) throw mapHttpError(res.status);
-        const data = (await res.json()) as { results?: Record<string, unknown>[] };
-        return (data.results ?? []).map((r) => ({
-          title: String(r.title ?? ""),
-          url: String(r.url ?? ""),
-          snippet: String(r.content ?? ""),
-          publishedAt: toTs(r.published_date),
-          content: typeof r.raw_content === "string" ? r.raw_content : undefined,
-          score: typeof r.score === "number" ? r.score : undefined,
-        }));
-      } catch (e) {
-        if (e instanceof WebProviderError) throw e;
-        throw new WebProviderError(
-          String((e as Error).message).includes("timeout") ? "WEB_TIMEOUT" : "WEB_NETWORK",
-          (e as Error).message,
-        );
-      } finally {
-        t.done();
-      }
-    },
-  };
-}
+/**
+ * 发一次搜索请求。
+ *
+ * 通用 HTTP 适配：地址、方法、认证头、请求体模板、结果路径与字段名都由配置决定，
+ * 因此不需要为每家服务写一个适配器。
+ */
+export async function searchWeb(cfg: WebConfig, input: SearchInput): Promise<RawResult[]> {
+  if (!cfg.endpoint) throw new WebProviderError("WEB_NOT_CONFIGURED", "尚未配置搜索接口地址");
 
-/** Brave Search API：备选 */
-function braveProvider(cfg: WebConfig): WebSearchProvider {
-  return {
-    id: "brave",
-    async search({ query, maxResults, signal, timeoutMs }) {
-      if (!cfg.apiKey) throw new WebProviderError("WEB_NOT_CONFIGURED", "尚未配置 Brave Key");
-      const url = new URL("/res/v1/web/search", cfg.baseUrl || "https://api.search.brave.com");
-      url.searchParams.set("q", query);
-      url.searchParams.set("count", String(Math.min(10, maxResults)));
-      const t = withTimeout(timeoutMs ?? cfg.timeoutMs, signal);
-      try {
-        const res = await fetch(url, {
-          signal: t.signal,
-          headers: { accept: "application/json", "x-subscription-token": cfg.apiKey },
-        });
-        if (!res.ok) throw mapHttpError(res.status);
-        const data = (await res.json()) as { web?: { results?: Record<string, unknown>[] } };
-        return (data.web?.results ?? []).map((r) => ({
-          title: String(r.title ?? ""),
-          url: String(r.url ?? ""),
-          snippet: String(r.description ?? ""),
-          publishedAt: toTs(r.age ?? r.page_age),
-        }));
-      } catch (e) {
-        if (e instanceof WebProviderError) throw e;
-        throw new WebProviderError(
-          String((e as Error).message).includes("timeout") ? "WEB_TIMEOUT" : "WEB_NETWORK",
-          (e as Error).message,
-        );
-      } finally {
-        t.done();
-      }
-    },
-  };
-}
+  let url: URL;
+  try {
+    url = new URL(cfg.endpoint);
+  } catch {
+    throw new WebProviderError("WEB_BAD_RESPONSE", "搜索接口地址格式不正确（要以 http:// 或 https:// 开头）");
+  }
+  if (!/^https?:$/.test(url.protocol)) {
+    throw new WebProviderError("WEB_BAD_RESPONSE", "搜索接口只能用 http / https");
+  }
 
-export function getProvider(cfg: WebConfig): WebSearchProvider {
-  if (cfg.provider === "tavily") return tavilyProvider(cfg);
-  if (cfg.provider === "brave") return braveProvider(cfg);
-  return searxngProvider(cfg);
+  const headers: Record<string, string> = { accept: "application/json" };
+  if (cfg.authHeader.trim()) {
+    const idx = cfg.authHeader.indexOf(":");
+    if (idx <= 0) throw new WebProviderError("WEB_BAD_RESPONSE", "认证请求头格式应为「名称: 值」");
+    const name = cfg.authHeader.slice(0, idx).trim();
+    const rawValue = cfg.authHeader.slice(idx + 1).trim();
+    if (!name) throw new WebProviderError("WEB_BAD_RESPONSE", "认证请求头的名称不能为空");
+    headers[name] = applyTemplate(rawValue, { apiKey: cfg.apiKey });
+  }
+
+  let body: string | undefined;
+  if (cfg.method === "POST") {
+    headers["content-type"] = "application/json";
+    body = applyTemplate(cfg.bodyTemplate || '{"query": "{{query}}", "max_results": {{maxResults}}}', {
+      query: input.query,
+      maxResults: String(input.maxResults),
+      apiKey: cfg.apiKey,
+    });
+  } else {
+    url.searchParams.set(cfg.queryParam || "q", input.query);
+  }
+
+  const timer = withTimeout(input.timeoutMs ?? cfg.timeoutMs, input.signal);
+  try {
+    const res = await fetch(url, {
+      method: cfg.method,
+      headers,
+      body,
+      signal: timer.signal,
+    });
+    if (!res.ok) throw mapHttpError(res.status);
+    let payload: unknown;
+    try {
+      payload = await res.json();
+    } catch {
+      throw new WebProviderError("WEB_BAD_RESPONSE", "搜索接口返回的不是 JSON（检查接口地址或响应格式）");
+    }
+    const rows = extractRows(payload, cfg.resultsPath);
+    const mapped = rows.map((row) => mapRow(row, cfg)).filter((r): r is RawResult => r !== null);
+    return mapped.slice(0, Math.max(1, input.maxResults));
+  } catch (e) {
+    if (e instanceof WebProviderError) throw e;
+    const message = String((e as Error).message ?? "");
+    throw new WebProviderError(
+      message.includes("timeout") ? "WEB_TIMEOUT" : "WEB_NETWORK",
+      message || "搜索请求失败",
+    );
+  } finally {
+    timer.done();
+  }
 }

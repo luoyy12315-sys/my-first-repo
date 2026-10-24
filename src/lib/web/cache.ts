@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { getDb, now, uid } from "@/lib/db";
-import type { WebConfig } from "./config";
+import { webEndpointLabel, type WebConfig } from "./config";
 import type { RawResult } from "./provider";
 
 export interface CacheKeyParts {
@@ -64,7 +64,7 @@ export function putCached(hash: string, query: string, cfg: WebConfig, results: 
        on conflict(query_hash) do update set results = excluded.results,
          fetched_at = excluded.fetched_at, expires_at = excluded.expires_at, provider = excluded.provider`,
     )
-    .run(uid("wc_"), hash, query.slice(0, 300), cfg.provider, JSON.stringify(results), t, expires);
+    .run(uid("wc_"), hash, query.slice(0, 300), webEndpointLabel(cfg), JSON.stringify(results), t, expires);
   return { fetchedAt: t, expiresAt: expires };
 }
 

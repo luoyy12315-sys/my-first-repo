@@ -30,43 +30,27 @@ import {
 } from "@/components/ui/kit";
 import type { AiModelPublic, WebConfigPublic } from "@/lib/types";
 import {
-  DEFAULT_TEACHING_PROFILE,
+  DEFAULT_STYLE_FIELDS,
+  MAX_STYLE_NAME,
   MAX_TEACHING_DIRECTIVE,
+  MAX_TEACHING_STYLES,
   buildTeachingStyleBlock,
-  isDefaultTeachingProfile,
-  type TeachingProfile,
+  styleSummary,
+  type TeachingStyle,
 } from "@/lib/teaching/profile";
 import { formatDay } from "@/lib/utils";
 
-type WebProvider = "searxng" | "tavily" | "brave";
-
-const WEB_PROVIDER_LABEL: Record<WebProvider, string> = {
-  searxng: "SearXNG（自建，免 Key）",
-  tavily: "Tavily（需要 Key）",
-  brave: "Brave Search API（需要 Key）",
-};
-
-/** 切换服务商时自动带出的官方地址，用户可以改 */
-const WEB_PROVIDER_DEFAULT_BASE: Record<WebProvider, string> = {
-  searxng: "",
-  tavily: "https://api.tavily.com",
-  brave: "https://api.search.brave.com",
-};
-
-const WEB_PROVIDER_KEY_URL: Record<WebProvider, string> = {
-  searxng: "https://docs.searxng.org/admin/installation-docker.html",
-  tavily: "https://tavily.com",
-  brave: "https://brave.com/search/api/",
-};
+/** 编辑中的风格（新建时没有 id） */
+type StyleEditor = Omit<TeachingStyle, "id"> & { id?: string };
 
 /** 测试失败时按错误码给"该改什么"，只报错不给方向等于没说 */
 const WEB_TEST_ADVICE: Record<string, string> = {
-  WEB_NOT_CONFIGURED: "先把地址或 Key 填上",
-  WEB_UNAUTHORIZED: "Key 无效或没权限，去服务商后台确认后重填",
-  WEB_RATE_LIMIT: "服务商限流了，等一会儿再试，或把超时调大",
-  WEB_TIMEOUT: "搜索服务没在超时内返回：自建服务可能没起来，或把超时调大一点",
-  WEB_NETWORK: "连不上服务地址：检查地址是否正确、服务是否在运行、本机网络是否可达",
-  WEB_BAD_RESPONSE: "服务返回了非预期内容：确认 SearXNG 已在 settings.yml 里打开 json 格式",
+  WEB_NOT_CONFIGURED: "先把搜索接口地址填上",
+  WEB_UNAUTHORIZED: "接口鉴权失败：检查 Key 或认证请求头",
+  WEB_RATE_LIMIT: "接口限流了，等一会儿再试，或把超时调大",
+  WEB_TIMEOUT: "接口没在超时内返回：确认服务在运行，或把超时调大一点",
+  WEB_NETWORK: "连不上接口地址：检查地址、端口与服务是否在运行",
+  WEB_BAD_RESPONSE: "接口返回的内容读不懂：确认它返回 JSON，必要时在高级里指定结果数组路径",
 };
 
 interface WebStatus extends WebConfigPublic {
@@ -194,13 +178,19 @@ export default function SettingsPage() {
 
   // ── 联网检索 ──
   const [web, setWeb] = useState<WebStatus | null>(null);
-  const [webOpen, setWebOpen] = useState(false);
   const [webCacheRows, setWebCacheRows] = useState(0);
   const [webDraft, setWebDraft] = useState({
     enabled: false,
-    provider: "searxng" as WebProvider,
-    baseUrl: "",
+    endpoint: "",
+    method: "GET" as "GET" | "POST",
     apiKey: "",
+    authHeader: "",
+    queryParam: "q",
+    bodyTemplate: "",
+    resultsPath: "",
+    titleField: "",
+    urlField: "",
+    snippetField: "",
     maxSources: 3,
     timeoutMs: 4000,
     ttlDays: 7,
@@ -213,38 +203,87 @@ export default function SettingsPage() {
   const [webTesting, setWebTesting] = useState(false);
   const [webTestResult, setWebTestResult] = useState<WebTestResult | null>(null);
 
-  // ── 讲解风格 ──
-  const [teaching, setTeaching] = useState<TeachingProfile>(DEFAULT_TEACHING_PROFILE);
-  const [teachingOpen, setTeachingOpen] = useState(false);
-  const [teachingSaving, setTeachingSaving] = useState(false);
-  const teachingIsDefault = isDefaultTeachingProfile(teaching);
-  const teachingPreview = buildTeachingStyleBlock(teaching);
+  // ── 讲解风格：多张自定义卡片，只有一个使用中 ──
+  const [styles, setStyles] = useState<TeachingStyle[]>([]);
+  const [activeStyleId, setActiveStyleId] = useState<string | null>(null);
+  const [styleSaving, setStyleSaving] = useState(false);
+  const [styleEditor, setStyleEditor] = useState<StyleEditor | null>(null);
+  const [pendingStyleDelete, setPendingStyleDelete] = useState<TeachingStyle | null>(null);
+  const stylePreview = styleEditor
+    ? buildTeachingStyleBlock(styleEditor)
+    : null;
 
-  const persistTeaching = useCallback(async (next: TeachingProfile, message: string) => {
-    setTeachingSaving(true);
+  const applyTeachingSnapshot = (data: { styles?: TeachingStyle[]; activeId?: string | null }) => {
+    setStyles(data.styles ?? []);
+    setActiveStyleId(data.activeId ?? null);
+  };
+
+  const postTeaching = useCallback(async (payload: Record<string, unknown>, message: string) => {
+    setStyleSaving(true);
     try {
       const res = await fetch("/api/settings/teaching", {
-        method: "PUT",
+        method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(next),
+        body: JSON.stringify(payload),
       });
-      if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error ?? "保存失败");
-      }
-      const data = (await res.json()) as { profile?: TeachingProfile };
-      if (data.profile) setTeaching(data.profile);
+      const data = (await res.json().catch(() => ({}))) as {
+        styles?: TeachingStyle[];
+        activeId?: string | null;
+        style?: TeachingStyle;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error ?? "保存失败");
+      setStyles(data.styles ?? []);
+      setActiveStyleId(data.activeId ?? null);
       toast.success(message);
+      return true;
     } catch (e) {
       toast.error((e as Error).message || "保存失败");
+      return false;
     } finally {
-      setTeachingSaving(false);
+      setStyleSaving(false);
     }
   }, []);
 
-  const saveTeaching = () => void persistTeaching(teaching, "讲解风格已保存");
-  const resetTeaching = () =>
-    void persistTeaching(DEFAULT_TEACHING_PROFILE, "已恢复默认讲法：不再额外注入风格要求");
+  const saveStyleEditor = async () => {
+    if (!styleEditor) return;
+    const editing = Boolean(styleEditor.id);
+    const ok = await postTeaching(
+      editing
+        ? {
+            action: "update",
+            id: styleEditor.id,
+            style: {
+              name: styleEditor.name,
+              directive: styleEditor.directive,
+              verbosity: styleEditor.verbosity,
+              requireExample: styleEditor.requireExample,
+              requireCheckQuestion: styleEditor.requireCheckQuestion,
+            },
+          }
+        : {
+            action: "create",
+            style: {
+              name: styleEditor.name,
+              directive: styleEditor.directive,
+              verbosity: styleEditor.verbosity,
+              requireExample: styleEditor.requireExample,
+              requireCheckQuestion: styleEditor.requireCheckQuestion,
+            },
+          },
+      editing ? "风格已更新" : "风格已添加",
+    );
+    if (ok) setStyleEditor(null);
+  };
+
+  const deleteStyle = async () => {
+    if (!pendingStyleDelete) return;
+    const ok = await postTeaching({ action: "delete", id: pendingStyleDelete.id }, "风格已删除");
+    if (ok) setPendingStyleDelete(null);
+  };
+
+  const activateStyle = (id: string | null) =>
+    void postTeaching({ action: "activate", id }, id ? "已切换到这个风格" : "已改用默认讲法");
 
   const load = useCallback(async () => {
     const [mRes, aRes, sRes, wRes, tRes] = await Promise.all([
@@ -266,9 +305,16 @@ export default function SettingsPage() {
       setWebCacheRows(Number(w.cacheRows ?? 0));
       setWebDraft({
         enabled: w.enabled,
-        provider: w.provider,
-        baseUrl: w.baseUrl,
+        endpoint: w.endpoint,
+        method: w.method,
         apiKey: "",
+        authHeader: "",
+        queryParam: w.queryParam,
+        bodyTemplate: w.bodyTemplate ?? "",
+        resultsPath: w.resultsPath,
+        titleField: "",
+        urlField: "",
+        snippetField: "",
         maxSources: w.maxSources,
         timeoutMs: w.timeoutMs,
         ttlDays: w.ttlDays,
@@ -279,8 +325,8 @@ export default function SettingsPage() {
       });
     }
     if (tRes.ok) {
-      const data = (await tRes.json()) as { profile?: TeachingProfile };
-      if (data.profile) setTeaching(data.profile);
+      const data = (await tRes.json()) as { styles?: TeachingStyle[]; activeId?: string | null };
+      applyTeachingSnapshot(data);
     }
     setLoading(false);
   }, []);
@@ -444,12 +490,19 @@ export default function SettingsPage() {
     }
   };
 
-  /** 当前表单值：保存与测试共用，避免"测的是旧配置" */
+/** 当前表单值：保存与测试共用，避免"测的是旧配置" */
   const webPayload = () => ({
     enabled: webDraft.enabled,
-    provider: webDraft.provider,
-    baseUrl: webDraft.baseUrl,
+    endpoint: webDraft.endpoint.trim(),
+    method: webDraft.method,
     apiKey: webDraft.apiKey || undefined,
+    authHeader: webDraft.authHeader || undefined,
+    queryParam: webDraft.queryParam,
+    bodyTemplate: webDraft.bodyTemplate,
+    resultsPath: webDraft.resultsPath,
+    titleField: webDraft.titleField,
+    urlField: webDraft.urlField,
+    snippetField: webDraft.snippetField,
     maxSources: webDraft.maxSources,
     timeoutMs: webDraft.timeoutMs,
     ttlDays: webDraft.ttlDays,
@@ -459,14 +512,14 @@ export default function SettingsPage() {
     maxSearchesPerSession: webDraft.maxSearchesPerSession,
   });
 
-  const saveWeb = async () => {
+  const putWeb = async (extra: Record<string, unknown> = {}) => {
     setWebSaving(true);
     setWebTestResult(null);
     try {
       const res = await fetch("/api/settings/web", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(webPayload()),
+        body: JSON.stringify({ ...webPayload(), ...extra }),
       });
       const data = (await res.json()) as WebStatus & { error?: string };
       if (!res.ok || data.error) {
@@ -477,7 +530,7 @@ export default function SettingsPage() {
       }
       setWeb(data);
       setWebCacheRows(Number(data.cacheRows ?? 0));
-      setWebDraft((d) => ({ ...d, apiKey: "" }));
+      setWebDraft((d) => ({ ...d, apiKey: "", authHeader: "" }));
       toast.success("联网检索配置已保存");
       await load();
       return true;
@@ -489,7 +542,15 @@ export default function SettingsPage() {
     }
   };
 
-  /** 测试**当前表单**：改了地址/Key 不用先保存也能验证 */
+  const saveWeb = () => putWeb();
+
+  /** 输入框空着表示"不改"，所以删除凭据要有一个明确动作 */
+  const clearWebAuth = () => {
+    setWebDraft((d) => ({ ...d, apiKey: "", authHeader: "" }));
+    void putWeb({ clearKey: true, clearAuth: true });
+  };
+
+  /** 测试**当前表单**：改了地址/认证头不用先保存也能验证 */
   const testWeb = async () => {
     setWebTesting(true);
     setWebTestResult(null);
@@ -498,9 +559,16 @@ export default function SettingsPage() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          provider: webDraft.provider,
-          baseUrl: webDraft.baseUrl,
+          endpoint: webDraft.endpoint.trim(),
+          method: webDraft.method,
           apiKey: webDraft.apiKey || undefined,
+          authHeader: webDraft.authHeader || undefined,
+          queryParam: webDraft.queryParam,
+          bodyTemplate: webDraft.bodyTemplate,
+          resultsPath: webDraft.resultsPath,
+          titleField: webDraft.titleField,
+          urlField: webDraft.urlField,
+          snippetField: webDraft.snippetField,
           timeoutMs: webDraft.timeoutMs,
           maxSources: webDraft.maxSources,
           allowDomains: webDraft.allowDomains.split("\n").map((x) => x.trim()).filter(Boolean),
@@ -517,7 +585,7 @@ export default function SettingsPage() {
       }
       setWebTestResult(data);
       if (data.ok) {
-        toast.success(`搜索可用 · ${data.latencyMs}ms · ${data.count} 条结果`);
+        toast.success(`接口可用 · ${data.latencyMs}ms · ${data.count} 条结果`);
       } else {
         toast.error(data.message ?? "搜索失败");
       }
@@ -550,28 +618,12 @@ export default function SettingsPage() {
     }
   };
 
-  /** 换服务商时把地址重置成该服务商的官方地址：两家的地址互不相通，留着旧值只会让人以为配好了 */
-  const changeWebProvider = (provider: WebProvider) => {
-    setWebDraft((d) =>
-      d.provider === provider ? d : { ...d, provider, baseUrl: WEB_PROVIDER_DEFAULT_BASE[provider] },
-    );
-    setWebTestResult(null);
-  };
-
-  /** 通俗摘要：折叠状态下也要一眼看出现在是什么状态 */
-  const webSummary = !web
-    ? "未配置"
-    : web.enabled
-      ? web.configured
-        ? `已启用 · ${web.provider === "searxng" ? "SearXNG" : web.provider === "tavily" ? "Tavily" : "Brave"}${web.defaultMode === "manual" ? " · 对话里默认打开" : ""}`
-        : "已启用但还不能用（缺地址或 Key）"
-      : "未启用";
-
-  const teachingSummary = teachingIsDefault
-    ? "未设置 · 使用默认讲法"
-    : `${teaching.directive.trim() ? "自定义讲法" : "默认讲法"} · 篇幅 ${teaching.verbosity}/5${
-        teaching.requireExample ? " · 必须举例" : ""
-      }${teaching.requireCheckQuestion ? " · 讲完提问" : ""}`;
+  /** 测试结果里的统计行：一眼看出最近有没有真在用 */
+  const webStatsLine = web?.stats
+    ? `近 ${web.stats.days} 天：${web.stats.searches} 次检索 · 命中缓存 ${web.stats.cacheHits} 次${
+        web.stats.failures ? ` · 失败 ${web.stats.failures} 次` : ""
+      }${web.stats.avgLatencyMs ? ` · 平均 ${web.stats.avgLatencyMs}ms` : ""}`
+    : null;
 
   const defaultModel = models.find((m) => m.isDefault) ?? models[0];
   const healthBadge = defaultModel?.configured
@@ -873,311 +925,508 @@ export default function SettingsPage() {
         </p>
       </Modal>
 
-      <section className="mb-8">
+<section className="mb-8">
         <SectionHeader
           title="讲解风格"
-          hint={teachingOpen ? "只影响讲解方式，不改事实准确性与安全约束" : teachingSummary}
+          hint={
+            styles.length
+              ? `${styles.length} 个自定义风格 · ${activeStyleId ? "有一个使用中" : "当前按默认讲法"}`
+              : "还没有自定义风格；默认讲法不额外注入提示词"
+          }
           action={
             <Button
               size="sm"
-              variant="ghost"
-              onClick={() => setTeachingOpen((v) => !v)}
-              icon={
-                <ChevronDown
-                  className={cx("size-3.5 transition-transform", teachingOpen ? "rotate-180" : "")}
-                />
+              icon={<Plus className="size-3.5" />}
+              disabled={styles.length >= MAX_TEACHING_STYLES || styleEditor !== null}
+              onClick={() =>
+                setStyleEditor({ ...DEFAULT_STYLE_FIELDS, name: `风格 ${styles.length + 1}` })
               }
             >
-              {teachingOpen ? "收起" : "展开"}
+              添加风格
             </Button>
           }
         />
-        {teachingOpen ? (
-          <Card className="flex flex-col gap-4 p-4">
-            <Field
-              label="你希望我怎么讲"
-              hint={`最多 ${MAX_TEACHING_DIRECTIVE} 字；留空就是默认讲法，不额外注入`}
-            >
-              <textarea
-                className={cx(inputClass, "min-h-[92px] resize-y")}
-                maxLength={MAX_TEACHING_DIRECTIVE}
-                value={teaching.directive}
-                onChange={(e) => setTeaching((t) => ({ ...t, directive: e.target.value }))}
-                placeholder="例如：先给结论再解释原因；多用真实数字；不要用「显然」这类词。"
-              />
-            </Field>
 
-            <Field
-              label={`篇幅 ${teaching.verbosity}/5`}
-              hint="1=只讲关键点，3=讲清思路，5=完整展开并补边界情况"
-            >
-              <input
-                type="range"
-                min={1}
-                max={5}
-                step={1}
-                value={teaching.verbosity}
-                onChange={(e) => setTeaching((t) => ({ ...t, verbosity: Number(e.target.value) }))}
-                className="w-full accent-[var(--accent)]"
-                aria-label="篇幅 1 到 5"
-              />
-            </Field>
+        <Card className="flex flex-col gap-2.5 p-4">
+          {styleEditor ? (
+            <div className="rounded-xl border border-line bg-panel2/50 p-3.5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[13px] font-medium text-ink">
+                    {styleEditor.id ? "编辑风格" : "新风格"}
+                  </p>
+                  <p className="mt-0.5 text-[12px] text-ink3">保存后只影响之后新发的消息</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStyleEditor(null)}
+                  className="text-[12px] text-ink3 hover:text-ink"
+                >
+                  取消
+                </button>
+              </div>
 
-            <div className="flex flex-col gap-2">
-              <label className="flex items-center gap-2 text-[13px] text-ink2">
-                <input
-                  type="checkbox"
-                  checked={teaching.requireExample}
-                  onChange={(e) => setTeaching((t) => ({ ...t, requireExample: e.target.checked }))}
-                  className="size-3.5 accent-[var(--accent)]"
+              <div className="mt-3 flex flex-col gap-3">
+                <Field label="名字" hint={`最多 ${MAX_STYLE_NAME} 字，只用于在这里辨认`}>
+                  <input
+                    className={inputClass}
+                    maxLength={MAX_STYLE_NAME}
+                    value={styleEditor.name}
+                    onChange={(e) =>
+                      setStyleEditor((s) => (s ? { ...s, name: e.target.value } : s))
+                    }
+                    placeholder="例如：多举例子 / 考前复习"
+                  />
+                </Field>
+
+                <Field
+                  label="你希望我怎么讲"
+                  hint={`最多 ${MAX_TEACHING_DIRECTIVE} 字；留空就只按下面的篇幅与选项要求`}
+                >
+                  <textarea
+                    className={cx(inputClass, "min-h-[96px] resize-y leading-relaxed")}
+                    maxLength={MAX_TEACHING_DIRECTIVE}
+                    value={styleEditor.directive}
+                    onChange={(e) =>
+                      setStyleEditor((s) => (s ? { ...s, directive: e.target.value } : s))
+                    }
+                    placeholder="例如：先讲结论，再用一个生活里的例子说明，最后指出最容易错的地方"
+                  />
+                </Field>
+                <p className="-mt-1 text-right text-[11.5px] text-ink3">
+                  {styleEditor.directive.length}/{MAX_TEACHING_DIRECTIVE}
+                </p>
+
+                <SliderField
+                  label="篇幅"
+                  value={styleEditor.verbosity}
+                  suffix=" / 5"
+                  hint="1=只讲关键点，5=完整展开并补边界情况"
+                  min={1}
+                  max={5}
+                  onChange={(v) => setStyleEditor((s) => (s ? { ...s, verbosity: v } : s))}
                 />
-                每次讲解至少给一个具体例子或数字
-              </label>
-              <label className="flex items-center gap-2 text-[13px] text-ink2">
-                <input
-                  type="checkbox"
-                  checked={teaching.requireCheckQuestion}
-                  onChange={(e) => setTeaching((t) => ({ ...t, requireCheckQuestion: e.target.checked }))}
-                  className="size-3.5 accent-[var(--accent)]"
-                />
-                讲完后用一个具体问题检验我是否跟上
-              </label>
-            </div>
 
-            <details className="rounded-xl border border-line bg-panel2/40 px-3 py-2.5">
-              <summary className="cursor-pointer select-none text-[12.5px] text-ink2">
-                {teachingPreview
-                  ? "保存后注入给模型的提示词（点开查看）"
-                  : "当前为默认讲法：不会额外注入任何提示词"}
-              </summary>
-              {teachingPreview ? (
-                <pre className="mt-2 whitespace-pre-wrap break-words font-mono text-[11.5px] leading-relaxed text-ink3">
-                  {teachingPreview}
-                </pre>
-              ) : null}
-            </details>
+                <div className="flex flex-col gap-2 rounded-xl border border-line bg-panel px-3 py-2.5">
+                  <label className="flex items-start gap-2 text-[13px] text-ink2">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 size-4 accent-[var(--accent)]"
+                      checked={styleEditor.requireExample}
+                      onChange={(e) =>
+                        setStyleEditor((s) => (s ? { ...s, requireExample: e.target.checked } : s))
+                      }
+                    />
+                    每次讲解至少给一个具体例子或数字
+                  </label>
+                  <label className="flex items-start gap-2 text-[13px] text-ink2">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 size-4 accent-[var(--accent)]"
+                      checked={styleEditor.requireCheckQuestion}
+                      onChange={(e) =>
+                        setStyleEditor((s) =>
+                          s ? { ...s, requireCheckQuestion: e.target.checked } : s,
+                        )
+                      }
+                    />
+                    讲完后用一个具体问题检验我是否跟上
+                  </label>
+                </div>
 
-            <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
-              <Button
-                size="sm"
-                icon={<Save className="size-3.5" />}
-                loading={teachingSaving}
-                onClick={saveTeaching}
-              >
-                保存
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={teachingIsDefault || teachingSaving}
-                onClick={resetTeaching}
-              >
-                恢复默认
-              </Button>
-              <span className="ml-auto text-[12px] text-ink3">
-                {teachingIsDefault ? "当前：默认讲法" : "保存后只影响新消息"}
-              </span>
+                <details className="rounded-xl border border-line bg-panel px-3 py-2.5">
+                  <summary className="cursor-pointer select-none text-[12.5px] text-ink2">
+                    {stylePreview ? "保存后注入给模型的提示词（点开查看）" : "这份内容不会额外注入（全默认）"}
+                  </summary>
+                  {stylePreview ? (
+                    <pre className="mt-2 whitespace-pre-wrap break-words font-mono text-[11.5px] leading-relaxed text-ink3">
+                      {stylePreview}
+                    </pre>
+                  ) : (
+                    <p className="mt-2 text-[12px] leading-relaxed text-ink3">
+                      什么都没填、选项也都没勾，模型按默认讲法回答。
+                    </p>
+                  )}
+                </details>
+
+                <div className="flex flex-wrap items-center gap-2 border-t border-line pt-2.5">
+                  <Button
+                    size="sm"
+                    icon={<Save className="size-3.5" />}
+                    loading={styleSaving}
+                    onClick={saveStyleEditor}
+                  >
+                    {styleEditor.id ? "保存修改" : "添加"}
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => setStyleEditor(null)}>
+                    取消
+                  </Button>
+                  <span className="ml-auto text-[12px] text-ink3">同一时间只有一个风格生效</span>
+                </div>
+              </div>
             </div>
-          </Card>
-        ) : null}
+          ) : null}
+
+          {styles.length === 0 && !styleEditor ? (
+            <div className="rounded-xl border border-dashed border-line bg-panel2/30 px-3.5 py-4">
+              <p className="text-[13px] leading-relaxed text-ink2">
+                点右上角「添加风格」，写下你希望我怎么讲，再调篇幅和两个选项。
+              </p>
+              <p className="mt-1 text-[12.5px] leading-relaxed text-ink3">
+                可以存好几个风格（比如「平时」和「考前复习」）随时切换；都不设置时就是默认讲法。
+              </p>
+            </div>
+          ) : null}
+
+          {styles.map((s) => {
+            const active = s.id === activeStyleId;
+            return (
+              <div
+                key={s.id}
+                className={cx(
+                  "rounded-xl border px-3.5 py-3",
+                  active ? "border-accent/50 bg-accentsoft/40" : "border-line bg-panel",
+                )}
+              >
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <p className="text-[13.5px] font-medium text-ink">{s.name}</p>
+                  {active ? <Badge tone="ok">使用中</Badge> : null}
+                  <span className="text-[12px] text-ink3">{styleSummary(s)}</span>
+                  <div className="ml-auto flex items-center gap-1">
+                    {active ? (
+                      <Button size="sm" variant="ghost" onClick={() => activateStyle(null)}>
+                        改用默认
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="ghost" onClick={() => activateStyle(s.id)}>
+                        使用
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon={<Pencil className="size-3.5" />}
+                      onClick={() => setStyleEditor({ ...s })}
+                    >
+                      编辑
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon={<Trash2 className="size-3.5" />}
+                      onClick={() => setPendingStyleDelete(s)}
+                    >
+                      删除
+                    </Button>
+                  </div>
+                </div>
+                <p
+                  className={cx(
+                    "mt-1.5 line-clamp-2 text-[12.5px] leading-relaxed",
+                    s.directive.trim() ? "text-ink2" : "text-ink3",
+                  )}
+                >
+                  {s.directive.trim() || "没有额外描述，只按篇幅和选项要求"}
+                </p>
+              </div>
+            );
+          })}
+        </Card>
       </section>
 
+      <Modal
+        open={Boolean(pendingStyleDelete)}
+        onClose={() => setPendingStyleDelete(null)}
+        title={`删除「${pendingStyleDelete?.name ?? ""}」？`}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setPendingStyleDelete(null)}>
+              取消
+            </Button>
+            <Button variant="danger" size="sm" loading={styleSaving} onClick={deleteStyle}>
+              删除
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-[13px] leading-relaxed text-ink2">
+          只删除这个风格设置，对话与学习记录不受影响。
+        </p>
+        {pendingStyleDelete?.id === activeStyleId ? (
+          <p className="mt-2 text-[12.5px] leading-relaxed text-ink3">
+            它正在使用中，删除后会回到默认讲法（或剩下的第一个风格）。
+          </p>
+        ) : null}
+      </Modal>
       <section className="mb-8">
         <SectionHeader
           title="联网检索"
-          hint={webOpen ? "需要时手动查证；关闭时完全不发请求" : webSummary}
+          hint={
+            web?.enabled
+              ? web.configured
+                ? "需要时手动查证；关掉开关就完全不发请求"
+                : "已启用，但还没填接口地址"
+              : "关闭时不发任何请求；任意返回 JSON 的搜索接口都能接"
+          }
           action={
-            <div className="flex items-center gap-2">
-              {web?.enabled ? (
-                <Badge tone={web.configured ? "ok" : "warn"}>
-                  <Globe className="size-3" /> {web.configured ? "已启用" : "待配置"}
-                </Badge>
-              ) : (
-                <Badge tone="neutral">关闭</Badge>
-              )}
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setWebOpen((v) => !v)}
-                icon={
-                  <ChevronDown
-                    className={cx("size-3.5 transition-transform", webOpen ? "rotate-180" : "")}
-                  />
-                }
-              >
-                {webOpen ? "收起" : "展开"}
-              </Button>
-            </div>
+            <Badge tone={web?.enabled ? (web.configured ? "ok" : "warn") : "neutral"}>
+              {web?.enabled ? <Globe className="size-3" /> : null}
+              {web?.enabled ? (web.configured ? "已启用" : "待配置") : "关闭"}
+            </Badge>
           }
         />
 
-        {webOpen ? (
-          <Card className="flex flex-col gap-4 p-4">
-            <label className="flex items-start gap-2.5 text-[13px] text-ink">
-              <input
-                type="checkbox"
-                checked={webDraft.enabled}
-                onChange={(e) => setWebDraft((d) => ({ ...d, enabled: e.target.checked }))}
-                className="mt-0.5 size-4 accent-[var(--accent)]"
-              />
-              <span>
-                启用联网检索
-                <span className="mt-0.5 block text-[12px] leading-relaxed text-ink3">
-                  只发本轮问题（手机号 / 邮箱 / 身份证 / 长数字会先脱敏），不发材料、历史与作答记录。
-                </span>
+        <Card className="flex flex-col gap-3.5 p-4">
+          <label className="flex items-start gap-2.5 text-[13px] text-ink">
+            <input
+              type="checkbox"
+              checked={webDraft.enabled}
+              onChange={(e) => setWebDraft((d) => ({ ...d, enabled: e.target.checked }))}
+              className="mt-0.5 size-4 accent-[var(--accent)]"
+            />
+            <span>
+              启用联网检索
+              <span className="mt-0.5 block text-[12px] leading-relaxed text-ink3">
+                不绑定服务商：填你自己的搜索接口地址即可；Key 只存在本机数据库，不回显。
               </span>
-            </label>
+            </span>
+          </label>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="搜索服务" hint="选一个可用的后端">
-                <select
-                  value={webDraft.provider}
-                  onChange={(e) => changeWebProvider(e.target.value as WebProvider)}
-                  className={inputClass}
-                >
-                  {(["searxng", "tavily", "brave"] as const).map((p) => (
-                    <option key={p} value={p}>
-                      {WEB_PROVIDER_LABEL[p]}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              {webDraft.provider === "searxng" ? (
-                <Field label="SearXNG 地址" hint="必填，例如 http://127.0.0.1:8888">
+          <div className="grid gap-3 sm:grid-cols-[1.6fr_1fr]">
+            <Field label="接口地址" hint="填完整 URL；GET 可以把固定参数写进地址，如 ?format=json">
+              <input
+                value={webDraft.endpoint}
+                onChange={(e) => {
+                  setWebDraft((d) => ({ ...d, endpoint: e.target.value }));
+                  setWebTestResult(null);
+                }}
+                className={cx(inputClass, "font-mono text-[12.5px]")}
+                placeholder="https://api.example.com/search"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </Field>
+            <Field label="调用方式" hint="GET 拼查询参数；POST 发 JSON 请求体">
+              <select
+                value={webDraft.method}
+                onChange={(e) => {
+                  setWebDraft((d) => ({ ...d, method: e.target.value as "GET" | "POST" }));
+                  setWebTestResult(null);
+                }}
+                className={inputClass}
+              >
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+              </select>
+            </Field>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field
+              label="API Key"
+              hint={web?.keyMasked ? `当前 ${web.keyMasked}，留空表示不改` : "接口不需要就不填"}
+            >
+              <input
+                type="password"
+                value={webDraft.apiKey}
+                onChange={(e) => setWebDraft((d) => ({ ...d, apiKey: e.target.value }))}
+                className={cx(inputClass, "font-mono text-[12.5px]")}
+                placeholder={web?.keyMasked ? "已配置，留空不修改" : "可选"}
+                autoComplete="off"
+              />
+            </Field>
+            <Field
+              label="认证请求头"
+              hint={
+                web?.hasAuth
+                  ? "已配置，留空不修改；可写 {{apiKey}} 引用上面的 Key"
+                  : "可选，整行写；可写 {{apiKey}} 引用上面的 Key"
+              }
+            >
+              <input
+                value={webDraft.authHeader}
+                onChange={(e) => setWebDraft((d) => ({ ...d, authHeader: e.target.value }))}
+                className={cx(inputClass, "font-mono text-[12.5px]")}
+                placeholder="Authorization: Bearer {{apiKey}}"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </Field>
+          </div>
+
+          {web?.hasAuth ? (
+            <div className="flex flex-wrap items-center gap-2 text-[12px] text-ink3">
+              <span>已保存认证凭据（内容不回显）。</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={<Trash2 className="size-3.5" />}
+                disabled={webSaving}
+                onClick={clearWebAuth}
+              >
+                清除 Key 与认证头
+              </Button>
+            </div>
+          ) : null}
+
+          <label className="flex items-start gap-2.5 text-[13px] text-ink">
+            <input
+              type="checkbox"
+              checked={webDraft.defaultMode === "manual"}
+              onChange={(e) =>
+                setWebDraft((d) => ({ ...d, defaultMode: e.target.checked ? "manual" : "off" }))
+              }
+              className="mt-0.5 size-4 accent-[var(--accent)]"
+            />
+            <span>
+              在对话里默认打开联网
+              <span className="mt-0.5 block text-[12px] leading-relaxed text-ink3">
+                输入框旁的地球按钮随时可以临时开关，不会改这里的默认值。
+              </span>
+            </span>
+          </label>
+
+          <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
+            <Button
+              size="sm"
+              loading={webSaving || webTesting}
+              disabled={webTesting}
+              onClick={saveAndTestWeb}
+              icon={<Wifi className="size-3.5" />}
+            >
+              保存并测试
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              loading={webTesting}
+              onClick={testWeb}
+              icon={<Search className="size-3.5" />}
+            >
+              测试当前设置
+            </Button>
+            <span className="ml-auto text-[12px] text-ink3">
+              {web && !web.configured ? "还没填接口地址" : (webStatsLine ?? "试一次就知道通不通")}
+            </span>
+          </div>
+
+          {webTestResult ? (
+            <div
+              className={cx(
+                "rounded-xl border px-3 py-2.5 text-[12.5px] leading-relaxed",
+                webTestResult.ok ? "border-ok/40 bg-oksoft/40" : "border-bad/40 bg-badsoft/40",
+              )}
+            >
+              {webTestResult.ok ? (
+                <>
+                  <p className="text-ink">
+                    接口可用 · {webTestResult.latencyMs}ms · 采用 {webTestResult.count} 条
+                  </p>
+                  {webTestResult.results?.length ? (
+                    <ul className="mt-1.5 space-y-1">
+                      {webTestResult.results.map((r) => (
+                        <li key={`${r.url}-${r.title}`} className="truncate text-ink2">
+                          · {r.title} <span className="text-ink3">（{r.url}）</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-1 text-ink2">
+                      接口通了，但这条测试查询没返回可用结果：换个查询词，或在高级里核对结果数组路径与字段映射。
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="text-ink">
+                    测试失败：{webTestResult.message ?? "未知原因"}
+                    {webTestResult.code ? (
+                      <span className="ml-1 font-mono text-[11.5px] text-ink3">
+                        {webTestResult.code}
+                      </span>
+                    ) : null}
+                  </p>
+                  {webTestResult.code && WEB_TEST_ADVICE[webTestResult.code] ? (
+                    <p className="mt-1 text-ink2">建议：{WEB_TEST_ADVICE[webTestResult.code]}</p>
+                  ) : null}
+                </>
+              )}
+            </div>
+          ) : null}
+
+          <details className="rounded-xl border border-line bg-panel2/40 px-3 py-2.5">
+            <summary className="cursor-pointer select-none text-[12.5px] text-ink2">
+              高级设置（结果读不出来、或想调缓存时才用）
+            </summary>
+
+            <div className="mt-3 flex flex-col gap-3">
+              {webDraft.method === "GET" ? (
+                <Field label="查询参数名" hint="关键词放在哪个参数里；多数接口是 q 或 query">
                   <input
-                    value={webDraft.baseUrl}
-                    onChange={(e) => setWebDraft((d) => ({ ...d, baseUrl: e.target.value }))}
+                    value={webDraft.queryParam}
+                    onChange={(e) => setWebDraft((d) => ({ ...d, queryParam: e.target.value }))}
                     className={cx(inputClass, "font-mono text-[12.5px]")}
-                    placeholder="http://127.0.0.1:8888"
+                    placeholder="q"
+                    spellCheck={false}
                   />
                 </Field>
               ) : (
                 <Field
-                  label="API Key"
-                  hint={web?.keyMasked ? `当前：${web.keyMasked}（留空不修改）` : "必填"}
+                  label="请求体模板"
+                  hint="JSON；支持 {{query}} / {{maxResults}} / {{apiKey}} 占位符"
                 >
-                  <input
-                    type="password"
-                    value={webDraft.apiKey}
-                    onChange={(e) => setWebDraft((d) => ({ ...d, apiKey: e.target.value }))}
-                    className={cx(inputClass, "font-mono text-[12.5px]")}
-                    placeholder="粘贴 Key"
-                    autoComplete="off"
+                  <textarea
+                    value={webDraft.bodyTemplate}
+                    onChange={(e) => setWebDraft((d) => ({ ...d, bodyTemplate: e.target.value }))}
+                    className={cx(inputClass, "min-h-[84px] resize-y font-mono text-[12px] leading-relaxed")}
+                    placeholder={'{"query": "{{query}}", "max_results": {{maxResults}}}'}
+                    spellCheck={false}
                   />
                 </Field>
               )}
-            </div>
 
-            <p className="text-[12px] leading-relaxed text-ink3">
-              {webDraft.provider === "searxng" ? (
-                <>
-                  自建示例：<code className="font-mono">docker run -d -p 8888:8080 searxng/searxng</code>
-                  ，并在 settings.yml 里打开 json 格式。本机 / 内网地址会自动放行。
-                </>
-              ) : (
-                <>
-                  在
-                  <a
-                    href={WEB_PROVIDER_KEY_URL[webDraft.provider]}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mx-1 text-accentink underline underline-offset-2"
-                  >
-                    {webDraft.provider === "tavily" ? "tavily.com" : "brave.com/search/api"}
-                  </a>
-                  申请 Key；Key 只存在本机数据库，不回显完整内容。
-                </>
-              )}
-            </p>
-
-            <label className="flex items-start gap-2.5 text-[13px] text-ink">
-              <input
-                type="checkbox"
-                checked={webDraft.defaultMode === "manual"}
-                onChange={(e) =>
-                  setWebDraft((d) => ({ ...d, defaultMode: e.target.checked ? "manual" : "off" }))
-                }
-                className="mt-0.5 size-4 accent-[var(--accent)]"
-              />
-              <span>
-                在对话里默认打开联网
-                <span className="mt-0.5 block text-[12px] leading-relaxed text-ink3">
-                  对话输入框旁的地球按钮随时可以临时开关，不会改这里的默认值。
-                </span>
-              </span>
-            </label>
-
-            <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
-              <Button
-                size="sm"
-                loading={webSaving || webTesting}
-                disabled={webTesting}
-                onClick={saveAndTestWeb}
-                icon={<Wifi className="size-3.5" />}
-              >
-                保存并测试
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                loading={webTesting}
-                onClick={testWeb}
-                icon={<Search className="size-3.5" />}
-              >
-                测试当前设置
-              </Button>
-              {web?.stats ? (
-                <span className="ml-auto text-[12px] text-ink3">
-                  近 7 天：{web.stats.searches} 次检索 · 缓存命中 {web.stats.cacheHits} · 失败{" "}
-                  {web.stats.failures}
-                </span>
-              ) : null}
-            </div>
-
-            {webTestResult ? (
-              <div
-                className={cx(
-                  "rounded-xl border px-3 py-2.5 text-[12.5px] leading-relaxed",
-                  webTestResult.ok ? "border-ok/40 bg-oksoft/40" : "border-bad/40 bg-badsoft/40",
-                )}
-              >
-                {webTestResult.ok ? (
-                  <>
-                    <p className="text-ink">
-                      搜索可用 · {webTestResult.latencyMs}ms · 返回 {webTestResult.count} 条
-                      {webTestResult.results?.length ? "，前几条：" : ""}
-                    </p>
-                    {webTestResult.results?.length ? (
-                      <ul className="mt-1.5 space-y-1">
-                        {webTestResult.results.map((r) => (
-                          <li key={`${r.url}-${r.title}`} className="truncate text-ink2">
-                            · {r.title} <span className="text-ink3">（{r.url}）</span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
-                    <p className="text-ink">
-                      测试失败：{webTestResult.message ?? "未知原因"}
-                      {webTestResult.code ? (
-                        <span className="ml-1 font-mono text-[11.5px] text-ink3">{webTestResult.code}</span>
-                      ) : null}
-                    </p>
-                    {webTestResult.code && WEB_TEST_ADVICE[webTestResult.code] ? (
-                      <p className="mt-1 text-ink2">建议：{WEB_TEST_ADVICE[webTestResult.code]}</p>
-                    ) : null}
-                  </>
-                )}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="结果数组路径" hint="留空自动识别；如 results、data.items、web.results">
+                  <input
+                    value={webDraft.resultsPath}
+                    onChange={(e) => setWebDraft((d) => ({ ...d, resultsPath: e.target.value }))}
+                    className={cx(inputClass, "font-mono text-[12.5px]")}
+                    placeholder="自动识别"
+                    spellCheck={false}
+                  />
+                </Field>
+                <div className="grid grid-cols-3 gap-2">
+                  <Field label="标题字段" hint="空=自动">
+                    <input
+                      value={webDraft.titleField}
+                      onChange={(e) => setWebDraft((d) => ({ ...d, titleField: e.target.value }))}
+                      className={cx(inputClass, "font-mono text-[12.5px]")}
+                      placeholder="title"
+                      spellCheck={false}
+                    />
+                  </Field>
+                  <Field label="链接字段" hint="空=自动">
+                    <input
+                      value={webDraft.urlField}
+                      onChange={(e) => setWebDraft((d) => ({ ...d, urlField: e.target.value }))}
+                      className={cx(inputClass, "font-mono text-[12.5px]")}
+                      placeholder="url"
+                      spellCheck={false}
+                    />
+                  </Field>
+                  <Field label="摘要字段" hint="空=自动">
+                    <input
+                      value={webDraft.snippetField}
+                      onChange={(e) => setWebDraft((d) => ({ ...d, snippetField: e.target.value }))}
+                      className={cx(inputClass, "font-mono text-[12.5px]")}
+                      placeholder="snippet"
+                      spellCheck={false}
+                    />
+                  </Field>
+                </div>
               </div>
-            ) : null}
 
-            <details className="rounded-xl border border-line bg-panel2/40 px-3 py-2.5">
-              <summary className="cursor-pointer select-none text-[12.5px] text-ink2">
-                高级设置（一般不用改）
-              </summary>
-              <div className="mt-3 grid gap-4 sm:grid-cols-4">
+              <div className="grid gap-4 sm:grid-cols-4">
                 <SliderField
                   label="最大来源"
                   value={webDraft.maxSources}
@@ -1216,7 +1465,7 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="域名白名单" hint="每行一个，支持 *.gov.cn；留空表示不限制">
                   <textarea
                     value={webDraft.allowDomains}
@@ -1237,12 +1486,12 @@ export default function SettingsPage() {
               </div>
 
               {invalidDomainLines(webDraft.allowDomains, webDraft.denyDomains) ? (
-                <p className="mt-1.5 text-[12px] text-bad">
+                <p className="-mt-1 text-[12px] text-bad">
                   这些行看起来不是域名：{invalidDomainLines(webDraft.allowDomains, webDraft.denyDomains)}
                 </p>
               ) : null}
 
-              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-2.5">
+              <div className="flex flex-wrap items-center gap-2 border-t border-line pt-2.5">
                 <span className="text-[12px] text-ink3">
                   检索缓存 {webCacheRows} 条（同一问题不重复请求）
                 </span>
@@ -1256,13 +1505,13 @@ export default function SettingsPage() {
                   清空缓存
                 </Button>
               </div>
-            </details>
+            </div>
+          </details>
 
-            <p className="rounded-lg bg-panel2/50 px-3 py-2 text-[12px] leading-relaxed text-ink3">
-              判题与解析不走检索；失败或超时时会明说「未能联网核实」，不摆来源卡片。
-            </p>
-          </Card>
-        ) : null}
+          <p className="rounded-lg bg-panel2/50 px-3 py-2 text-[12px] leading-relaxed text-ink3">
+            判题与解析不走检索；检索失败或超时时会明说「未能联网核实」，不会摆出来源卡片。
+          </p>
+        </Card>
       </section>
 
       <section className="mb-8">
