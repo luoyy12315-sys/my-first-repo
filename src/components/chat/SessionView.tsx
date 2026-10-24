@@ -824,7 +824,7 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-[44rem] flex-col px-4 md:min-h-dvh md:px-6">
+    <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-[44rem] flex-col px-4 md:min-h-dvh md:px-6 xl:max-w-[54rem]">
       {/* 会话头 */}
       <header className="sticky top-14 z-20 -mx-4 border-b border-line bg-bg/97 px-4 py-2.5 backdrop-blur-md md:top-0 md:-mx-6 md:px-6">
         <div className="flex items-center gap-2">
@@ -1252,7 +1252,7 @@ const UserMessage = memo(function UserMessage({ message }: { message: MessageDTO
       <div className="flex items-center gap-1.5 text-[12px] text-ink3">
         <User className="size-3" /> 你
       </div>
-      <div className="max-w-[92%] rounded-2xl rounded-tr-sm bg-panel2 px-3.5 py-2.5 text-[14.5px] leading-relaxed text-ink whitespace-pre-wrap">
+      <div className="max-w-[92%] rounded-2xl rounded-tr-sm bg-panel2 px-3.5 py-2.5 text-[14.5px] leading-relaxed text-ink whitespace-pre-wrap xl:max-w-[80%]">
         {message.content}
       </div>
     </div>
