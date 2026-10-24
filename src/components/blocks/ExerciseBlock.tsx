@@ -542,9 +542,23 @@ export default function ExerciseBlock({
                 startedAt.current = Date.now();
                 // 服务端也要重置：否则"这次不再用提示"会被上次的标记顶掉
                 if (exercise) {
-                  void fetch(`/api/exercises/${exercise.id}/reset`, { method: "POST" }).catch(
-                    () => undefined,
-                  );
+                  void fetch(`/api/exercises/${exercise.id}/reset`, { method: "POST" })
+                    .then(async (res) => {
+                      const data = (await res.json().catch(() => ({}))) as { independent?: boolean };
+                      if (res.status === 409) {
+                        toast.message("这道题还不能重做", {
+                          description: "先提交一次；用过的提示不会被清掉。",
+                        });
+                        return;
+                      }
+                      // 答案已经下发过：重做可以练习，但不再计入独立正确
+                      if (data.independent === false) {
+                        toast.message("重做只作练习记录", {
+                          description: "这道题的答案已经给出过，重做不再计入独立完成与掌握度。",
+                        });
+                      }
+                    })
+                    .catch(() => undefined);
                 }
               }}
             >

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -19,7 +19,7 @@ function linkCitations(text: string): string {
   });
 }
 
-export default function Markdown({
+export default memo(function Markdown({
   children,
   className,
   citations = true,
@@ -36,6 +36,13 @@ export default function Markdown({
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false, output: "html" }]]}
         components={{
+          // 宽表格（尤其 6 列以上）在手机上会撑破页面；包一层横向滚动容器，
+          // 桌面端仍然是满宽表格，窄屏则只滚表格本身。
+          table: ({ children: rows }) => (
+            <div className="md-table-scroll">
+              <table>{rows}</table>
+            </div>
+          ),
           a: ({ href, children: c }) => {
             const isCitation = typeof href === "string" && href.startsWith("#source-");
             if (isCitation) {
@@ -57,4 +64,4 @@ export default function Markdown({
       </ReactMarkdown>
     </div>
   );
-}
+});

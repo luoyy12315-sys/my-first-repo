@@ -15,16 +15,16 @@ export function TableBlock({
     return <EmptyBlock text="表格数据不完整，未能渲染。" />;
   }
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-panel">
+    <div className="max-w-full overflow-hidden rounded-2xl border border-line bg-panel">
       <div className="border-b border-line px-4 py-3">
         <h4 className="font-serif text-[15px] text-ink">{payload.title ?? "对比表"}</h4>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[13.5px]">
+      <div className="max-w-full overflow-x-auto overscroll-x-contain">
+        <table className="w-full min-w-full border-collapse text-[13.5px]">
           <thead>
             <tr className="bg-panel2">
               {columns.map((c, i) => (
-                <th key={i} className="border-b border-line px-3.5 py-2.5 text-left font-medium text-ink2">
+                <th key={i} className="min-w-[4.5rem] border-b border-line px-3.5 py-2.5 text-left font-medium text-ink2">
                   {c}
                 </th>
               ))}
@@ -34,7 +34,7 @@ export function TableBlock({
             {rows.map((row, i) => (
               <tr key={i} className="odd:bg-transparent even:bg-panel2/40">
                 {columns.map((_, j) => (
-                  <td key={j} className="border-b border-line px-3.5 py-2.5 align-top text-ink">
+                  <td key={j} className="min-w-[4.5rem] border-b border-line px-3.5 py-2.5 align-top text-ink">
                     <Markdown className="md-tight text-[13.5px] [&_.md]:text-[13.5px]">
                       {String(row?.[j] ?? "")}
                     </Markdown>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AlertCircle, ArrowDown, ArrowUp, BookMarked, Check, Copy, FileText, FolderOpen, Sparkles, Trash2, User } from "lucide-react";
@@ -24,6 +24,9 @@ import type {
 } from "@/lib/types";
 import { stripPartialCitation } from "@/lib/ai/citations";
 import { REPRESENTATIONS } from "@/lib/teaching/representation";
+
+/** 流式增量合批窗口：模型每吐一个 token 就来一个 delta，逐条提交会让整页按 token 重渲染 */
+const STREAM_BATCH_MS = 50;
 
 interface SessionData {
   id: string;
@@ -73,6 +76,10 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
   const abortRef = useRef<AbortController | null>(null);
   const autoSent = useRef(false);
   const sendingRef = useRef(false);
+  /** 当前会话 id 的镜像：异步收尾时用它判断结果是否还属于正在看的会话 */
+  const sessionIdRef = useRef(sessionId);
+  /** 发送序号：切换会话 / 新请求都会让上一轮的异步回调失效，避免旧数据写进新界面 */
+  const sendSeqRef = useRef(0);
   const initialScrollDone = useRef(false);
   const followLatest = useRef(true);
   const lastScrollY = useRef(0);
@@ -105,11 +112,13 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
   }, [pending]);
 
   const load = useCallback(async () => {
+    const forSessionId = sessionId;
     try {
-      const [sRes, hRes, mRes] = await Promise.all([
+      const [sRes, hRes, mRes, wRes] = await Promise.all([
         fetch(`/api/sessions/${sessionId}`, { cache: "no-store" }),
         fetch("/api/health", { cache: "no-store" }),
         fetch("/api/models", { cache: "no-store" }),
+        fetch("/api/settings/web", { cache: "no-store" }),
       ]);
       if (!sRes.ok) throw new Error("会话不存在或已被删除");
       const data = (await sRes.json()) as {
@@ -117,21 +126,20 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
         messages: MessageDTO[];
         blocks: BlockWithExercise[];
       };
+      const h = hRes.ok ? ((await hRes.json()) as { ai: AiStatus }) : null;
+      const m = mRes.ok ? ((await mRes.json()) as { models: AiModelPublic[] }) : null;
+      const w = wRes.ok
+        ? ((await wRes.json()) as { defaultMode?: "off" | "manual"; configured?: boolean })
+        : null;
+      // 请求期间用户可能已经切到别的会话；上一轮的响应不能覆盖当前会话
+      if (sessionIdRef.current !== forSessionId) return;
       setSession(data.session);
       setTitleDraft(data.session.title);
       setMessages(data.messages);
       setBlocks(Object.fromEntries(data.blocks.map((b) => [b.id, b])));
-      if (hRes.ok) {
-        const h = (await hRes.json()) as { ai: AiStatus };
-        setAi(h.ai);
-      }
-      if (mRes.ok) {
-        const m = (await mRes.json()) as { models: AiModelPublic[] };
-        setModels(m.models ?? []);
-      }
-      const wRes = await fetch("/api/settings/web", { cache: "no-store" });
-      if (wRes.ok) {
-        const w = (await wRes.json()) as { defaultMode?: "off" | "manual"; configured?: boolean };
+      if (h) setAi(h.ai);
+      if (m) setModels(m.models ?? []);
+      if (w) {
         setWebConfigured(Boolean(w.configured));
         const saved = (typeof window !== "undefined" ? window.localStorage.getItem("lumina-web-mode") : null) as
           | "off"
@@ -141,9 +149,10 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
       }
       setError(null);
     } catch (e) {
+      if (sessionIdRef.current !== forSessionId) return;
       setError((e as Error).message);
     } finally {
-      setLoading(false);
+      if (sessionIdRef.current === forSessionId) setLoading(false);
     }
   }, [sessionId]);
 
@@ -243,10 +252,36 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
 
   // 在同一外壳里从会话 A 切到会话 B 时，组件可能不会重新挂载。
   useEffect(() => {
+    const switched = sessionIdRef.current !== sessionId;
+    sessionIdRef.current = sessionId;
     initialScrollDone.current = false;
     followLatest.current = true;
     setShowJumpToLatest(false);
+    if (!switched) return;
+    // 切走时结束上一段生成：否则上一轮的 delta 会继续写进新会话的界面。
+    // 服务端收到中断会把已生成内容按"中断"落库，回到原会话仍能看到。
+    abortRef.current?.abort();
+    abortRef.current = null;
+    sendSeqRef.current += 1;
+    sendingRef.current = false;
+    setPending(false);
+    setStreamText("");
+    setStreamParts([]);
+    setToolStatus(null);
+    setReasoningActive(false);
+    setError(null);
   }, [sessionId]);
+
+  // 离开这个页面（组件卸载）时也要结束生成：流已经没人消费，
+  // 继续跑只会白烧 token，旧会话也少了"中断"收尾。
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+      sendSeqRef.current += 1;
+      sendingRef.current = false;
+    };
+  }, []);
 
   const scrollToLatest = useCallback((behavior: ScrollBehavior = "auto") => {
     if (scrollFrame.current != null) cancelAnimationFrame(scrollFrame.current);
@@ -339,7 +374,8 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
         reuseUserId?: string;
       },
     ) => {
-      if (!text.trim() || pending || sendingRef.current) return;
+      if (!text.trim() || sendingRef.current) return;
+      const seq = ++sendSeqRef.current;
       sendingRef.current = true;
       followLatest.current = true;
       setShowJumpToLatest(false);
@@ -363,6 +399,34 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
       const controller = new AbortController();
       abortRef.current = controller;
       let aborted = false;
+      let acc = "";
+      const parts: MessagePart[] = [];
+      let flushTimer: number | null = null;
+      let disposed = false;
+      const cancelFlush = () => {
+        if (flushTimer != null) {
+          window.clearTimeout(flushTimer);
+          flushTimer = null;
+        }
+      };
+      const isStale = () => sendSeqRef.current !== seq;
+      // 合批：50ms 内的 delta 只提交一次，避免每个 token 都重渲染整页
+      const scheduleFlush = () => {
+        if (flushTimer != null) return;
+        flushTimer = window.setTimeout(() => {
+          flushTimer = null;
+          if (disposed || isStale()) return;
+          setStreamText(acc);
+        }, STREAM_BATCH_MS);
+      };
+      // 组件出现前先把手上的正文定格进 parts，渲染顺序才是 正文→组件→续写正文
+      const freezeText = () => {
+        cancelFlush();
+        if (!acc.trim()) return;
+        parts.push({ type: "text", text: acc });
+        acc = "";
+        setStreamText("");
+      };
 
       try {
         const res = await fetch("/api/chat", {
@@ -387,12 +451,11 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
-        let acc = "";
-        const parts: MessagePart[] = [];
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          if (isStale()) break;
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n\n");
           buffer = lines.pop() ?? "";
@@ -418,7 +481,7 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
               }
               case "delta": {
                 acc += String(evt.text ?? "");
-                setStreamText(acc);
+                scheduleFlush();
                 break;
               }
               case "thinking": {
@@ -444,11 +507,7 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
               }
               case "block": {
                 // 续写时正文会出现在组件之后：先把当前这段文本定格，保证渲染顺序
-                if (acc.trim()) {
-                  parts.push({ type: "text", text: acc });
-                  acc = "";
-                  setStreamText("");
-                }
+                freezeText();
                 const block = evt.block as BlockWithExercise;
                 setBlocks((b) => ({ ...b, [block.id]: block }));
                 parts.push({ type: "block", blockId: block.id, kind: block.kind });
@@ -457,11 +516,7 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
                 break;
               }
               case "notice": {
-                if (acc.trim()) {
-                  parts.push({ type: "text", text: acc });
-                  acc = "";
-                  setStreamText("");
-                }
+                freezeText();
                 parts.push({ type: "notice", notice: String(evt.text ?? "") });
                 setStreamParts([...parts]);
                 break;
@@ -487,10 +542,14 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
       } catch (e) {
         if ((e as Error).name === "AbortError") {
           aborted = true;
-        } else {
+        } else if (!isStale()) {
           setError((e as Error).message || "网络中断");
         }
       } finally {
+        disposed = true;
+        cancelFlush();
+        // 已经切到别的会话 / 有更新的请求：旧一轮的收尾不能改动当前界面
+        if (isStale()) return;
         sendingRef.current = false;
         abortRef.current = null;
         setPending(false);
@@ -506,11 +565,15 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
           suppressFollowUntil.current = Date.now() + 1200;
         }
         await load();
+        // 刷新期间可能又切了会话或发了新请求，后续收尾都不该再动界面
+        if (isStale()) return;
         if (aborted) {
           // 中断时服务端可能还在收尾落库；等它写完再拉一次，
           // 否则会把周期性快照（例如只剩一个 **）当成最终内容。
           await new Promise((r) => window.setTimeout(r, 700));
+          if (isStale()) return;
           await load();
+          if (isStale()) return;
         }
         // 首轮会自动命名会话；同步侧栏/历史，避免"正文已改名、侧栏还是新的学习"
         window.dispatchEvent(new Event("sessions:changed"));
@@ -518,13 +581,14 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
         window.dispatchEvent(new Event("plans:changed"));
         if (wasFollowing) {
           window.setTimeout(() => {
+            if (isStale()) return;
             if (scrollToAnswerStart()) setShowJumpToLatest(true);
             suppressFollowUntil.current = 0;
           }, 160);
         }
       }
     },
-    [pending, sessionId, load, session?.mode, webMode, scrollToLatest],
+    [sessionId, load, session?.mode, webMode, scrollToLatest],
   );
 
   // 目标学习不再按“3 个概念自动完成步骤”推进；课程进度完全由知识点证据决定。
@@ -727,7 +791,10 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
     }
   };
 
-  const openWorkspace = (blockId: string) => router.push(`/w/${blockId}?s=${sessionId}`);
+  const openWorkspace = useCallback(
+    (blockId: string) => router.push(`/w/${blockId}?s=${sessionId}`),
+    [router, sessionId],
+  );
 
   const empty = useMemo(() => messages.length === 0 && !pending, [messages.length, pending]);
 
@@ -920,7 +987,10 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
                   onAsk={send}
                   onOpenWorkspace={openWorkspace}
                   onRetry={
-                    m.id === lastAssistant?.id && m.status === "error" && !pending
+                    m.id === lastAssistant?.id &&
+                    m.status === "error" &&
+                    m.error !== "AI_NOT_CONFIGURED" &&
+                    !pending
                       ? retryLast
                       : undefined
                   }
@@ -949,32 +1019,12 @@ export default function SessionView({ sessionId }: { sessionId: string }) {
                   Lumina
                   {toolStatus ? <span className="ml-1 animate-pulse-soft">正在生成{toolLabel(toolStatus)}…</span> : null}
                 </div>
-                {streamParts.map((p, i) => {
-                  if (p.type === "text") {
-                    return (
-                      <div key={i} className="mt-2">
-                        <ErrorBoundary label="streaming-text">
-                          <Markdown>{stripPartialCitation(String(p.text ?? ""))}</Markdown>
-                        </ErrorBoundary>
-                      </div>
-                    );
-                  }
-                  if (p.type === "block" && p.blockId && blocks[p.blockId]) {
-                    return (
-                      <div key={i} className="mt-3">
-                        <BlockRenderer
-                          block={blocks[p.blockId]}
-                          onAsk={send}
-                          onOpenWorkspace={() => openWorkspace(p.blockId!)}
-                        />
-                      </div>
-                    );
-                  }
-                  if (p.type === "notice") {
-                    return <NoticeLine key={i} text={p.notice ?? ""} />;
-                  }
-                  return null;
-                })}
+                <StreamParts
+                  parts={streamParts}
+                  blocks={blocks}
+                  onAsk={send}
+                  onOpenWorkspace={openWorkspace}
+                />
                 {streamText ? (
                   <div className="stream-caret mt-2">
                     <ErrorBoundary label="streaming-text">
@@ -1214,7 +1264,7 @@ function Dot({ delay = 0 }: { delay?: number }) {
   );
 }
 
-function UserMessage({ message }: { message: MessageDTO }) {
+const UserMessage = memo(function UserMessage({ message }: { message: MessageDTO }) {
   return (
     <div className="flex flex-col items-end gap-1 animate-rise">
       <div className="flex items-center gap-1.5 text-[12px] text-ink3">
@@ -1225,17 +1275,56 @@ function UserMessage({ message }: { message: MessageDTO }) {
       </div>
     </div>
   );
-}
+});
 
-function AssistantMessage({
-  message,
+/**
+ * 流式组件的稳定外壳：delta 每 50ms 提交一次时，只有末尾的流式正文需要重渲染，
+ * 已经渲染出来的组件（图表、练习等）不应跟着重算。
+ */
+const StreamParts = memo(function StreamParts({
+  parts,
   blocks,
   onAsk,
   onOpenWorkspace,
-  onRetry,
-  onNextStep,
-  nextStepLabel,
 }: {
+  parts: MessagePart[];
+  blocks: Record<string, BlockWithExercise>;
+  onAsk: (t: string) => void;
+  onOpenWorkspace: (id: string) => void;
+}) {
+  return (
+    <>
+      {parts.map((p, i) => {
+        if (p.type === "text") {
+          return (
+            <div key={i} className="mt-2">
+              <ErrorBoundary label="streaming-text">
+                <Markdown>{stripPartialCitation(String(p.text ?? ""))}</Markdown>
+              </ErrorBoundary>
+            </div>
+          );
+        }
+        if (p.type === "block" && p.blockId && blocks[p.blockId]) {
+          return (
+            <div key={i} className="mt-3">
+              <BlockRenderer
+                block={blocks[p.blockId]}
+                onAsk={onAsk}
+                onOpenWorkspace={() => onOpenWorkspace(p.blockId!)}
+              />
+            </div>
+          );
+        }
+        if (p.type === "notice") {
+          return <NoticeLine key={i} text={p.notice ?? ""} />;
+        }
+        return null;
+      })}
+    </>
+  );
+});
+
+interface AssistantMessageProps {
   message: MessageDTO;
   blocks: Record<string, BlockWithExercise>;
   onAsk: (t: string) => void;
@@ -1243,7 +1332,17 @@ function AssistantMessage({
   onRetry?: () => void;
   onNextStep?: () => void | Promise<void>;
   nextStepLabel?: string;
-}) {
+}
+
+function AssistantMessageImpl({
+  message,
+  blocks,
+  onAsk,
+  onOpenWorkspace,
+  onRetry,
+  onNextStep,
+  nextStepLabel,
+}: AssistantMessageProps) {
   const [copied, setCopied] = useState(false);
   const hasParts = message.parts.length > 0;
 
@@ -1256,15 +1355,6 @@ function AssistantMessage({
       <div className="flex items-center gap-1.5 text-[12px] text-ink3">
         <Sparkles className="size-3 text-accent" /> Lumina
         {message.status === "error" ? <Badge tone="bad">生成中断</Badge> : null}
-        {message.status === "error" && onRetry ? (
-          <button
-            type="button"
-            onClick={onRetry}
-            className="rounded-full border border-line bg-panel px-2 py-0.5 text-[11.5px] text-ink2 transition-colors hover:border-accent/50 hover:text-ink"
-          >
-            重试
-          </button>
-        ) : null}
         {message.error === "AI_NOT_CONFIGURED" ? (
           <Link href="/settings" className="text-[12px] text-accentink underline">
             去配置模型
@@ -1316,6 +1406,25 @@ function AssistantMessage({
       ) : (
         <p className="text-[13px] text-ink3">（空）</p>
       )}
+      {message.status === "error" && message.error !== "AI_NOT_CONFIGURED" ? (
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-line bg-panel px-3 py-2">
+          <p className="min-w-0 flex-1 text-[12.5px] leading-relaxed text-ink2">
+            {message.error === "AI_ABORTED"
+              ? "你停止了这次生成，已经讲出来的部分保留在上面。"
+              : "这次回答没有正常完成，已经讲出来的部分保留在上面。"}
+            {onRetry ? "重试会用同一条提问重新生成，不会多出一条提问。" : null}
+          </p>
+          {onRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="shrink-0 rounded-full border border-line bg-panel2 px-3 py-1 text-[12px] font-medium text-ink transition-colors hover:border-accent/50 hover:text-accentink"
+            >
+              重试这次回答
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {message.sources && message.sources.length ? (
         <div className="mt-1.5">
           <SourceCards sources={message.sources} />
@@ -1334,6 +1443,31 @@ function AssistantMessage({
     </div>
   );
 }
+
+const AssistantMessage = memo(AssistantMessageImpl, (prev, next) => {
+  if (prev.message !== next.message) return false;
+  if (
+    prev.onAsk !== next.onAsk ||
+    prev.onOpenWorkspace !== next.onOpenWorkspace ||
+    prev.onRetry !== next.onRetry ||
+    prev.onNextStep !== next.onNextStep ||
+    prev.nextStepLabel !== next.nextStepLabel
+  ) {
+    return false;
+  }
+  if (prev.blocks === next.blocks) return true;
+  // 流式过程中 blocks 只增不减：与本条消息无关的新组件不该触发重渲染
+  for (const part of next.message.parts) {
+    if (
+      part.type === "block" &&
+      part.blockId &&
+      prev.blocks[part.blockId] !== next.blocks[part.blockId]
+    ) {
+      return false;
+    }
+  }
+  return true;
+});
 
 function NoticeLine({ text }: { text: string }) {
   if (!text) return null;

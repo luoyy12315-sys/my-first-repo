@@ -748,10 +748,28 @@ export function getMaterialChunk(chunkId: string) {
   return row ?? null;
 }
 
-export function listMessages(sessionId: string, limit = 200): MessageDTO[] {
-  const rows = getDb()
-    .prepare("select * from messages where session_id = ? order by seq asc limit ?")
-    .all(sessionId, limit) as Record<string, unknown>[];
+/**
+ * 读取会话消息，按 seq 升序返回，但取的是**最新** limit 条。
+ *
+ * 旧实现是 `order by seq asc limit 200`，取到的是最旧的 200 条：
+ * 会话超过 200 条后，新消息在界面上"消失"，模型历史也永远停在第 187–200 条。
+ * beforeSeq 用于向前翻页（取 seq 小于它的一批）。
+ */
+export function listMessages(
+  sessionId: string,
+  limit = 200,
+  opts: { beforeSeq?: number } = {},
+): MessageDTO[] {
+  const rows = (
+    opts.beforeSeq == null
+      ? getDb()
+          .prepare("select * from messages where session_id = ? order by seq desc limit ?")
+          .all(sessionId, limit)
+      : getDb()
+          .prepare("select * from messages where session_id = ? and seq < ? order by seq desc limit ?")
+          .all(sessionId, opts.beforeSeq, limit)
+  ) as Record<string, unknown>[];
+  rows.reverse();
   const sources = listSourcesByMessages(rows.map((r) => String(r.id)));
   return rows.map((r) => ({
     id: String(r.id),
@@ -1731,9 +1749,9 @@ export function markHintUsed(exerciseId: string) {
 /**
  * 清空"已用提示 / 已看解析"的题目级标记。
  *
- * 这两个标记只对「这一次作答」有效：提交成功后必须清掉，
- * 否则用户点「再做一次」独立答对时，仍会被永久判为借助提示——
- * 那样证据系统会自我污染（掌握度涨、独立正确数不涨）。
+ * 这两个标记只对「这一次作答」有效：提交成功后清掉，避免"再做一次"时
+ * 仍被永久判为借助提示。注意：清标记**不代表恢复独立性**——
+ * 答案一旦下发过，独立与否由 hasRevealedAnswer 从历史里推导，无法靠这个接口洗白。
  */
 export function resetExerciseFlags(exerciseId: string) {
   getDb()
@@ -1741,6 +1759,22 @@ export function resetExerciseFlags(exerciseId: string) {
       "update exercises set solution_viewed_at = null, hint_used_at = null, hint_count = 0 where id = ?",
     )
     .run(exerciseId);
+}
+
+/**
+ * 这道题的正确答是否已经下发过：看过解析，或已经有过一次判定过的作答
+ * （提交后接口就会把标准答案返回给前端）。
+ *
+ * 这是"独立完成"的服务端判据。旧实现依赖可被 /reset 清空的标记，
+ * 于是「看解析 → 提交 → 再做一次 → 提交」会被记成独立正确，学习证据失真。
+ */
+export function hasRevealedAnswer(exerciseId: string): boolean {
+  const r = getDb()
+    .prepare(
+      "select 1 as hit from attempts where exercise_id = ? and (viewed_solution = 1 or is_correct is not null) limit 1",
+    )
+    .get(exerciseId) as { hit: number } | undefined;
+  return Boolean(r);
 }
 
 export function getExerciseFlags(exerciseId: string): {
@@ -2065,13 +2099,14 @@ interface RawCourseConceptRow {
   evidence_count: number;
   introduced_at: number | null;
   next_review_at: number | null;
+  last_studied_at: number | null;
   created_at: number;
 }
 
 function rawCourseConcepts(courseId: string): RawCourseConceptRow[] {
   return getDb()
     .prepare(
-      `select id, name, status, evidence_count, introduced_at, next_review_at, created_at
+      `select id, name, status, evidence_count, introduced_at, next_review_at, last_studied_at, created_at
          from concepts where course_id = ? order by created_at asc, rowid asc`,
     )
     .all(courseId) as RawCourseConceptRow[];
@@ -2083,6 +2118,7 @@ function conceptLikeOf(r: RawCourseConceptRow): ConceptLike {
     evidenceCount: r.evidence_count,
     introducedAt: r.introduced_at,
     nextReviewAt: r.next_review_at,
+    lastStudiedAt: r.last_studied_at,
   };
 }
 

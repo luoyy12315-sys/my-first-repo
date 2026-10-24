@@ -11,13 +11,31 @@ export interface ConceptLike {
   evidenceCount: number;
   introducedAt?: number | null;
   nextReviewAt?: number | null;
+  /** 最近一次有效作答；用于「掌握」随时间回收 */
+  lastStudiedAt?: number | null;
 }
 
-/** 从内部掌握度推导普通界面使用的四种状态。 */
+/** 长期没有任何作答的判定阈值（天）：掌握不是永久徽章 */
+const STALE_MASTERED_DAYS = 90;
+
+function isStale(c: ConceptLike, at: number): boolean {
+  if (!c.lastStudiedAt) return false;
+  return at - c.lastStudiedAt > STALE_MASTERED_DAYS * 86400000;
+}
+
+/**
+ * 从内部掌握度推导普通界面使用的四种状态。
+ *
+ * 「已掌握」会随时间回收：到期该复习、或连续 90 天没有任何作答证据，
+ * 都退回「待复习」。旧实现先判 mastered 直接 return，导致课程可以永久 100%。
+ */
 export function conceptDisplayStatus(c: ConceptLike, at = Date.now()): ConceptDisplayStatus {
-  if (c.status === "mastered") return "mastered";
+  const due = Boolean(c.evidenceCount > 0 && c.nextReviewAt && c.nextReviewAt <= at);
+  if (c.status === "mastered") {
+    return due || isStale(c, at) ? "review" : "mastered";
+  }
   if (c.status === "needs_work") return "review";
-  if (c.evidenceCount > 0 && c.nextReviewAt && c.nextReviewAt <= at) return "review";
+  if (due) return "review";
   if (c.evidenceCount > 0 || c.introducedAt || c.status === "learning" || c.status === "initial") {
     return "learning";
   }

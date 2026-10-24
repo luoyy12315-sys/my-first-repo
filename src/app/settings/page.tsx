@@ -8,6 +8,7 @@ import {
   Globe,
   Pencil,
   Plus,
+  RefreshCw,
   Save,
   Search,
   Star,
@@ -38,6 +39,7 @@ import {
   isDefaultTeachingProfile,
   type TeachingProfile,
 } from "@/lib/teaching/profile";
+import { formatDay } from "@/lib/utils";
 
 interface AiLegacyStatus {
   configured: boolean;
@@ -84,11 +86,60 @@ interface SystemInfo {
   node: string;
 }
 
+/** 与 src/lib/db/usage.ts 的 UsageBucket 对齐；客户端不 import 服务端模块 */
+interface UsageBucket {
+  calls: number;
+  okCalls: number;
+  failedCalls: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  avgLatencyMs: number | null;
+}
+
+interface UsageModelRow extends UsageBucket {
+  model: string;
+  lastUsedAt: number | null;
+}
+
+interface UsagePricing {
+  inputPerMTok: number | null;
+  outputPerMTok: number | null;
+  currency: "CNY" | "USD";
+}
+
+interface UsageSummary {
+  generatedAt: number;
+  days: number;
+  today: UsageBucket;
+  month: UsageBucket;
+  all: UsageBucket;
+  byModel: UsageModelRow[];
+  pricing: UsagePricing;
+}
+
+interface PricingDraft {
+  input: string;
+  output: string;
+  currency: "CNY" | "USD";
+}
+
 export default function SettingsPage() {
   const [models, setModels] = useState<AiModelPublic[]>([]);
   const [legacy, setLegacy] = useState<AiLegacyStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [system, setSystem] = useState<SystemInfo | null>(null);
+
+  // ── 用量 ──
+  const [usage, setUsage] = useState<UsageSummary | null>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [usageError, setUsageError] = useState(false);
+  const [priceDraft, setPriceDraft] = useState<PricingDraft>({
+    input: "",
+    output: "",
+    currency: "CNY",
+  });
+  const [priceSaving, setPriceSaving] = useState(false);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<AiModelPublic | null>(null);
@@ -189,6 +240,60 @@ export default function SettingsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const loadUsage = useCallback(async () => {
+    setUsageLoading(true);
+    setUsageError(false);
+    try {
+      const res = await fetch("/api/usage?days=30", { cache: "no-store" });
+      if (!res.ok) {
+        setUsageError(true);
+        return;
+      }
+      const data = (await res.json()) as UsageSummary;
+      setUsage(data);
+      setPriceDraft({
+        input: data.pricing.inputPerMTok == null ? "" : String(data.pricing.inputPerMTok),
+        output: data.pricing.outputPerMTok == null ? "" : String(data.pricing.outputPerMTok),
+        currency: data.pricing.currency,
+      });
+    } catch {
+      // 用量只是辅助信息：读不到就给可重试的提示，不影响设置页其它功能
+      setUsageError(true);
+    } finally {
+      setUsageLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadUsage();
+  }, [loadUsage]);
+
+  const savePricing = async () => {
+    const input = parsePriceInput(priceDraft.input);
+    const output = parsePriceInput(priceDraft.output);
+    if (input === undefined || output === undefined) {
+      toast.error("单价需为 0 到 1000000 之间的数字，留空表示未填写");
+      return;
+    }
+    setPriceSaving(true);
+    try {
+      const res = await fetch("/api/usage", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ inputPerMTok: input, outputPerMTok: output, currency: priceDraft.currency }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { pricing?: UsagePricing; error?: string };
+      const pricing = data.pricing;
+      if (!res.ok || !pricing) throw new Error(data.error ?? "保存失败");
+      setUsage((u) => (u ? { ...u, pricing } : u));
+      toast.success(input === null && output === null ? "已清除单价，成本估算已关闭" : "单价已保存");
+    } catch (e) {
+      toast.error((e as Error).message || "保存失败");
+    } finally {
+      setPriceSaving(false);
+    }
+  };
 
   const openAdd = () => {
     setEditing(null);
@@ -401,6 +506,12 @@ export default function SettingsPage() {
     : legacy?.configured && legacy.source === "env"
       ? { tone: "ok" as const, text: "可用" }
       : { tone: "warn" as const, text: "待配置" };
+
+  const usagePricing = usage?.pricing;
+  const hasAnyPrice =
+    usagePricing != null && (usagePricing.inputPerMTok != null || usagePricing.outputPerMTok != null);
+  const hasBothPrices =
+    usagePricing != null && usagePricing.inputPerMTok != null && usagePricing.outputPerMTok != null;
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
@@ -995,6 +1106,190 @@ export default function SettingsPage() {
         </Card>
       </section>
 
+      <section className="mb-8">
+        <SectionHeader
+          title="用量"
+          hint={
+            usage && usage.all.calls > 0
+              ? `累计 ${usage.all.calls} 次调用 · 来自本机使用记录`
+              : "真实 token 消耗"
+          }
+          action={
+            <Button
+              size="sm"
+              variant="ghost"
+              loading={usageLoading}
+              onClick={() => void loadUsage()}
+              icon={<RefreshCw className="size-3.5" />}
+            >
+              刷新
+            </Button>
+          }
+        />
+
+        <Card className="p-4">
+          {usage === null ? (
+            usageError ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[13px] text-ink2">用量读取失败。</span>
+                <Button size="sm" variant="ghost" onClick={() => void loadUsage()} icon={<RefreshCw className="size-3.5" />}>
+                  重试
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-[13px] text-ink3">
+                <Spinner /> 读取中…
+              </div>
+            )
+          ) : usage.all.calls === 0 ? (
+            <p className="text-[13px] leading-relaxed text-ink2">
+              还没有调用记录。发起一次对话后，这里会显示真实的 token 消耗、平均耗时和失败次数。
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                {([
+                  ["今日", usage.today],
+                  ["本月", usage.month],
+                  ["累计", usage.all],
+                ] as const).map(([label, b]) => (
+                  <div key={label}>
+                    <p className="text-[12px] text-ink3">{label}</p>
+                    <p className="mt-0.5 flex items-baseline gap-1">
+                      <span className="font-serif text-xl tabular-nums text-ink">
+                        {formatTokens(b.totalTokens)}
+                      </span>
+                      <span className="text-[11px] text-ink3">tokens</span>
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-ink3">
+                      {b.calls} 次调用 · {b.avgLatencyMs == null ? "平均 —" : `平均 ${formatLatency(b.avgLatencyMs)}`}
+                    </p>
+                    {b.failedCalls > 0 ? (
+                      <p className="mt-0.5 text-[12px] text-bad">失败 {b.failedCalls} 次</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+
+              <p className="mt-3 text-[12px] leading-relaxed text-ink3">
+                {hasAnyPrice && usagePricing ? (
+                  <>
+                    按你填的单价粗估：
+                    {(["今日", "本月", "累计"] as const)
+                      .map((label, i) => {
+                        const bucket = i === 0 ? usage.today : i === 1 ? usage.month : usage.all;
+                        const cost = estimateCost(bucket, usagePricing);
+                        return `${label} ${cost == null ? "—" : formatMoney(cost, usagePricing.currency)}`;
+                      })
+                      .join(" · ")}
+                    {hasBothPrices ? "（实际以服务商账单为准）" : "（只按已填的一项计，未填项按 0 计）"}
+                  </>
+                ) : (
+                  <>粗估成本：— · 填写单价后可估算</>
+                )}
+              </p>
+
+              <div className="mt-4 border-t border-line pt-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="text-[13px] font-medium text-ink">按模型</p>
+                  <p className="text-[12px] text-ink3">最近 {usage.days} 天 · 按调用次数排序</p>
+                </div>
+                {usage.byModel.length === 0 ? (
+                  <p className="mt-2 text-[12.5px] leading-relaxed text-ink3">
+                    最近 {usage.days} 天没有调用记录；累计数据仍可在上方查看。
+                  </p>
+                ) : (
+                  <div className="mt-1 divide-y divide-line">
+                    {usage.byModel.map((m) => {
+                      const cost = estimateCost(m, usage.pricing);
+                      return (
+                        <div
+                          key={m.model || "unknown"}
+                          className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-mono text-[12.5px] text-ink">
+                              {m.model || "未知模型"}
+                            </p>
+                            <p className="mt-0.5 text-[12px] leading-relaxed text-ink3">
+                              {m.calls} 次 · 失败 {m.failedCalls} 次 ·{" "}
+                              {m.avgLatencyMs == null ? "平均 —" : `平均 ${formatLatency(m.avgLatencyMs)}`}
+                              {m.lastUsedAt ? ` · 最近 ${formatDay(m.lastUsedAt)}` : ""}
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="tabular-nums text-[12.5px] text-ink">
+                              {formatTokens(m.totalTokens)} tokens
+                            </p>
+                            <p className="mt-0.5 tabular-nums text-[12px] text-ink3">
+                              入 {formatTokens(m.promptTokens)} · 出 {formatTokens(m.completionTokens)}
+                              {cost == null ? "" : ` · ≈ ${formatMoney(cost, usage.pricing.currency)}`}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          <div className="mt-4 border-t border-line pt-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-[13px] font-medium text-ink">单价（可选）</p>
+              <p className="text-[12px] text-ink3">只存本机 · 不填不估成本</p>
+            </div>
+            <div className="mt-2 grid gap-3 sm:grid-cols-3">
+              <Field label="输入单价" hint={`${priceCurrencySymbol(priceDraft.currency)}/百万 token`}>
+                <input
+                  inputMode="decimal"
+                  value={priceDraft.input}
+                  onChange={(e) => setPriceDraft((d) => ({ ...d, input: e.target.value }))}
+                  className={cx(inputClass, "font-mono text-[12.5px]")}
+                  placeholder="留空表示未填写"
+                />
+              </Field>
+              <Field label="输出单价" hint={`${priceCurrencySymbol(priceDraft.currency)}/百万 token`}>
+                <input
+                  inputMode="decimal"
+                  value={priceDraft.output}
+                  onChange={(e) => setPriceDraft((d) => ({ ...d, output: e.target.value }))}
+                  className={cx(inputClass, "font-mono text-[12.5px]")}
+                  placeholder="留空表示未填写"
+                />
+              </Field>
+              <Field label="币种" hint="只影响显示的货币符号">
+                <select
+                  value={priceDraft.currency}
+                  onChange={(e) =>
+                    setPriceDraft((d) => ({ ...d, currency: e.target.value as PricingDraft["currency"] }))
+                  }
+                  className={inputClass}
+                >
+                  <option value="CNY">人民币（¥）</option>
+                  <option value="USD">美元（$）</option>
+                </select>
+              </Field>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                loading={priceSaving}
+                onClick={savePricing}
+                icon={<Save className="size-3.5" />}
+              >
+                保存单价
+              </Button>
+              <span className="text-[12px] leading-relaxed text-ink3">
+                没有内置任何厂商价格；填了才粗估，没填一律显示 "—"。
+              </span>
+            </div>
+          </div>
+        </Card>
+      </section>
+
       <section className="mb-8 mt-8">
         <SectionHeader title="数据" hint="SQLite 数据库" />
         <Card className="p-4">
@@ -1125,4 +1420,56 @@ function SliderField({
       <span className="mt-1 block text-[12px] leading-relaxed text-ink3">{hint}</span>
     </label>
   );
+}
+
+// ── 用量卡片用的格式化：只处理展示，不改数据 ──
+
+/** token 数：千分位；超过 100 万用 M 缩写 */
+function formatTokens(n: number): string {
+  const value = Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+  if (value < 1_000_000) return value.toLocaleString("zh-CN");
+  const millions = value / 1_000_000;
+  if (millions >= 100) return `${Math.round(millions)}M`;
+  return `${millions.toFixed(1).replace(/\.0$/, "")}M`;
+}
+
+/** 平均耗时：1 秒以下用 ms，以上用 s；没有样本时显示 "—" */
+function formatLatency(ms: number | null): string {
+  if (ms == null || !Number.isFinite(ms) || ms <= 0) return "—";
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  const seconds = ms / 1000;
+  return `${seconds >= 10 ? Math.round(seconds) : seconds.toFixed(1)}s`;
+}
+
+function priceCurrencySymbol(currency: "CNY" | "USD"): string {
+  return currency === "USD" ? "$" : "¥";
+}
+
+function formatMoney(value: number, currency: "CNY" | "USD"): string {
+  const symbol = priceCurrencySymbol(currency);
+  if (!Number.isFinite(value) || value <= 0) return `${symbol}0`;
+  if (value < 0.0001) return `<${symbol}0.0001`;
+  if (value < 1) return `${symbol}${value.toFixed(4)}`;
+  if (value < 100) return `${symbol}${value.toFixed(2)}`;
+  return `${symbol}${value.toFixed(0)}`;
+}
+
+/** 用用户自己填的单价粗估成本；一项都没填时返回 null（UI 显示 "—"） */
+function estimateCost(
+  bucket: Pick<UsageBucket, "promptTokens" | "completionTokens">,
+  pricing: UsagePricing,
+): number | null {
+  if (pricing.inputPerMTok == null && pricing.outputPerMTok == null) return null;
+  const inputCost = ((bucket.promptTokens ?? 0) * (pricing.inputPerMTok ?? 0)) / 1_000_000;
+  const outputCost = ((bucket.completionTokens ?? 0) * (pricing.outputPerMTok ?? 0)) / 1_000_000;
+  return inputCost + outputCost;
+}
+
+/** 单价输入框 → 数字：空 = null（未填写），非法 = undefined */
+function parsePriceInput(raw: string): number | null | undefined {
+  const text = raw.trim();
+  if (!text) return null;
+  const value = Number(text);
+  if (!Number.isFinite(value) || value < 0 || value > 1_000_000) return undefined;
+  return value;
 }

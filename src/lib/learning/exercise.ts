@@ -30,10 +30,43 @@ export interface GradeResult {
   errorType?: ErrorType | null;
 }
 
+function toHalfWidth(s: string): string {
+  return s.replace(/[\uFF01-\uFF5E]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0));
+}
+
+/**
+ * 解析学生填的数字。
+ * 支持全角数字、千分位、百分号与空格；**空串/纯符号必须返回 NaN**——
+ * 早期实现用 Number("") 会得到 0，等于把"没填"判成"填了 0"。
+ */
 const num = (s: string) => {
-  const v = Number(String(s).trim().replace(/[，,\s]/g, ""));
-  return Number.isFinite(v) ? v : NaN;
+  const raw = toHalfWidth(String(s ?? "")).trim();
+  if (!raw) return NaN;
+  const cleaned = raw.replace(/[,\s_]/g, "");
+  const m = cleaned.match(/^([+-]?(?:\d+\.?\d*|\.\d+))(?:[eE][+-]?\d+)?%?$/);
+  return m ? Number(m[1]) : NaN;
 };
+
+/**
+ * 数值题的默认容差：相对 0.1%，但绝对量设上限 1。
+ * 旧默认是 1%（百万级答案等于允许 ±1 万），既可能放过错答案，也会让"差一分钱"之类的真实错误被判对。
+ */
+export function numericTolerance(value: number, configured?: number | null): number {
+  if (typeof configured === "number" && Number.isFinite(configured) && configured > 0) return configured;
+  if (!Number.isFinite(value)) return 1e-6;
+  return Math.min(Math.max(1e-6, Math.abs(value) * 0.001), 1);
+}
+
+/** 未作答（空串 / 空数组 / 全是空白）：不判错，也不产生证据 */
+function isEmptySubmission(raw: unknown): boolean {
+  if (raw == null) return true;
+  if (typeof raw === "boolean" || typeof raw === "number") return false;
+  if (typeof raw === "string") return toHalfWidth(raw).trim() === "";
+  if (Array.isArray(raw)) {
+    return raw.length === 0 || raw.every((x) => (typeof x === "string" ? x.trim() === "" : x == null));
+  }
+  return false;
+}
 
 /** accept 与 answer 同构：空之间用 ||，同一个空的等价写法用 | */
 function mergeAccept(parts: string[][], accept?: string[]): string[][] {
@@ -62,10 +95,17 @@ function mergeAccept(parts: string[][], accept?: string[]): string[][] {
 function matchesAccepted(userRaw: string, accepted: string[]): boolean {
   const u = normalizeText(userRaw);
   if (!u) return false;
+  const userNum = num(userRaw);
   return accepted.some((cand) => {
     const c = normalizeText(cand);
     if (!c) return false;
     if (u === c) return true;
+    // 数值等价：1000.00 = 1000、50% = 50、全角/千分位不影响判分。
+    // 这里只认"同一个数"的等价写法，不放宽成数值题的容差——填空题差 0.5 通常就是答错。
+    const candNum = num(cand);
+    if (Number.isFinite(userNum) && Number.isFinite(candNum)) {
+      if (Math.abs(userNum - candNum) <= 1e-9 * Math.max(1, Math.abs(candNum))) return true;
+    }
     if (Math.min(u.length, c.length) < 8) return false;
     const [short, long] = u.length <= c.length ? [u, c] : [c, u];
     return long.includes(short) && short.length >= long.length * 0.75;
@@ -74,7 +114,8 @@ function matchesAccepted(userRaw: string, accepted: string[]): boolean {
 
 export function buildAnswerSpec(input: ExerciseInput): { spec: AnswerSpec; display: string } {
   const options = input.options ?? [];
-  const ans = input.answer.trim();
+  // answer 在旧数据里可能是 null；这里统一成字符串，由各题型自己拒绝空答案
+  const ans = String(input.answer ?? "").trim();
   switch (input.type) {
     case "single": {
       const index = Math.round(num(ans));
@@ -132,7 +173,7 @@ export function buildAnswerSpec(input: ExerciseInput): { spec: AnswerSpec; displ
     case "numeric": {
       const value = num(ans);
       if (!Number.isFinite(value)) throw new Error("计算题答案必须是数字");
-      const tol = input.tolerance ?? Math.max(0.001, Math.abs(value) * 0.01);
+      const tol = numericTolerance(value, input.tolerance);
       const alternates = (input.accept ?? []).map(num).filter((n) => Number.isFinite(n));
       return {
         spec: { kind: "numeric", value, tolerance: tol, unit: input.unit, alternates },
@@ -181,6 +222,21 @@ function gradeAnswerInner(
     maxScore: 1,
     feedback,
   });
+
+  /** 未判定：既不算对也不算错，不写入掌握度证据 */
+  const unanswered = (feedback: string): GradeResult => ({
+    graded: false,
+    correct: false,
+    score: 0,
+    maxScore: 1,
+    feedback,
+  });
+
+  // 空提交不是"答错"：早期实现里 Number("")=0、判断题空串兜底成 false，
+  // 会让"正确答案是错"的判断题在什么都没选时被判对。这里统一按"未作答"处理。
+  if (spec.kind !== "open" && isEmptySubmission(raw)) {
+    return unanswered("还没有作答，本次不计入掌握度证据。");
+  }
 
   switch (spec.kind) {
     case "single": {
@@ -248,7 +304,19 @@ function gradeAnswerInner(
     }
 
     case "judge": {
-      const v = typeof raw === "boolean" ? raw : /^(true|对|正确|是|1)$/i.test(textOf(raw));
+      let v: boolean;
+      if (typeof raw === "boolean") {
+        v = raw;
+      } else {
+        const text = toHalfWidth(textOf(raw)).trim().toLowerCase();
+        const truthy = /^(true|对|正确|是|yes|y|1)$/.test(text);
+        const falsy = /^(false|错|错误|否|no|n|0)$/.test(text);
+        // 认不出的输入不能再兜底成 false——那等于替学生选了一个答案
+        if (!truthy && !falsy) {
+          return unanswered("没有识别到「对 / 错」的判断，请重新选择后提交。");
+        }
+        v = truthy;
+      }
       if (v === spec.value) {
         return { graded: true, correct: true, score: 1, maxScore: 1, feedback: "判断正确。" };
       }

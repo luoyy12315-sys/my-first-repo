@@ -417,4 +417,6 @@ create table if not exists usage_log (
   error text,
   created_at integer not null
 );
+-- 设置页「用量」按今日/本月/全部聚合，需要按时间范围扫描
+create index if not exists ix_usage_created on usage_log(created_at);
 `;

@@ -100,6 +100,8 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* 兜底：个别第三方内容（宽表格、长公式）万一还是超宽，也不让整页能横向拖走 */
+  overflow-x: hidden;
 }
 
 ::selection {
@@ -211,10 +213,25 @@ body {
   padding-left: 14px;
   color: var(--ink-2);
 }
+/* 宽表格在窄屏内横向滚动：溢出的是表格容器，不是整个页面 */
+.md-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.md-table-scroll > table {
+  margin: 0;
+}
 .md table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+}
+/* 窄屏下每列保底宽度：多列表格宁可横向滚动，也不要挤成每列两三个字 */
+.md-table-scroll th,
+.md-table-scroll td {
+  min-width: 5.5em;
 }
 .md th,
 .md td {

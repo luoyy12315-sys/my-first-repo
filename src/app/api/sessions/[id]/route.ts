@@ -18,19 +18,39 @@ import { serializeBlock } from "@/lib/api/serialize";
 
 export const runtime = "nodejs";
 
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
     const session = getSession(id);
     if (!session) return fail(404, "会话不存在");
-    const messages = listMessages(id);
+    // 默认取最新 200 条；?before=<seq> 用于向前翻页，?limit= 可调每页条数
+    const url = new URL(req.url);
+    const limitRaw = Number(url.searchParams.get("limit") ?? "");
+    const beforeRaw = Number(url.searchParams.get("before") ?? "");
+    const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 500) : 200;
+    const before = Number.isFinite(beforeRaw) && beforeRaw > 0 ? Math.floor(beforeRaw) : undefined;
+    const messages = listMessages(id, limit, { beforeSeq: before });
     const blocks = listBlocks(id).map(serializeBlock);
     const summary = getLatestSummary(id);
     const exercises = blocks
       .filter((b) => b.kind === "exercise" && b.exercise)
       .map((b) => b.exercise)
       .filter(Boolean);
-    return ok({ session, messages, blocks, summary, exercises });
+    return ok({
+      session,
+      messages,
+      blocks,
+      summary,
+      exercises,
+      paging: {
+        limit,
+        before: before ?? null,
+        oldestSeq: messages[0]?.seq ?? null,
+        newestSeq: messages[messages.length - 1]?.seq ?? null,
+        // 取满一页就认为可能还有更早的消息，前端可据此给「加载更早」
+        hasMore: messages.length === limit,
+      },
+    });
   } catch (e) {
     return handleError(e);
   }

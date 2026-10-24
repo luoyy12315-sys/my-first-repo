@@ -86,12 +86,15 @@ export async function GET() {
       weak,
       review,
       materials: listMaterials().slice(0, 3),
+      // 统计口径与档案/计划页一致：全部走 displayStatus（含到期与长期未复测的回收），
+      // 不再直接数内部 status，避免首页和计划页数字对不上。
       stats: {
         concepts: concepts.length,
         withEvidence: withEvidence.length,
-        mastered: concepts.filter((c) => c.status === "mastered").length,
-        initial: concepts.filter((c) => c.status === "initial").length,
-        needsWork: concepts.filter((c) => c.status === "needs_work").length,
+        mastered: concepts.filter((c) => c.displayStatus === "mastered").length,
+        initial: concepts.filter((c) => c.displayStatus === "learning").length,
+        needsWork: concepts.filter((c) => c.displayStatus === "review").length,
+        todo: concepts.filter((c) => c.displayStatus === "todo").length,
         sessions: sessions.length,
       },
     });

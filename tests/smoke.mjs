@@ -300,19 +300,22 @@ async function main() {
     });
     check("用过提示的作答被标记", wrong.body.attempt?.usedHint === true);
 
-    // 点「再做一次」= 调 reset，然后独立答对
+    // 点「再做一次」= 调 reset：只清题目级标记，不恢复"独立完成"
+    // （第一次提交后标准答案已经下发，重做不能再算独立正确——否则证据自欺）
     const reset = await json(`/api/exercises/${ex}/reset`, { method: "POST" });
     check("再做一次清空题目级标记", reset.body.reset === true && reset.body.flags?.hintUsed === false);
+    check("再做一次不会恢复独立完成", reset.body.independent === false);
 
     const right = await json("/api/attempts", {
       method: "POST",
       body: JSON.stringify({ exerciseId: ex, answer: 2, idempotencyKey: "hint-once-2" }),
     });
     check("重做不再被判为用过提示", right.body.attempt?.usedHint === false);
+    check("重做被识别出答案已下发", right.body.attempt?.viewedSolution === true);
     const conceptAfter = (await json(`/api/concepts/${seededConceptId}`)).body.concept;
     check(
-      "独立正确数确实 +1（旧行为会卡住不动）",
-      conceptAfter.independentCorrect === baseIndependent + 1,
+      "重做不计入独立正确（答案已下发）",
+      conceptAfter.independentCorrect === baseIndependent,
       `${baseIndependent} → ${conceptAfter.independentCorrect}`,
     );
   }

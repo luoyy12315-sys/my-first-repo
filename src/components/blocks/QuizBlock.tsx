@@ -118,6 +118,10 @@ export default function QuizBlock({
     for (const ex of exercises) {
       void fetch(`/api/exercises/${ex.id}/reset`, { method: "POST" }).catch(() => undefined);
     }
+    // 小测提交后答案已经展示过：重做只用于练习，不会重复推进掌握度
+    toast.message("重做只作练习记录", {
+      description: "这套小测的答案已经给出过，重做不再计入独立完成与掌握度。",
+    });
   };
 
   const handleNext = async () => {

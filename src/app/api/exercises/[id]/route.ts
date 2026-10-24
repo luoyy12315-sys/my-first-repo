@@ -11,15 +11,16 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     if (!ex) return fail(404, "练习不存在");
     const exercise = getExercisePublic(id);
     const attempts = listAttemptsByExercise(id);
-    // 作答过的题，刷新/进工作区后仍要能看到正确答案与解析；没作答时绝不下发。
+    // 只有「已经判定过」的作答才下发标准答案与解析。
+    // 未判定的作答（开放题待评阅、空提交）不算"答过"——否则刷新一下就能拿到答案再看题。
+    const revealed = attempts.some((a) => a.isCorrect !== null);
     let correctDisplay: string | null = null;
     let reveal: ReturnType<typeof describeReveal> = null;
-    if (attempts.length) {
+    if (revealed) {
       try {
         const spec = ex.answer as unknown as AnswerSpec;
         correctDisplay = describeAnswer(spec);
-        // 只有真正判定过的作答才给选项对错标记；未评阅的开放题不给
-        reveal = attempts.some((a) => a.isCorrect !== null) ? describeReveal(spec) : null;
+        reveal = describeReveal(spec);
       } catch {
         correctDisplay = null;
         reveal = null;
@@ -32,7 +33,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         exerciseId: id,
         correctDisplay,
         reveal,
-        explanation: attempts.length ? ex.explanation : null,
+        explanation: revealed ? ex.explanation : null,
       })),
     });
   } catch (e) {

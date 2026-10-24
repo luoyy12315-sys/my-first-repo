@@ -8,6 +8,7 @@ import {
   getConcept,
   getExercise,
   getExerciseFlags,
+  hasRevealedAnswer,
   recordAttemptEvidence,
   resetExerciseFlags,
   syncPlanItemCompletion,
@@ -49,8 +50,11 @@ export async function POST(req: Request) {
 
     // 服务端记录优先：先调过 /solution 或 /hint，就以服务端为准，避免前端自报"我没看过"
     const flags = getExerciseFlags(exerciseId);
+    // 答案是否已经下发过（看过解析，或此前已有一次判定过的作答）。
+    // 一旦下发，这次作答就不能再算"独立完成"——哪怕中途点过「再做一次」清空了标记。
+    const revealedBefore = hasRevealedAnswer(exerciseId);
     const usedHint = parsed.data.usedHint || flags.hintUsed;
-    const viewedSolution = parsed.data.viewedSolution || flags.solutionViewed;
+    const viewedSolution = parsed.data.viewedSolution || flags.solutionViewed || revealedBefore;
 
     const spec = exercise.answer as unknown as AnswerSpec;
     const result = gradeAnswer(exercise.type, spec, answer, { usedHint });
@@ -61,9 +65,9 @@ export async function POST(req: Request) {
     let score: number | null = result.score;
 
     // 开放题：交给模型按评分维度评阅；AI 不可用时如实标记"未评阅"
-    if (!result.graded) {
+    if (!result.graded && exercise.type === "open") {
       const status = aiStatusForSession(exercise.sessionId);
-      if (status.configured && exercise.type === "open") {
+      if (status.configured) {
         try {
           const cfg = resolveAiConfigForSession(exercise.sessionId);
           const payload = await completeJson({
@@ -89,6 +93,8 @@ export async function POST(req: Request) {
         feedback = "开放题已保存。当前未配置模型服务，无法自动评阅，因此本次不计入掌握度证据。";
       }
     }
+    // 其他题型返回 graded=false 只有一个原因：没作答（空提交/认不出的判断），
+    // 保留判题器给出的提示，不写成"开放题已保存"。
 
     const { duplicate, attempt } = addAttempt({
       exerciseId,
@@ -130,8 +136,8 @@ export async function POST(req: Request) {
       if (correct && !viewedSolution) completeReviewForSession(exercise.sessionId);
     }
 
-    // 提示/解析标记只对本次作答有效：这次已经按当时的标记计入证据，
-    // 清掉之后「再做一次」才可能被正确判定为独立完成。
+    // 提示/解析标记只对本次作答有效，这次已经按当时的标记计入证据，清掉即可。
+    // 注意：这不等于恢复"独立完成"——独立性由 hasRevealedAnswer 从历史推导。
     if (graded && !duplicate) resetExerciseFlags(exerciseId);
 
     return ok({
