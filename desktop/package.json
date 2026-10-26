@@ -1,0 +1,26 @@
+{
+  "name": "lumina-desktop",
+  "productName": "Lumina",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lumina desktop shell - native window for the local AI learning workspace",
+  "license": "MIT",
+  "author": {
+    "name": "Lumina",
+    "email": "lumina@localhost"
+  },
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "start:dev": "electron . --dev",
+    "icons": "node scripts/make-icon.mjs",
+    "prebuild": "node scripts/make-icon.mjs",
+    "build": "node scripts/build.mjs",
+    "dist": "node scripts/build.mjs",
+    "shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File ./install-shortcut.ps1"
+  },
+  "devDependencies": {
+    "@electron/packager": "^18.4.4",
+    "electron": "^38.2.2"
+  }
+}
